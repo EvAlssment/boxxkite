@@ -1,0 +1,38 @@
+{
+  "name": "diagnostics",
+  "description": "Medium security for system diagnostics - allows filesystem reads but blocks credentials and network",
+  "read_only_root": true,
+  "unshare_network": true,
+  "unshare_pid": true,
+  "blocked_paths": [
+    "~/.ssh",
+    "~/.aws",
+    "~/.gnupg",
+    "~/.config/gcloud",
+    "~/.kube",
+    "~/.docker",
+    "/etc/shadow",
+    "/etc/sudoers",
+    "/etc/sudoers.d",
+    "/etc/ssh/ssh_host_*_key",
+    "/var/run/docker.sock"
+  ],
+  "allowed_write_paths": [
+    "/tmp/diagnostics-output"
+  ],
+  "env_whitelist": [
+    "PATH",
+    "HOME",
+    "TMPDIR",
+    "USER",
+    "LANG",
+    "LC_ALL",
+    "HOSTNAME"
+  ],
+  "resource_limits": {
+    "memory_mb": 256,
+    "cpu_cores": 0.3,
+    "max_processes": 50,
+    "timeout_seconds": 60
+  }
+}

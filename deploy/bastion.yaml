@@ -1,0 +1,232 @@
+# SSH bastion (bastion/, GitHub issue #134, docs/SSH-BASTION-DESIGN.md).
+#
+# ============================================================================
+# READ THIS BEFORE APPLYING
+# ============================================================================
+#
+# This is the ONE component in this repo that is BOTH a public listener AND
+# parses untrusted protocol traffic (SSH transport/KEX) before any
+# authentication succeeds. Unlike control-plane (public HTTP/WS) and the
+# sidecar (never public — only the manager reaches its :8080), the bastion
+# terminates raw SSH from the open internet, so its network exposure is a
+# deliberate, documented choice here rather than something a self-hoster has
+# to infer. See docs/SSH-BASTION-SECURITY-REVIEW.md for the full review.
+#
+# The single most important property this file enforces at the network layer
+# is the design doc's §4 invariant: the bastion "needs outbound network
+# access to control-plane and nothing else — no sidecar credentials, no
+# cluster/API access, no volume mounts." The NetworkPolicy at the bottom is
+# what makes that true even if the process were ever compromised: its egress
+# allowlist is DNS + control-plane ONLY. It cannot reach a sandbox pod's
+# sidecar (:8080), the Kubernetes API, or the cloud metadata endpoint
+# (169.254.169.254), because none of those are in the allowlist and egress
+# is default-deny.
+#
+# NetworkPolicy enforcement is CNI-dependent — the same caveat as
+# deploy/network-policy.yaml applies here (GKE without Dataplane V2, EKS's
+# default VPC CNI, and kind all do NOT enforce NetworkPolicy out of the box).
+# Verify enforcement on your actual cluster before trusting the egress lock;
+# see deploy/network-policy.yaml's header for the exact manual check.
+#
+# NOT part of the sandbox/sidecar pod. Deploy this as its own workload. It
+# holds no sidecar/cluster credential (automountServiceAccountToken is off).
+
+---
+# --------------------------------------------------------------------------
+# Deployment
+# --------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: boxkite-bastion
+  namespace: default  # Change to your namespace
+  labels:
+    app: boxkite-bastion
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: boxkite-bastion
+  template:
+    metadata:
+      labels:
+        app: boxkite-bastion
+    spec:
+      # No Kubernetes API access whatsoever. The bastion's only outbound
+      # dependency is control-plane's public WS route — it never lists pods,
+      # reads secrets, or does anything else against the cluster API, so it
+      # must not carry a mountable ServiceAccount token an attacker who
+      # compromised the process could replay against the API server.
+      automountServiceAccountToken: false
+      securityContext:
+        # Same maximally-distrusted posture the sandbox container runs under
+        # (deploy/pod-template.yaml) — this is a public listener parsing
+        # untrusted protocol traffic, so it gets no more privilege than code
+        # we already treat as hostile.
+        runAsNonRoot: true
+        runAsUser: 1001   # matches bastion/Dockerfile's `bastion` user
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: bastion
+        # CHANGEME: build (bastion/Dockerfile) and pin a real tag. There is
+        # no published boxkite-bastion image yet — this is intentionally not
+        # a valid reference so an unedited apply fails fast rather than
+        # silently pulling the wrong image.
+        image: boxkite-bastion:CHANGEME
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            # Binds 2222 (an unprivileged port), so no CAP_NET_BIND_SERVICE
+            # is needed — drop everything. If you re-map to port 22 INSIDE
+            # the container (don't — front it with a Service/LB instead),
+            # you would need CAP_NET_BIND_SERVICE and this must change.
+            drop: ["ALL"]
+        ports:
+        - name: ssh
+          containerPort: 2222
+        env:
+        # The ONLY network destination this process talks to. Point at your
+        # control-plane's public base URL (http(s):// or ws(s)://). Must be
+        # reachable from the egress allowlist in the NetworkPolicy below.
+        - name: BOXKITE_BASTION_CONTROL_PLANE_URL
+          value: "https://your-control-plane.example.com"  # CHANGEME
+        - name: BOXKITE_BASTION_LISTEN_PORT
+          value: "2222"
+        # Persistent SSH host key. If unset, the bastion generates a fresh
+        # ephemeral key per process start, which changes across restarts and
+        # trips every client's known_hosts check — set this in production.
+        # Mount a Secret at this path (a key generated once with
+        # `ssh-keygen -t ed25519`), and add a matching volume/volumeMount.
+        - name: BOXKITE_BASTION_HOST_KEY_PATH
+          value: "/etc/bastion/host_key"  # CHANGEME: mount a Secret here
+        # Resource-exhaustion guards (see rate_limit.py). NOTE: per-host
+        # limiting keys on the SOURCE IP the bastion actually observes — see
+        # the Service note below about externalTrafficPolicy, or this cap
+        # collapses to a per-node-IP bucket behind a SNAT'ing load balancer.
+        - name: BOXKITE_BASTION_MAX_CONNECTIONS_PER_HOST
+          value: "10"
+        - name: BOXKITE_BASTION_LOGIN_TIMEOUT_SECONDS
+          value: "30"
+        readinessProbe:
+          tcpSocket:
+            port: 2222
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+
+---
+# --------------------------------------------------------------------------
+# Service — public SSH ingress
+# --------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: boxkite-bastion
+  namespace: default  # Change to your namespace
+  labels:
+    app: boxkite-bastion
+spec:
+  type: LoadBalancer  # public by design — this is the whole point of a bastion
+  selector:
+    app: boxkite-bastion
+  # externalTrafficPolicy: Local preserves the client's real source IP.
+  # WITHOUT this (the "Cluster" default), kube-proxy SNATs incoming
+  # connections to a node IP, so the bastion's per-host connection limiter
+  # (rate_limit.py) sees every client as one of a handful of node IPs — the
+  # per-host cap then throttles all legitimate users together and gives a
+  # single attacker little real per-source limiting. Keep this as Local
+  # unless your LB integration provides source IP another way (PROXY
+  # protocol, which the bastion does not currently parse).
+  externalTrafficPolicy: Local
+  ports:
+  - name: ssh
+    port: 22          # external SSH port most clients expect
+    targetPort: 2222  # the bastion's unprivileged in-container port
+    protocol: TCP
+
+---
+# --------------------------------------------------------------------------
+# NetworkPolicy — the load-bearing part of this file
+# --------------------------------------------------------------------------
+# Ingress: SSH from anywhere (this is a public bastion, by design).
+# Egress:  DNS + control-plane ONLY. Everything else is denied, which is
+#          what structurally guarantees the design doc's "outbound to
+#          control-plane and nothing else" property — the bastion cannot
+#          reach a sidecar, the K8s API, or the cloud metadata endpoint even
+#          if the process is compromised.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: boxkite-bastion-network-policy
+  namespace: default  # Change to your namespace
+spec:
+  podSelector:
+    matchLabels:
+      app: boxkite-bastion
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  # Public SSH. Unlike every other listener in this repo, this one is meant
+  # to be reachable from the open internet — that is the feature. Narrow the
+  # ipBlock to your operator/VPN CIDR if you do NOT want the whole internet
+  # able to open (pre-auth) SSH connections; the per-host connection limiter
+  # and login_timeout bound abuse but do not replace an ingress allowlist if
+  # your threat model wants one.
+  - from:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 2222
+
+  egress:
+  # DNS — needed to resolve the control-plane host.
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # control-plane — the ONLY other destination. Pick the ONE option below
+  # that matches where your control-plane runs and delete the other. Do NOT
+  # fall back to `ipBlock: {cidr: 0.0.0.0/0}` — that would let a compromised
+  # bastion reach the sidecar (:8080 on sandbox pods), the metadata endpoint
+  # (169.254.169.254), and arbitrary internet hosts, defeating the entire
+  # point of this policy.
+  #
+  # Option A — control-plane runs IN-cluster as a pod (label app:
+  # control-plane; adjust to your actual labels/port):
+  # - to:
+  #   - podSelector:
+  #       matchLabels:
+  #         app: control-plane
+  #   ports:
+  #   - protocol: TCP
+  #     port: 8000
+  #
+  # Option B — control-plane runs OUTSIDE the cluster (e.g. a managed
+  # serverless platform): allow egress to its reachable CIDR on 443.
+  # Fill in the actual range — do not leave as 0.0.0.0/0. If your CNI
+  # supports FQDN egress (Cilium toFQDNs), prefer matching the control-plane
+  # hostname over an ipBlock.
+  # - to:
+  #   - ipBlock:
+  #       cidr: <CONTROL_PLANE_CIDR>  # CHANGEME — do not leave as 0.0.0.0/0
+  #   ports:
+  #   - protocol: TCP
+  #     port: 443

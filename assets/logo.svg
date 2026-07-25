@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="boxkite logo">
+  <!-- Baked-in dark background so the near-white frame corners stay legible
+       when this SVG is embedded directly in a README on a plain white page,
+       not just on the site's own dark theme. -->
+  <rect x="0" y="0" width="100" height="100" rx="20" fill="#0a0c0e" />
+  <!-- Frame corners: the sandbox boundary. Open on all four sides — nothing
+       leaves except through the one deliberate gap the tail threads through. -->
+  <g stroke="#e9e6df" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M15 32 V15 H32" />
+    <path d="M68 15 H85 V32" />
+    <path d="M85 68 V85 H68" />
+    <path d="M32 85 H15 V70" />
+  </g>
+  <!-- The kite: a controlled process, held inside the frame. -->
+  <path d="M50 30 L70 50 L50 70 L30 50 Z" fill="#ffb454" />
+  <!-- The tail: the one thing allowed to trail out — a controlled egress,
+       not an open boundary. -->
+  <path d="M50 70 Q56 78 50 84 Q44 90 50 96" stroke="#ffb454" stroke-width="3"
+        stroke-linecap="round" fill="none" opacity="0.85" />
+</svg>

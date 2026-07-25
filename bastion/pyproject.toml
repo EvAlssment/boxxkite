@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "boxkite-bastion"
+version = "0.1.0"
+description = "Standalone SSH bastion for boxkite (GitHub issue #134): terminates real SSH protocol and exchanges (username=session_id, password=takeover token) for control-plane's existing WS /v1/sandboxes/{id}/takeover route -- never a second sshd inside the sandbox, never a new privilege inside it. See docs/SSH-BASTION-DESIGN.md."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+
+dependencies = [
+    # Real, actively maintained, asyncio-native SSH server library -- picked
+    # specifically because control-plane/ (the only other thing this
+    # component talks to) is itself an asyncio/FastAPI codebase; asyncssh
+    # runs on the same event loop model rather than requiring a thread pool
+    # or a separate process to bridge async control-plane calls into a
+    # synchronous SSH library. See docs/SSH-BASTION-DESIGN.md section 3.
+    #
+    # Floor is 2.14.2, NOT 2.14.0 or 2.14.1: 2.14.0/2.14.1 are vulnerable to
+    # the Terrapin prefix-truncation attack (GHSA-hfmc-7525-mj55,
+    # CVE-2023-48795) and to two AsyncSSH-specific issues -- rogue extension
+    # negotiation (GHSA-cfc2-wr2v-gxm5, CVE-2023-46445) and rogue session
+    # attack (GHSA-c35q-ffpf-5qpm, CVE-2023-46446). All three are fixed only
+    # as of 2.14.2, so `>=2.14.1` would still let a fresh install resolve to
+    # a known-vulnerable build -- bastion/tests/test_dependency_pins.py
+    # guards this floor against regressing. See
+    # docs/SSH-BASTION-SECURITY-REVIEW.md for the full supply-chain audit.
+    "asyncssh>=2.14.2,<3",
+    # Outbound WS client to control-plane's existing WS /takeover route --
+    # the exact same library control-plane's own routers/sandboxes.py
+    # already uses (as an outbound client, control-plane -> sidecar) via
+    # uvicorn[standard]'s transitive dependency; declared explicitly here
+    # since bastion/ is its own deployable and doesn't get it for free from
+    # uvicorn[standard].
+    "websockets>=12,<16",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24", "pytest-cov>=5.0"]
+
+[project.scripts]
+boxkite-bastion = "boxkite_bastion.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,94 @@
+# Wraps ../../network-policy.yaml -- READ THAT FILE'S HEADER COMMENT IN FULL
+# before applying: NetworkPolicy is a second/backstop layer, not the primary
+# isolation boundary, and enforcement is CNI-dependent. This template keeps
+# the same fail-closed defaults: no storage egress rule at all until you pick
+# one of `networkPolicy.storageEgress.mode`'s options, and no 0.0.0.0/0
+# fallback anywhere.
+{{- if .Values.networkPolicy.enabled }}
+{{- $mode := .Values.networkPolicy.storageEgress.mode }}
+{{- if and (eq $mode "ipBlock") (eq .Values.networkPolicy.storageEgress.ipBlock.cidr "192.0.2.0/24") }}
+{{- fail "networkPolicy.storageEgress.mode=ipBlock but storageEgress.ipBlock.cidr is still the RFC 5737 placeholder -- set it to your real storage endpoint's CIDR (see ../../network-policy.yaml's CHANGEME comment)." }}
+{{- end }}
+{{- if and (eq $mode "fqdn") (not .Values.networkPolicy.storageEgress.fqdn.fqdnEgressSupported) }}
+{{- fail "networkPolicy.storageEgress.mode=fqdn requires storageEgress.fqdn.fqdnEgressSupported=true as an explicit acknowledgement that your CNI enforces toFQDNs (e.g. Cilium) -- a CNI that silently ignores it would otherwise look restricted while actually being wide open." }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-network-policy
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "boxkite.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: sandbox
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    {{- range .Values.networkPolicy.ingressFromPodLabels }}
+    - podSelector:
+        matchLabels:
+          {{- range $k, $v := . }}
+          {{ $k }}: {{ $v | quote }}
+          {{- end }}
+    {{- end }}
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  {{- if eq $mode "inCluster" }}
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: {{ .Values.networkPolicy.storageEgress.inCluster.namespace }}
+      podSelector:
+        matchLabels:
+          {{- range $k, $v := .Values.networkPolicy.storageEgress.inCluster.podLabels }}
+          {{ $k }}: {{ $v | quote }}
+          {{- end }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.networkPolicy.storageEgress.inCluster.port }}
+  {{- else if eq $mode "ipBlock" }}
+  - to:
+    - ipBlock:
+        cidr: {{ .Values.networkPolicy.storageEgress.ipBlock.cidr }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.networkPolicy.storageEgress.ipBlock.port }}
+  {{- else if eq $mode "fqdn" }}
+  - to:
+    {{- range .Values.networkPolicy.storageEgress.fqdn.patterns }}
+    - toFQDNs:
+      - matchPattern: {{ . | quote }}
+    {{- end }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.networkPolicy.storageEgress.fqdn.port }}
+  {{- end }}
+  {{- if .Values.networkPolicy.gitEgress.enabled }}
+  - to:
+    {{- range .Values.networkPolicy.gitEgress.hosts }}
+    - toFQDNs:
+      - matchName: {{ . | quote }}
+    {{- end }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.networkPolicy.gitEgress.port }}
+    - protocol: TCP
+      port: {{ .Values.networkPolicy.gitEgress.sshPort }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,294 @@
+# Build and push boxkite's container images to GHCR on every published
+# GitHub Release (same trigger as publish-pypi.yml, so a single release
+# action publishes both the PyPI package and the images).
+#
+# Auth uses the built-in GITHUB_TOKEN (packages: write) — no PAT/secret to
+# configure. Unlike publish-pypi.yml, there is NO manual one-time setup
+# required for this workflow: GITHUB_TOKEN can push to
+# ghcr.io/evalssment/* the first time it runs, as long as the repo's
+# Actions settings allow packages: write (the default). The very first push
+# for each image name creates that GHCR package automatically.
+#
+# Images published (see deploy/docker-compose.yml and control-plane/Dockerfile
+# for what each one runs):
+#   - ghcr.io/evalssment/boxkite-sandbox         (deploy/sandbox.Dockerfile)
+#   - ghcr.io/evalssment/boxkite-sandbox-minimal (deploy/sandbox-minimal.Dockerfile)
+#   - ghcr.io/evalssment/boxkite-sidecar         (deploy/sidecar.Dockerfile)
+#   - ghcr.io/evalssment/boxkite-control-plane   (control-plane/Dockerfile)
+#
+# Tagging: each image gets the release tag (with a leading "v" stripped, if
+# present — e.g. release tag "v0.1.0" -> image tag "0.1.0") AND "latest".
+#
+# SBOM + signing (ahead of the EU Cyber Resilience Act's 2026-09-11
+# enforcement date, GitHub issue #227): every image gets an SPDX SBOM
+# (anchore/sbom-action, backed by Syft) generated against the pushed
+# digest -- not a tag, so the SBOM can't silently apply to a different
+# build if a tag is ever re-pointed -- and both the image and its SBOM are
+# signed keylessly via cosign/Sigstore (Fulcio issues a short-lived cert
+# off this job's own GitHub Actions OIDC token, Rekor logs the signature
+# to a public transparency log). No key material to provision or rotate:
+# `permissions: id-token: write` is the only new requirement, and it's
+# scoped per-job like the existing `packages: write`. See README.md's
+# "Verifying released images" section for the matching `cosign verify`
+# command.
+name: Publish container images
+
+on:
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: evalssment
+
+jobs:
+  version:
+    name: Resolve image version tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Strip leading "v" from the release tag, if present
+        id: version
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  sandbox:
+    name: Build and push boxkite-sandbox
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      id-token: write # Fulcio keyless signing (cosign) -- see file header
+    env:
+      IMAGE_REF: ghcr.io/evalssment/boxkite-sandbox
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # amd64 only: the pinned Chrome-for-Testing build has no linux/arm64
+      # artifact and deploy/sandbox.Dockerfile deliberately fails fast on
+      # arm64 rather than shipping a broken browser (same constraint
+      # enforced in deploy/docker-compose.yml and .github/workflows/ci.yml).
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: deploy/sandbox.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxkite-sandbox:${{ needs.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxkite-sandbox:latest
+
+      # SPDX SBOM against the immutable digest just pushed above, uploaded
+      # as both a workflow artifact and (since this workflow only runs on
+      # `release: published`) a release asset.
+      - name: Generate SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}
+          format: spdx-json
+          output-file: boxkite-sandbox.spdx.json
+          artifact-name: boxkite-sandbox-sbom.spdx.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign image (keyless -- Sigstore/Fulcio/Rekor)
+        run: cosign sign --yes "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
+      - name: Attest SBOM (keyless)
+        run: |
+          cosign attest --yes \
+            --predicate boxkite-sandbox.spdx.json \
+            --type spdxjson \
+            "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
+  sandbox-minimal:
+    name: Build and push boxkite-sandbox-minimal
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      id-token: write # Fulcio keyless signing (cosign) -- see file header
+    env:
+      IMAGE_REF: ghcr.io/evalssment/boxkite-sandbox-minimal
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Multi-arch: deploy/sandbox-minimal.Dockerfile has none of
+      # deploy/sandbox.Dockerfile's amd64-only Chrome-for-Testing step, so
+      # both platforms build cleanly.
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: deploy/sandbox-minimal.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxkite-sandbox-minimal:${{ needs.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxkite-sandbox-minimal:latest
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}
+          format: spdx-json
+          output-file: boxkite-sandbox-minimal.spdx.json
+          artifact-name: boxkite-sandbox-minimal-sbom.spdx.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign image (keyless -- Sigstore/Fulcio/Rekor)
+        run: cosign sign --yes "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
+      - name: Attest SBOM (keyless)
+        run: |
+          cosign attest --yes \
+            --predicate boxkite-sandbox-minimal.spdx.json \
+            --type spdxjson \
+            "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
+  sidecar:
+    name: Build and push boxkite-sidecar
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      id-token: write # Fulcio keyless signing (cosign) -- see file header
+    env:
+      IMAGE_REF: ghcr.io/evalssment/boxkite-sidecar
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Multi-arch: deploy/sidecar.Dockerfile builds on
+      # cgr.dev/chainguard/wolfi-base with apk packages (python, ca-certificates,
+      # util-linux-misc, procps, curl, docker-cli) and a `uv pip install` step —
+      # none of that is x86_64-only, so both platforms build cleanly.
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: deploy/sidecar.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxkite-sidecar:${{ needs.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxkite-sidecar:latest
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}
+          format: spdx-json
+          output-file: boxkite-sidecar.spdx.json
+          artifact-name: boxkite-sidecar-sbom.spdx.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign image (keyless -- Sigstore/Fulcio/Rekor)
+        run: cosign sign --yes "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
+      - name: Attest SBOM (keyless)
+        run: |
+          cosign attest --yes \
+            --predicate boxkite-sidecar.spdx.json \
+            --type spdxjson \
+            "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
+  control-plane:
+    name: Build and push boxkite-control-plane
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      id-token: write # Fulcio keyless signing (cosign) -- see file header
+    env:
+      IMAGE_REF: ghcr.io/evalssment/boxkite-control-plane
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Multi-arch: control-plane/Dockerfile builds on python:3.11-slim with
+      # only apt/pip steps, no x86_64-only binaries — both platforms build
+      # cleanly. Context is the repo root (not control-plane/) because the
+      # image needs the sibling `boxkite` package at ../src — see the
+      # Dockerfile's own header comment.
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: control-plane/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxkite-control-plane:${{ needs.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxkite-control-plane:latest
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          image: ${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}
+          format: spdx-json
+          output-file: boxkite-control-plane.spdx.json
+          artifact-name: boxkite-control-plane-sbom.spdx.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign image (keyless -- Sigstore/Fulcio/Rekor)
+        run: cosign sign --yes "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
+      - name: Attest SBOM (keyless)
+        run: |
+          cosign attest --yes \
+            --predicate boxkite-control-plane.spdx.json \
+            --type spdxjson \
+            "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"

@@ -1,0 +1,410 @@
+# Sandbox Pod Template
+# Each chat/execution session = one K8s pod with two containers sharing volumes
+#
+# Containers:
+# 1. sandbox: User code execution (non-root, network isolated)
+# 2. sidecar: HTTP API for tool calls, storage sync (root access for writes)
+#
+# All tool calls route through sidecar HTTP API on :8080
+# File operations hit shared volumes directly
+# Only bash_tool needs nsenter into sandbox PID namespace
+#
+# Storage backends supported:
+# - S3 (AWS S3 or MinIO) - set STORAGE_BACKEND=s3
+# - Azure Blob Storage - set STORAGE_BACKEND=azure
+# - Google Cloud Storage - set STORAGE_BACKEND=gcs (auth via GKE Workload
+#   Identity by default -- no credential secret needed, see below)
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sandbox-SESSION_ID
+  labels:
+    app: sandbox
+    component: execution
+    session-id: SESSION_ID
+    # small, medium, or large -- see resource_config.py's SANDBOX_SIZE_PRESETS.
+    # Missing on pods created before this label existed; both warm_pool.py and
+    # manager.py treat a missing label as the default size.
+    sandbox.boxkite.dev/size: "small"
+  annotations:
+    # For warm pool management
+    sandbox.boxkite.dev/status: "warm"  # warm, active, terminating
+    sandbox.boxkite.dev/created-at: ""
+    sandbox.boxkite.dev/last-used: ""
+spec:
+  # Share PID namespace so sidecar can nsenter into sandbox
+  shareProcessNamespace: true
+
+  # Don't mount service account token (security)
+  automountServiceAccountToken: false
+
+  # Terminate quickly for warm pool recycling
+  terminationGracePeriodSeconds: 30
+
+  # Init container to set up volumes (optional - for cold starts with pre-fetch)
+  initContainers:
+  - name: init-prefetch
+    image: boxkite-sidecar:latest
+    imagePullPolicy: IfNotPresent
+    command: ["python", "-c", "print('Init container ready')"]
+    # In production, this would run prefetch logic
+    volumeMounts:
+    - name: uploads
+      mountPath: /mnt/user-data/uploads
+    - name: outputs
+      mountPath: /mnt/user-data/outputs
+    - name: skills
+      mountPath: /mnt/skills
+    - name: workspace
+      mountPath: /workspace
+
+  containers:
+  # Sandbox container - runs user code
+  - name: sandbox
+    image: boxkite-sandbox:latest
+    imagePullPolicy: IfNotPresent
+
+    # Security context - non-root, no privilege escalation
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+
+    # Resource limits — must match resource_config.py's
+    # DEFAULT_SANDBOX_CONTAINER_* constants (see test_pod_template_parity.py).
+    # This template previously advertised 512Mi/250m request and 4Gi/2-core
+    # limit — 8x/10x and 32x/13x higher than what the code actually requests
+    # at runtime — which would badly overstate real capacity planning for
+    # anyone sizing a cluster off this file instead of the code defaults.
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "25m"
+      limits:
+        memory: "256Mi"
+        cpu: "250m"
+
+    # Environment - ONLY safe variables, NO secrets
+    env:
+    - name: PATH
+      value: "/usr/local/bin:/usr/bin:/bin"
+    - name: HOME
+      value: "/workspace"
+    - name: LANG
+      value: "C.UTF-8"
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    # NO envFrom, NO valueFrom secretKeyRef
+
+    # Volume mounts
+    volumeMounts:
+    - name: uploads
+      mountPath: /mnt/user-data/uploads
+      readOnly: true
+      # Uploads are read-only to sandbox
+    - name: outputs
+      mountPath: /mnt/user-data/outputs
+      # Outputs are read-write
+    - name: skills
+      mountPath: /mnt/skills
+      readOnly: true
+      # Skills are read-only to sandbox
+    - name: workspace
+      mountPath: /workspace
+    - name: tmp
+      mountPath: /tmp
+
+  # Sidecar container - HTTP API and storage sync
+  - name: sidecar
+    image: boxkite-sidecar:latest
+    imagePullPolicy: IfNotPresent
+
+    # Runs as root for nsenter and volume writes.
+    #
+    # SECURITY (residual risk, not something this template can architect
+    # away): the sidecar holds CAP_SYS_ADMIN, CAP_SETUID, and CAP_SETGID —
+    # each near-root capabilities — for the pod's entire lifetime, because
+    # the nsenter-based isolation design requires them (setns() for mount/PID
+    # namespace entry needs CAP_SYS_ADMIN; nsenter's own --setuid/--setgid
+    # privilege drop to SANDBOX_UID/GID needs CAP_SETUID/CAP_SETGID once
+    # capabilities are otherwise dropped to ALL). This means any future
+    # RCE-class bug in the sidecar's own FastAPI request handling would be
+    # equivalent to full root within the pod, including the ability to
+    # assume any UID/GID. This is inherent to the current design, not a
+    # misconfiguration — but it must not be understated: this is why the
+    # sidecar's HTTP API auth (SIDECAR_AUTH_TOKEN below) and the pod's
+    # NetworkPolicy (../network-policy.yaml) both matter as independent
+    # layers on top of this capability grant, not optional hardening.
+    securityContext:
+      runAsUser: 0
+      allowPrivilegeEscalation: false
+      capabilities:
+        add:
+        - SYS_PTRACE  # Required for nsenter to attach to the sandbox process
+        - SYS_ADMIN   # Required for setns() (mount/PID namespace entry) — see above
+        - CHOWN       # Required by /configure to chown /workspace, /outputs to SANDBOX_UID/GID
+        - SYS_CHROOT  # Required by nsenter's internal chroot() when entering the sandbox
+                      # container's mount namespace (util-linux 2.42+) -- without it,
+                      # mount-namespace entry fails with EPERM even with SYS_ADMIN present
+        - SETUID      # Required by nsenter's own --setuid flag (privilege drop to SANDBOX_UID)
+        - SETGID      # Required by nsenter's own --setgid flag (privilege drop to SANDBOX_GID)
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+
+    # Resource limits — must match resource_config.py's
+    # DEFAULT_SANDBOX_SIDECAR_* constants (see test_pod_template_parity.py).
+    # The sidecar limit is the ENFORCED per-sandbox memory/CPU budget: agent
+    # code launched via /exec runs charged to this container's cgroup, not the
+    # sandbox container's (see resource_config.py's module note).
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+
+    # HTTP API port
+    ports:
+    - name: http
+      containerPort: 8080
+      protocol: TCP
+
+    # Health checks
+    #
+    # scheme: HTTPS -- matches manager.py's/warm_pool.py's real pod spec,
+    # which serves the sidecar over TLS by default (see
+    # src/boxkite/tls.py, docs/SIDECAR-TRANSPORT-TLS-DESIGN.md). The
+    # kubelet's httpGet probe does NOT validate the serving cert (there is
+    # no caBundle option for pod probes) -- it only needs the scheme to
+    # match, so no cert distribution to the kubelet is required. If you set
+    # SIDECAR_TLS_DISABLED=true below, change both probes' scheme back to
+    # HTTP to match -- see tests/test_pod_template_parity.py's TLS scheme
+    # parity test for the drift guard between this file and the real code.
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTPS
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTPS
+      initialDelaySeconds: 3
+      periodSeconds: 5
+
+    # Environment - storage config from secrets/configmaps
+    env:
+    - name: RUNTIME_MODE
+      value: "k8s"
+    # Manager-to-sidecar TLS (see src/boxkite/tls.py,
+    # docs/SIDECAR-TRANSPORT-TLS-DESIGN.md). Leave unset/"" for the default
+    # (TLS on, matching the probes' scheme: HTTPS above). Set to "true" only
+    # if you run your own service-mesh mTLS (Istio/Linkerd) and want to
+    # skip boxkite's own per-pod cert generation -- if you do, also change
+    # both probes' scheme above back to HTTP.
+    - name: SIDECAR_TLS_DISABLED
+      value: ""
+    # SECURITY: shared secret the sidecar requires on every HTTP request
+    # except /health (defense in depth on top of NetworkPolicy — see
+    # src/boxkite/sidecar_auth.py and SECURITY.md). SandboxManager and
+    # WarmPoolManager generate a FRESH random value per pod at pod-creation
+    # time, create a dedicated per-pod Secret for it (name:
+    # sidecar_auth_secret_name(pod_name), i.e. "<pod-name>-sidecar-auth", key:
+    # "token"), and reference it here via secretKeyRef exactly like this --
+    # NEVER as a literal env value. A literal value would be readable by
+    # anything with mere `pods: get` RBAC (the pod spec, same as an
+    # annotation), which defeats requiring the separate `secrets: get` grant
+    # this design depends on (see deploy/rbac.yaml).
+    #
+    # This static template can't express "generate a new per-pod Secret at
+    # apply time" -- if you deploy a pod from a literal copy of this file
+    # (rather than through SandboxManager/WarmPoolManager), create that
+    # Secret yourself first, e.g.:
+    #   kubectl create secret generic <pod-name>-sidecar-auth \
+    #     --from-literal=token="$(openssl rand -base64 32)" -n <namespace>
+    # A pod applied without that Secret existing fails to start (missing
+    # secretKeyRef target) -- a loud, obvious failure, not a silently-working
+    # guessable credential the way a literal placeholder value would be.
+    - name: SIDECAR_AUTH_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: CHANGEME-pod-name-sidecar-auth  # see comment above
+          key: token
+    # Storage backend selection (s3, azure, or gcs)
+    - name: STORAGE_BACKEND
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: storage-backend
+          optional: true  # Defaults to "s3"
+    # === S3 Configuration === #
+    - name: S3_BUCKET
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: s3-bucket
+          optional: true
+    - name: AWS_REGION
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: aws-region
+          optional: true
+    - name: S3_ENDPOINT
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: s3-endpoint
+          optional: true  # Only for MinIO/custom S3
+    # AWS credentials via IRSA (IAM Roles for Service Accounts) or secret
+    - name: AWS_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: sandbox-storage-credentials
+          key: aws-access-key-id
+          optional: true
+    - name: AWS_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: sandbox-storage-credentials
+          key: aws-secret-access-key
+          optional: true
+    # === Azure Blob Storage Configuration === #
+    - name: AZURE_STORAGE_CONTAINER
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: azure-storage-container
+          optional: true
+    - name: AZURE_STORAGE_ACCOUNT_NAME
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: azure-storage-account-name
+          optional: true
+    # Azure credentials from secret (connection string or account key)
+    - name: AZURE_STORAGE_CONNECTION_STRING
+      valueFrom:
+        secretKeyRef:
+          name: sandbox-storage-credentials
+          key: azure-storage-connection-string
+          optional: true
+    - name: AZURE_STORAGE_ACCOUNT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: sandbox-storage-credentials
+          key: azure-storage-account-key
+          optional: true
+    # === Google Cloud Storage Configuration === #
+    # No credential secretKeyRef here by design: GCS auth defaults to
+    # Application Default Credentials, which GKE Workload Identity supplies
+    # automatically to the pod's service account -- bind the K8s service
+    # account to a GCP service account with storage object admin on
+    # STORAGE_GCS_BUCKET (see Google's Workload Identity docs) rather than
+    # minting a static service-account-key JSON and mounting it as a secret.
+    - name: STORAGE_GCS_BUCKET
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: gcs-bucket
+          optional: true
+    - name: STORAGE_GCS_PROJECT
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: gcs-project
+          optional: true  # Only needed if it can't be inferred from ADC
+
+    # Volume mounts - read-write access to all shared volumes
+    volumeMounts:
+    - name: uploads
+      mountPath: /mnt/user-data/uploads
+    - name: outputs
+      mountPath: /mnt/user-data/outputs
+    - name: skills
+      mountPath: /mnt/skills
+    - name: workspace
+      mountPath: /workspace
+    - name: tmp
+      mountPath: /tmp
+    # Per-pod TLS cert/key (see the SIDECAR_TLS_DISABLED comment above and
+    # src/boxkite/tls.py). A mounted file, not secretKeyRef -- uvicorn's
+    # ssl_certfile/ssl_keyfile need filesystem paths. This static template
+    # can't generate a per-pod cert the way manager.py/warm_pool.py do at
+    # apply time -- if you deploy from a literal copy of this file, create
+    # tls_cert/tls_key keys in the same CHANGEME-pod-name-sidecar-auth
+    # Secret referenced by SIDECAR_AUTH_TOKEN above, or set
+    # SIDECAR_TLS_DISABLED=true and drop this mount + the probes' HTTPS
+    # scheme entirely.
+    - name: sidecar-tls
+      mountPath: /etc/boxkite/tls
+      readOnly: true
+
+  # Volumes - EmptyDir shared between containers. Every volume below has a
+  # sizeLimit -- an emptyDir with none is bounded only by the node's backing
+  # disk, letting one sandbox tenant fill it and trigger kubelet eviction of
+  # co-located pods. These values must match resource_config.py's
+  # DEFAULT_SANDBOX_*_VOLUME_SIZE_LIMIT constants (the actual runtime
+  # pod-creation code in manager.py/warm_pool.py reads those, not this file)
+  # -- see test_pod_template_parity.py's volume-size-limit test.
+  #
+  # NOTE: there is no PID-limit equivalent of sizeLimit for this Pod spec --
+  # see SECURITY.md for why that requires a kubelet-level setting instead
+  # (a cluster-wide --pod-max-pids kubelet flag, not something expressible
+  # in this manifest).
+  volumes:
+  - name: uploads
+    emptyDir:
+      sizeLimit: 5Gi
+  - name: outputs
+    emptyDir:
+      sizeLimit: 5Gi
+  - name: skills
+    emptyDir:
+      sizeLimit: 5Gi
+  - name: workspace
+    emptyDir:
+      sizeLimit: 5Gi
+  - name: tmp
+    emptyDir:
+      sizeLimit: 1Gi
+  # Backs the sidecar-tls volumeMount above. Secret-sourced (not emptyDir):
+  # the same per-pod Secret SIDECAR_AUTH_TOKEN reads from, keyed tls_cert/
+  # tls_key -- see src/boxkite/tls.py's SIDECAR_TLS_CERT_SECRET_KEY/
+  # SIDECAR_TLS_KEY_SECRET_KEY.
+  - name: sidecar-tls
+    secret:
+      secretName: CHANGEME-pod-name-sidecar-auth  # same Secret as SIDECAR_AUTH_TOKEN above
+      items:
+      - key: tls_cert
+        path: tls.crt
+      - key: tls_key
+        path: tls.key
+
+  # DNS policy - restrict DNS resolution
+  dnsPolicy: Default
+
+  # Node selector (optional - for dedicated sandbox nodes)
+  # nodeSelector:
+  #   sandbox-workload: "true"
+
+  # Tolerations (optional - for dedicated sandbox nodes)
+  # tolerations:
+  # - key: "sandbox-workload"
+  #   operator: "Equal"
+  #   value: "true"
+  #   effect: "NoSchedule"

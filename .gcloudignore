@@ -1,0 +1,11 @@
+.git
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/node_modules/
+**/dist/
+**/.next/
+sdk-rust/target/
+sdk-go/**/testdata/
+.venv/
+**/*.egg-info/

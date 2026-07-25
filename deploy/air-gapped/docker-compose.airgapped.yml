@@ -1,0 +1,173 @@
+# Air-gapped variant of ../docker-compose.yml — see README.md in this
+# directory for the full walkthrough, real timings, and scope.
+#
+# Differences from ../docker-compose.yml (which this intentionally does not
+# modify — see that file for the annotated original):
+#   1. `image:` instead of `build:` on every service. Nothing here ever
+#      invokes a Dockerfile — every image is expected to already exist in
+#      the local image cache (via mirror-images.sh + load-images.sh), so
+#      bringing this stack up requires no `apk`/`npm`/`pip` resolution and
+#      no Wolfi/Docker Hub/GHCR reachability.
+#   2. `pull_policy: never` on every service. This is the actual air-gap
+#      enforcement mechanism: if an operator forgets to load-images.sh
+#      first, `docker compose up` fails immediately and loudly ("image not
+#      found and pull policy is never") instead of silently attempting (and
+#      hanging or timing out on) a registry pull. Verified below in
+#      README.md's transcript.
+#   3. `sandbox` uses deploy/sandbox-minimal.Dockerfile's image, not
+#      deploy/sandbox.Dockerfile's — see README.md's "Why sandbox-minimal"
+#      section for why (arch/build-time reasons specific to this reference
+#      bundle, not a claim that the full image can't be mirrored the same
+#      way).
+#
+# Usage:
+#   ./mirror-images.sh              # on a machine with internet access
+#   # carry deploy/air-gapped/bundle/boxkite-airgapped-bundle.tar.gz across
+#   ./load-images.sh                # on the air-gapped machine, zero network
+#   docker compose -f docker-compose.airgapped.yml up -d
+
+services:
+  sandbox:
+    image: "${BOXKITE_SANDBOX_IMAGE:-boxkite-sandbox-minimal:bundle}"
+    pull_policy: never
+    # MUST stay literally "sandbox" — the sidecar service's `pid:
+    # "container:sandbox"` below hardcodes this container name to share its
+    # PID namespace (get_sandbox_pid() in sidecar/main.py finds it by
+    # pgrep'ing for this container's own init process). Renaming this
+    # breaks /exec at runtime, not just at naming-collision time — verified
+    # the hard way while building this bundle (see README.md).
+    container_name: sandbox
+    command: ["tail", "-f", "/dev/null"]
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 4g
+    cpus: 2
+    volumes:
+      - uploads:/mnt/user-data/uploads:ro
+      - outputs:/mnt/user-data/outputs
+      - skills:/mnt/skills:ro
+      - workspace:/workspace
+      - tmp:/tmp
+    networks:
+      - sandbox-internal
+    environment:
+      PATH: "/usr/local/bin:/usr/bin:/bin"
+      HOME: "/workspace"
+      LANG: "C.UTF-8"
+      PYTHONUNBUFFERED: "1"
+
+  sidecar:
+    image: "${BOXKITE_SIDECAR_IMAGE:-boxkite-sidecar:bundle}"
+    pull_policy: never
+    user: "0"
+    # Same PID-namespace sharing + capability grant as ../docker-compose.yml
+    # — see that file's inline comment for the full rationale (nsenter needs
+    # these instead of the docker-socket-mounted `docker exec` this bundle
+    # used to rely on).
+    pid: "container:sandbox"
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+      - CHOWN
+      - SYS_CHROOT
+      - SETUID
+      - SETGID
+    cap_drop:
+      - ALL
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads:/mnt/user-data/uploads
+      - outputs:/mnt/user-data/outputs
+      - skills:/mnt/skills
+      - workspace:/workspace
+      - tmp:/tmp
+    networks:
+      - sandbox-internal
+      - default
+    environment:
+      RUNTIME_MODE: "compose"
+      SIDECAR_AUTH_TOKEN: "${SIDECAR_AUTH_TOKEN:?Set SIDECAR_AUTH_TOKEN in .env — see .env.example (openssl rand -hex 32)}"
+      STORAGE_BACKEND: "${STORAGE_BACKEND:-s3}"
+      S3_ENDPOINT: "${S3_ENDPOINT-http://minio:9000}"
+      S3_BUCKET: "${S3_BUCKET:-boxkite-sandbox}"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-minioadmin}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-minioadmin}"
+    depends_on:
+      - sandbox
+      - minio
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Dev-mode Vault test stand-in — identical purpose/caveats to
+  # ../docker-compose.yml's vault service. Mirrored for completeness (it's
+  # one of the four images the original file references) but not required
+  # for `docker compose up -d`, same profile-gating as upstream.
+  vault:
+    image: hashicorp/vault:1.16
+    pull_policy: never
+    profiles: ["vault"]
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "dev-root"
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - default
+
+  minio:
+    image: minio/minio:latest
+    pull_policy: never
+    command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:9010:9000"
+      - "127.0.0.1:9011:9001"
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin"
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  minio-setup:
+    image: minio/mc:latest
+    pull_policy: never
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb --ignore-existing myminio/boxkite-sandbox;
+      echo 'Bucket created';
+      exit 0;
+      "
+    networks:
+      - default
+
+volumes:
+  uploads:
+  outputs:
+  skills:
+  workspace:
+  tmp:
+  minio-data:
+
+networks:
+  sandbox-internal:
+    internal: true
+  default:

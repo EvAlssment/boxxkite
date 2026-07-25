@@ -1,0 +1,152 @@
+# Default values for the boxkite chart.
+# See README.md in this directory for what each section actually deploys,
+# and ../rbac.yaml / ../network-policy.yaml / ../pod-security-policy.yaml /
+# ../image-builder-*.yaml for the hand-maintained manifests these templates
+# wrap -- keep both in sync (tests/test_helm_values_defaults_match_resource_config_defaults
+# in the root test suite only guards the resource-sizing numbers below, not
+# structural drift between the raw manifests and these templates).
+
+namespace: default
+
+# ServiceAccount name the control plane / SandboxManager process authenticates
+# as. Must match src/boxkite/k8s_auth.py's
+# DEFAULT_CONTROL_PLANE_SERVICE_ACCOUNT_NAME (also settable via
+# CONTROL_PLANE_SERVICE_ACCOUNT_NAME -- see the root .env.example) or token
+# self-rotation fails silently. See ../rbac.yaml.
+controlPlaneServiceAccountName: boxkite-control-plane
+
+sandboxConfig:
+  s3Bucket: boxkite-sandbox
+  awsRegion: us-east-1
+  warmPoolSize: 3
+  podTimeoutSeconds: 1800
+
+# Storage credentials Secret (deploy/rbac.yaml's sandbox-s3-credentials).
+# Leave blank and manage this Secret out-of-band (external-secrets,
+# sealed-secrets, IRSA/Workload Identity) in any real deployment -- these
+# values land in a plain Kubernetes Secret (base64, not encrypted at rest
+# unless your cluster has envelope encryption enabled).
+storageCredentials:
+  # Set to false to skip rendering this Secret entirely and manage storage
+  # credentials out-of-band instead (IRSA/Workload Identity, external-secrets,
+  # sealed-secrets).
+  manage: true
+  accessKeyId: ""
+  secretAccessKey: ""
+
+# Resource requests/limits for the sandbox and sidecar containers. Defaults
+# below are literal copies of src/boxkite/resource_config.py's
+# DEFAULT_SANDBOX_CONTAINER_*/DEFAULT_SANDBOX_SIDECAR_* constants -- Helm
+# can't import that Python module, so
+# tests/test_helm_values_defaults_match_resource_config_defaults asserts
+# these stay byte-identical to it. These values are NOT consumed by any pod
+# this chart creates (see the Chart.yaml note: the real pod spec is built by
+# manager.py, not this chart) -- they exist so a self-hoster capacity-planning
+# a cluster off this chart sees the same numbers the code actually uses at
+# runtime, mirroring ../pod-template.yaml's existing role.
+resources:
+  sandboxContainer:
+    cpuRequest: 25m
+    memoryRequest: 64Mi
+    cpuLimit: 250m
+    memoryLimit: 256Mi
+  # The sidecar limit is the ENFORCED per-sandbox budget: agent code launched
+  # via /exec is charged to the sidecar cgroup, not the sandbox container's
+  # (see resource_config.py's module note).
+  sidecarContainer:
+    cpuRequest: 100m
+    memoryRequest: 256Mi
+    cpuLimit: 1000m
+    memoryLimit: 1Gi
+
+# emptyDir sizeLimits, matching resource_config.py's
+# DEFAULT_SANDBOX_*_VOLUME_SIZE_LIMIT constants. Same "documentation, not
+# consumed by a real pod this chart creates" caveat as `resources` above.
+volumeSizeLimits:
+  workspace: 5Gi
+  uploads: 5Gi
+  outputs: 5Gi
+  skills: 5Gi
+  tmp: 1Gi
+
+# NetworkPolicy for session sandbox pods (../network-policy.yaml). Defaults
+# to the same fail-closed posture as the hand-maintained manifest: DNS is
+# always allowed, storage egress is OFF until you pick one of the options
+# below, and there is no 0.0.0.0/0 fallback anywhere in this chart.
+networkPolicy:
+  enabled: true
+  # Who may reach the sidecar's :8080 HTTP API (in-cluster only -- this is
+  # NOT the internet-facing ingress for the control plane API itself).
+  ingressFromPodLabels:
+    - app: api-gateway
+    - app: worker
+  # storageEgress.mode: "none" | "inCluster" | "ipBlock" | "fqdn"
+  #   none      -- no storage egress rule at all (you're handling it another
+  #               way, e.g. a service mesh egress gateway). This is the
+  #               default -- deliberately fails closed rather than guessing.
+  #   inCluster -- target an in-cluster MinIO/S3-compatible service by
+  #               namespace+pod selector (tightest option).
+  #   ipBlock   -- CHANGEME: a real, non-0.0.0.0/0 CIDR for your storage
+  #               endpoint. Refuses to render if left as the placeholder
+  #               TEST-NET-3 value below with mode=ipBlock -- fill it in.
+  #   fqdn      -- Cilium-style toFQDNs matchPattern list. Only works if your
+  #               CNI supports FQDN egress; falls back to failing template
+  #               rendering with a clear error otherwise-unenforceable warning
+  #               if `fqdnEgressSupported` isn't set to true, since a CNI that
+  #               silently ignores toFQDNs would otherwise look like "storage
+  #               egress is restricted" while actually being wide open.
+  storageEgress:
+    mode: none
+    inCluster:
+      namespace: storage
+      podLabels:
+        app: minio
+      port: 9000
+    ipBlock:
+      cidr: "192.0.2.0/24" # CHANGEME -- RFC 5737 placeholder, never routable
+      port: 443
+    fqdn:
+      fqdnEgressSupported: false
+      patterns:
+        - "*.s3.amazonaws.com"
+        - "*.blob.core.windows.net"
+      port: 443
+  # Optional git-host egress (see ../network-policy.yaml's own git-egress
+  # block). Off by default -- enabling this only has effect if you ALSO set
+  # SANDBOX_EXEC_NETWORK_ISOLATION_ENABLED=false, which removes the primary
+  # per-exec network-isolation layer for every exec'd command in the pod,
+  # not just git's. Read docs/GIT-OPERATIONS-DESIGN.md before enabling.
+  gitEgress:
+    enabled: false
+    hosts:
+      - github.com
+      - api.github.com
+    port: 443
+    sshPort: 22
+
+# ValidatingAdmissionPolicy hardening (../pod-security-policy.yaml). Requires
+# the admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy API, GA since
+# Kubernetes 1.30 (beta since 1.28, alpha since 1.26) -- disable on older
+# clusters or ones with the feature gate off, since `helm install` would
+# otherwise fail outright on an unrecognized API.
+podSecurityPolicy:
+  enabled: true
+
+# Declarative image builder (docs/DECLARATIVE-BUILDER-DESIGN.md). OFF by
+# default, matching BOXKITE_IMAGE_BUILDER_ENABLED=false. The one-shot Kaniko
+# Job itself (../image-builder-job.yaml) is built programmatically per-build
+# by control-plane/src/control_plane/image_builder.py -- same reason
+# ../pod-template.yaml stays outside this chart -- so only the static
+# RBAC/NetworkPolicy this feature needs are templated here.
+imageBuilder:
+  enabled: false
+  serviceAccountName: boxkite-image-builder
+  # CHANGEME when enabling: real CIDRs for your package registries and
+  # container registry. Defaults to the same non-routable RFC 5737
+  # placeholder as ../image-builder-network-policy.yaml so an unmodified
+  # `helm install --set imageBuilder.enabled=true` fails closed instead of
+  # silently allowing package-registry egress to nowhere useful, rather than
+  # everywhere.
+  networkPolicy:
+    packageRegistryCidr: "192.0.2.0/24"
+    registryCidr: "192.0.2.0/24"

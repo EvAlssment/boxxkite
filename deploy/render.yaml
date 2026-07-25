@@ -1,0 +1,104 @@
+# Render Blueprint for boxkite's control-plane API (GitHub issue #218).
+#
+# SCOPE, ADJUSTED FROM THE ISSUE'S OWN SUGGESTION: this deploys
+# control-plane/Dockerfile (a stateless FastAPI service) plus a managed
+# Postgres database -- the same "control plane talks to a Kubernetes
+# cluster over a kubeconfig, never runs Docker itself" topology this
+# project's own `boxkite-control-plane` Cloud Run deployment already uses
+# (see the top-level CLAUDE.md's hosted-site deployment section for that
+# precedent). It deliberately does NOT translate deploy/docker-compose.yml's
+# sandbox+sidecar+MinIO stack into this Blueprint:
+#
+#   - docker-compose.yml's sidecar container shares a PID namespace with the
+#     sandbox container and execs into it via nsenter -- Render's container
+#     platform has no equivalent of Compose's `pid: "container:X"` or the
+#     SYS_ADMIN/SYS_PTRACE capability grants that requires, so that stack
+#     would not run here even setting aside the next point.
+#   - docker-compose.yml's own inline comment says outright "do not run
+#     this compose stack as anything other than a single-developer local
+#     dev environment" -- it's a dev convenience, not a deployment target.
+#
+# Real sandbox execution needs an actual Kubernetes cluster (self-hosted,
+# or a managed one -- GKE/EKS/AKS/a kind cluster on a box you control) that
+# THIS control-plane deployment points at via a kubeconfig. After deploying
+# this Blueprint, the API is reachable but cannot create sandboxes until
+# you:
+#
+#   1. Add a Render "Secret File" (Dashboard -> this service -> Environment
+#      -> Secret Files) containing that cluster's kubeconfig, and note the
+#      mount path Render assigns it (e.g. /etc/secrets/kubeconfig).
+#   2. Fill in the KUBECONFIG env var below (marked `sync: false` -- Render
+#      prompts for it during Blueprint creation) with that mount path.
+#   3. Apply deploy/helm/boxkite/ (or deploy/rbac.yaml + network-policy.yaml
+#      directly) to that cluster, so the identity your kubeconfig
+#      authenticates as has the RBAC this control plane needs.
+#   4. Fill in SANDBOX_IMAGE/SIDECAR_IMAGE below with image refs that
+#      cluster can actually pull (see the top-level README's "Published
+#      packages and images" section for the published GHCR images).
+#
+# UNVERIFIED, DISCLOSED HONESTLY: this Blueprint has not been exercised
+# against a live Render account (none was available while writing it). It
+# is written directly against Render's published Blueprint schema
+# (render.com/docs/blueprint-spec) -- same "implemented against the real
+# API shape, never exercised against a live service where that's genuinely
+# not possible" disclosure this project already applies to Kata Containers/
+# GPU support (see src/boxkite/resource_config.py). Validate before relying
+# on it:
+#   render blueprints validate deploy/render.yaml
+#
+# Railway and Fly.io one-click-deploy equivalents (also requested by issue
+# #218) are deferred entirely, not attempted here -- see the PR description
+# for why (Railway's template flow requires maintainer-side template
+# registration; Fly.io has no static-config deploy-button equivalent, only
+# an interactive `fly launch`).
+databases:
+  - name: boxkite-control-plane-db
+    databaseName: boxkite_control_plane
+    plan: basic-256mb
+
+services:
+  - type: web
+    name: boxkite-control-plane
+    runtime: docker
+    dockerfilePath: ./control-plane/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      # Matches control-plane/Dockerfile's CMD (`uvicorn ... --port 8090`),
+      # which does NOT read config.py's CONTROL_PLANE_PORT setting -- that
+      # setting is otherwise-unused by the Docker image today, so this is
+      # set to match the Dockerfile's fixed port, not the other way around.
+      - key: PORT
+        value: "8090"
+      # Render's Postgres connectionString is a bare `postgresql://` URL --
+      # control_plane.config.Settings normalizes that to
+      # `postgresql+asyncpg://` automatically (see config.py's
+      # DATABASE_URL validator), so no manual edit is needed here.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: boxkite-control-plane-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      # No browser client origins allowed by default -- set this to your
+      # actual frontend's origin(s) if you're pointing a browser-based
+      # client at this deployment, e.g.
+      # "https://boxkite-site.vercel.app,http://localhost:3000".
+      - key: CORS_ALLOWED_ORIGINS_RAW
+        value: ""
+      - key: RUNTIME_MODE
+        value: k8s
+      # CHANGEME -- see step 1-2 in the comment above.
+      - key: KUBECONFIG
+        sync: false
+      # CHANGEME -- must match the namespace deploy/helm/boxkite (or
+      # deploy/rbac.yaml) was applied to on your cluster.
+      - key: SANDBOX_NAMESPACE
+        value: default
+      # CHANGEME -- see step 4 above.
+      - key: SANDBOX_IMAGE
+        sync: false
+      - key: SIDECAR_IMAGE
+        sync: false

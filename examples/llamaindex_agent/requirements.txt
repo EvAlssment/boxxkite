@@ -1,0 +1,14 @@
+# Install boxkite itself from the repo root first, with the `llamaindex`
+# extra (needed for to_llamaindex_tools()'s FunctionTool adapter -- boxkite's
+# tool surface is framework-agnostic by default):
+#   pip install -e "../..[llamaindex]"
+#
+# Then this example's own deps:
+#   pip install -r requirements.txt
+#
+# Verified working with: llama-index-core 0.14.23, llama-index-llms-openai
+# 0.7.9. Swap llama-index-llms-openai for another LlamaIndex LLM
+# integration package (llama-index-llms-anthropic, etc.) and the `OpenAI(...)`
+# construction in agent.py if you use a different model provider.
+
+llama-index-llms-openai>=0.3,<1

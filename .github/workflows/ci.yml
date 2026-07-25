@@ -1,0 +1,394 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Explicit minimal grant, matching publish-images.yml/publish-pypi.yml's
+# per-job scoping -- none of this workflow's steps write anything (tests,
+# lint, pip-audit, `docker build` with push: false, `python -m build`,
+# artifact upload), so read-only is correct. Without this, the workflow
+# silently inherits whatever the org/repo-wide GITHUB_TOKEN default is; a
+# future edit that adds a write step should have to explicitly widen this
+# rather than inherit broader-than-necessary permissions by default.
+permissions:
+  contents: read
+
+# Nothing in this repo's test suite needs a live Kubernetes cluster or
+# Docker: SandboxManager/WarmPoolManager are exercised against fakes
+# (see tests/conftest.py), and the control-plane suite runs against
+# aiosqlite instead of a real Postgres (see control-plane/pyproject.toml's
+# `dev` extras). Keep it that way — don't add a real cluster/DB dependency
+# here without also making it optional for contributors without one.
+jobs:
+  test-root:
+    name: Root package tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            sidecar/requirements.txt
+
+      - name: Install boxkite (with dev extras)
+        run: pip install -e ".[dev]"
+
+      # Several tests (test_sidecar_auth*.py, test_sidecar_exec_no_env_injection.py,
+      # test_sidecar_tool_call_session_id.py) import sidecar/main.py directly,
+      # which needs fastapi/pydantic/aiofiles — none of which are declared in
+      # pyproject.toml's dependencies (they're the sidecar's own deps, tracked
+      # separately in sidecar/requirements.txt). Install them explicitly, or
+      # collection fails with ModuleNotFoundError before any test runs.
+      - name: Install sidecar dependencies (needed to import sidecar/main.py in tests)
+        run: pip install -r sidecar/requirements.txt
+
+      # tests/test_cli.py (the CLI's own tests) lives under tests/, so it's
+      # already exercised by this run — no separate invocation needed.
+      - name: Run root test suite
+        run: >
+          pytest tests/ -q
+          --cov=src/boxkite --cov-report=term-missing --cov-report=xml --cov-report=html
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Root package coverage (py${{ matrix.python-version }})";
+            echo '```';
+            coverage report;
+            echo '```';
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload root coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-root-py${{ matrix.python-version }}
+          path: |
+            coverage.xml
+            htmlcov/
+          retention-days: 14
+
+  lint-and-audit:
+    name: Lint & dependency audit (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            control-plane/pyproject.toml
+
+      - name: Install boxkite (with dev extras)
+        run: pip install -e ".[dev]"
+
+      - name: Install control-plane (with dev extras)
+        working-directory: control-plane
+        run: pip install -e ".[dev]"
+
+      - name: ruff check
+        run: ruff check src/ tests/ control-plane/src/ control-plane/tests/
+
+      # pip-audit scans the environment's installed dependencies (root +
+      # control-plane, both already installed above) for known CVEs.
+      - name: pip-audit (dependency vulnerability scan)
+        run: pip-audit --progress-spinner=off
+
+  test-control-plane:
+    name: control-plane tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            control-plane/pyproject.toml
+
+      # control-plane depends on the root `boxkite` package as an unpublished
+      # local sibling (see control-plane/pyproject.toml's dependency comment)
+      # — install it first, from the repo root, before control-plane itself.
+      - name: Install boxkite (root package)
+        run: pip install -e .
+
+      - name: Install control-plane (with dev extras)
+        working-directory: control-plane
+        run: pip install -e ".[dev]"
+
+      - name: Run control-plane test suite
+        working-directory: control-plane
+        run: >
+          pytest tests/ -q
+          --cov=src/control_plane --cov-report=term-missing --cov-report=xml --cov-report=html
+
+      - name: Coverage summary
+        if: always()
+        working-directory: control-plane
+        run: |
+          {
+            echo "### control-plane coverage (py${{ matrix.python-version }})";
+            echo '```';
+            coverage report;
+            echo '```';
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload control-plane coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-control-plane-py${{ matrix.python-version }}
+          path: |
+            control-plane/coverage.xml
+            control-plane/htmlcov/
+          retention-days: 14
+
+  test-sdk-python:
+    name: sdk-python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: sdk-python/pyproject.toml
+
+      - name: Install sdk-python (with dev extras)
+        working-directory: sdk-python
+        run: pip install -e ".[dev,langchain]"
+
+      - name: Run sdk-python test suite
+        working-directory: sdk-python
+        run: pytest tests/ -q
+
+  test-sdk-js:
+    name: sdk-js tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: sdk-js/package-lock.json
+
+      - name: Install dependencies
+        working-directory: sdk-js
+        run: npm ci
+
+      # `npm test` builds via tsc first, then runs node's built-in test runner
+      # against the compiled output -- see sdk-js/package.json.
+      - name: Run sdk-js test suite
+        working-directory: sdk-js
+        run: npm test
+
+  test-sdk-go:
+    name: sdk-go tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.22"
+          cache-dependency-path: sdk-go/go.sum
+
+      - name: go vet
+        working-directory: sdk-go
+        run: go vet ./...
+
+      - name: Run sdk-go test suite
+        working-directory: sdk-go
+        run: go test ./... -race -cover
+
+  test-sdk-rust:
+    name: sdk-rust tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable, pinned 2026-06-30
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - name: Check formatting
+        working-directory: sdk-rust
+        run: cargo fmt -- --check
+
+      - name: Run sdk-rust test suite
+        working-directory: sdk-rust
+        run: cargo test --all-targets
+
+      # -D warnings treats every lint as an error, matching this crate's own
+      # rust/coding-style.md convention (see sdk-rust/README.md's
+      # Development section).
+      - name: Lint with clippy
+        working-directory: sdk-rust
+        run: cargo clippy --all-targets -- -D warnings
+
+  test-mcp-server:
+    name: mcp-server tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            sdk-python/pyproject.toml
+            mcp-server/pyproject.toml
+
+      # mcp-server depends on sdk-python as an unpublished local sibling,
+      # same relationship control-plane has to the root boxkite package.
+      - name: Install sdk-python (local sibling dependency)
+        run: pip install -e ./sdk-python
+
+      - name: Install mcp-server (with dev extras)
+        working-directory: mcp-server
+        run: pip install -e ".[dev]"
+
+      # tests/live_smoke.py doesn't match pytest's default test_*.py
+      # collection pattern, so this never picks it up -- it's a manual,
+      # non-CI script that needs a real running control-plane.
+      - name: Run mcp-server test suite
+        working-directory: mcp-server
+        run: pytest tests/ -q
+
+  build-site:
+    name: site build & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install dependencies
+        working-directory: site
+        run: npm ci
+
+      - name: Lint
+        working-directory: site
+        run: npm run lint
+
+      - name: Production build
+        working-directory: site
+        run: npm run build
+
+  docker-build:
+    name: Docker build (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: sandbox
+            dockerfile: deploy/sandbox.Dockerfile
+          - image: sandbox-minimal
+            dockerfile: deploy/sandbox-minimal.Dockerfile
+          - image: sandbox-node
+            dockerfile: deploy/sandbox-node.Dockerfile
+          - image: sandbox-go
+            dockerfile: deploy/sandbox-go.Dockerfile
+          - image: sandbox-rust
+            dockerfile: deploy/sandbox-rust.Dockerfile
+          - image: sandbox-claude-code
+            dockerfile: deploy/sandbox-claude-code.Dockerfile
+          - image: sidecar
+            dockerfile: deploy/sidecar.Dockerfile
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      # Neither Dockerfile is pushed anywhere — no registry credentials exist
+      # in this repo. This only proves the image still builds; `push: false`
+      # (the default) keeps it local to the runner.
+      - name: Build ${{ matrix.image }} image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          # sandbox.Dockerfile deliberately fails fast on non-amd64 (the pinned
+          # Chrome-for-Testing build has no linux/arm64 artifact) — pin the
+          # platform explicitly so that constraint is enforced the same way
+          # in CI as it is for `deploy/docker-compose.yml`.
+          platforms: linux/amd64
+          push: false
+          load: false
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  release-readiness:
+    name: Release artifact build (main only)
+    needs: [test-root, lint-and-audit, test-control-plane]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            control-plane/pyproject.toml
+
+      - name: Install build tooling
+        run: pip install build
+
+      # This does not publish anything (no PyPI credentials exist in this
+      # repo) — it only confirms pyproject.toml's version/metadata is well
+      # formed enough for `python -m build` to produce a valid sdist+wheel,
+      # so a future real publish step has something proven to build on.
+      - name: Build root package (sdist + wheel)
+        run: python -m build
+
+      - name: Build control-plane package (sdist + wheel)
+        working-directory: control-plane
+        run: python -m build
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-dists
+          path: |
+            dist/
+            control-plane/dist/
+          retention-days: 14

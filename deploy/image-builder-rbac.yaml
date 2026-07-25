@@ -1,0 +1,100 @@
+# RBAC for the declarative-builder's one-shot image-build Job --
+# docs/DECLARATIVE-BUILDER-DESIGN.md.
+#
+# Deliberately its own ServiceAccount, distinct from
+# `sandbox-service-account` (deploy/rbac.yaml) and from whatever identity
+# the control plane itself runs as. This ServiceAccount gets NO Kubernetes
+# API permissions at all (`automountServiceAccountToken: false` on the Job
+# pod itself, no Role/RoleBinding granting it anything) -- its only real
+# credential is a registry-push credential (e.g. via IRSA/Workload
+# Identity's usual per-ServiceAccount-annotation binding to a
+# narrowly-scoped cloud IAM role that can push to
+# `{BOXKITE_IMAGE_REGISTRY_PREFIX}/{account_id}/*` and nothing else),
+# configured outside this file per your registry provider.
+#
+# This feature is OFF by default (BOXKITE_IMAGE_BUILDER_ENABLED=false).
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: boxkite-image-builder
+  namespace: default  # Change to your namespace
+automountServiceAccountToken: false
+  # CHANGEME: bind this ServiceAccount to a cloud IAM role/identity scoped
+  # ONLY to `registry push` on this deployment's image-builder registry
+  # path -- e.g. an IRSA `eks.amazonaws.com/role-arn` annotation, or GKE
+  # Workload Identity's `iam.gke.io/gcp-service-account` annotation. It
+  # must NOT be able to read the control plane's own database credentials,
+  # any session pod's sidecar auth secret, or any other account's registry
+  # path.
+
+# No Role/RoleBinding is granted here on purpose: this ServiceAccount has
+# zero Kubernetes API permissions. If you need the control plane itself
+# (not this ServiceAccount) to create/delete image-build Jobs, grant THAT
+# identity a narrowly-scoped Role limited to `batch/jobs` create/get/delete
+# in this namespace -- do not broaden this ServiceAccount for that purpose.
+
+---
+# The Role/RoleBinding this file's own comment above asks for: grants the
+# CONTROL PLANE's identity (`boxkite-control-plane`, the same ServiceAccount
+# deploy/rbac.yaml's `sandbox-manager-role` binds -- NOT the
+# `boxkite-image-builder` ServiceAccount above, which stays at zero API
+# permissions) exactly what `image_builder.py`'s `KanikoJobBuildRunner`
+# needs to actually submit/poll/clean up a build:
+#   - `batch/jobs` create/get/delete -- create_namespaced_job,
+#     read_namespaced_job (polling), delete_namespaced_job (cleanup).
+#   - `configmaps` create/delete -- the build-context Dockerfile ConfigMap
+#     (build_configmap_spec), created immediately before the Job and
+#     deleted immediately after, success or failure. SAME KNOWN LIMITATION
+#     as deploy/rbac.yaml's own `pods`/`secrets` rules: Kubernetes RBAC
+#     cannot scope `create`/`delete` to only ConfigMaps matching a name
+#     pattern, so this grants those verbs on EVERY ConfigMap in the
+#     namespace, including `sandbox-config` (deploy/rbac.yaml). Mitigate
+#     with a dedicated namespace, same as documented there -- do not widen
+#     this rule further to work around it.
+#   - `pods` list -- find_job_pod's `list_namespaced_pod` (already granted
+#     more broadly by deploy/rbac.yaml's `sandbox-manager-role`, repeated
+#     here so this file is a complete, self-contained reference for
+#     anyone applying only the image-builder manifests).
+#   - `pods/log` get -- read the Kaniko container's build output on
+#     failure (`_read_build_logs`), surfaced in the build's
+#     `failure_reason` for debuggability.
+#
+# Only needed if BOXKITE_IMAGE_BUILDER_ENABLED=true; harmless if applied
+# with the feature left off (RUNTIME_MODE gates whether anything ever
+# calls these APIs, per control-plane/src/control_plane/deps.py).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: boxkite-image-builder-dispatch-role
+  namespace: default  # Change to your namespace -- must match SANDBOX_NAMESPACE
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["create", "get", "delete"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "delete"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: boxkite-image-builder-dispatch-binding
+  namespace: default  # Change to your namespace
+subjects:
+- kind: ServiceAccount
+  # Matches deploy/rbac.yaml's sandbox-manager-binding subject -- the
+  # control plane's own identity, not the builder Job's ServiceAccount.
+  name: boxkite-control-plane
+  namespace: default
+roleRef:
+  kind: Role
+  name: boxkite-image-builder-dispatch-role
+  apiGroup: rbac.authorization.k8s.io

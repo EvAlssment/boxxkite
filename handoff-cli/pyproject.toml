@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "boxkite-handoff"
+version = "0.1.0"
+description = "Hand off an in-progress Claude Code / Codex / opencode / Cursor session from your local machine into a fresh boxkite sandbox, full conversation history included."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+dependencies = [
+    "boxkite-client",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+boxkite-handoff = "boxkite_handoff.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/EvAlssment/boxkite"
+Repository = "https://github.com/EvAlssment/boxkite"
+Issues = "https://github.com/EvAlssment/boxkite/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

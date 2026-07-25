@@ -1,0 +1,11 @@
+# Install boxkite itself from the repo root first (no extra needed -- unlike
+# the LangChain examples, this one uses boxkite.tools.adapters.to_openai_functions,
+# which is pure stdlib):
+#   pip install -e ../..
+#
+# Then this example's own deps:
+#   pip install -r requirements.txt
+#
+# Verified working with: openai 2.45.0.
+
+openai>=1.50,<3

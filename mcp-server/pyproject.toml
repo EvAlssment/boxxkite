@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "boxkite-mcp"
+version = "0.2.2"
+description = "MCP server exposing a hosted boxkite control-plane (sandbox lifecycle, exec, files) as native tools for MCP-compatible clients (Claude Code, Claude Desktop, Codex, Cursor, etc.)."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+dependencies = [
+    "boxkite-client",
+    "mcp>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6"]
+
+[project.scripts]
+boxkite-mcp = "boxkite_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/EvAlssment/boxkite"
+Repository = "https://github.com/EvAlssment/boxkite"
+Issues = "https://github.com/EvAlssment/boxkite/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,145 @@
+# RBAC for Sandbox Pods
+# Minimal permissions - pods should not access K8s API
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sandbox-service-account
+  namespace: default  # Change to your namespace
+automountServiceAccountToken: false  # Don't mount token
+
+---
+# ConfigMap for sandbox configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandbox-config
+  namespace: default
+data:
+  s3-bucket: "boxkite-sandbox"
+  aws-region: "us-east-1"
+  warm-pool-size: "3"
+  pod-timeout-seconds: "1800"  # 30 minutes
+
+---
+# Secret for S3 credentials (if not using IRSA)
+# In production, use IRSA (IAM Roles for Service Accounts) instead
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sandbox-s3-credentials
+  namespace: default
+type: Opaque
+stringData:
+  access-key-id: ""  # Set via kubectl or external secrets
+  secret-access-key: ""
+
+---
+# Role for sandbox manager (backend/worker) to manage pods
+# This is for the MANAGER, not the sandbox pods themselves
+#
+# KNOWN LIMITATION: Kubernetes RBAC has no mechanism to scope a Role's verbs to
+# pods matching a label selector or name pattern - `resources: ["pods"]` grants
+# get/list/watch/create/delete on EVERY pod in this namespace, not just
+# sandbox-labeled ones. The "use label selectors in code" comment below is a
+# real, useful safeguard against this manager's own bugs, but it is NOT an
+# RBAC-enforced boundary: if this ServiceAccount's credentials are compromised,
+# the attacker can create/delete any pod in the namespace, including
+# non-sandbox workloads.
+#
+# Mitigation (defense in depth, not expressible in RBAC): run this
+# ServiceAccount's namespace as a DEDICATED namespace containing only sandbox
+# pods (plus this Role/RoleBinding and the sandbox ConfigMap/Secret) rather
+# than a shared namespace with other application workloads. That way "any pod
+# in the namespace" and "any sandbox pod" are the same set, and a compromised
+# manager credential can't reach unrelated pods. See deploy/local-kind/README.md
+# for how the RBAC here maps to a real cluster.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sandbox-manager-role
+  namespace: default
+rules:
+# Pod management for sandbox pods only
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+  # Note: Using label selectors in code to restrict to sandbox pods.
+  # This is a code-level control only - see the namespace-scoping note above
+  # for the real (RBAC-compatible) mitigation.
+- apiGroups: [""]
+  resources: ["pods/status"]
+  verbs: ["get"]
+# Read configmaps
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["sandbox-config"]
+# Per-pod sidecar-auth Secrets (see src/boxkite/sidecar_auth.py). Deliberately
+# NOT list/watch -- the manager always computes the exact deterministic
+# secret name (sidecar_auth_secret_name(pod_name)) it wants rather than
+# enumerating, so a compromised credential can't use this to discover what
+# secrets exist. SAME LIMITATION AS THE PODS RULE ABOVE APPLIES: RBAC has no
+# way to scope `get`/`create`/`delete` to only secrets matching a name
+# pattern -- this grants those verbs on EVERY Secret in the namespace,
+# including `sandbox-s3-credentials` below, to anyone who already knows (or
+# guesses) its name. The dedicated-namespace mitigation noted above for pods
+# is the same mitigation here: don't put unrelated application secrets in
+# this namespace.
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "create", "delete"]
+# Lets the manager's own ServiceAccount mint a short-lived replacement
+# token for itself via the TokenRequest API (see
+# src/boxkite/k8s_auth.py's RotatingServiceAccountToken) instead of relying
+# indefinitely on a long-lived static credential -- relevant when this
+# process runs OUTSIDE the cluster (an external kubeconfig, not the
+# in-cluster projected token, which the kubelet already auto-rotates).
+# resourceNames must match the RoleBinding subject below -- update both if
+# you rename the ServiceAccount.
+- apiGroups: [""]
+  resources: ["serviceaccounts/token"]
+  verbs: ["create"]
+  resourceNames: ["boxkite-control-plane"]
+# Per-session secrets-egress NetworkPolicy objects (issue #74,
+# src/boxkite/secrets_network_policy.py) -- ONLY reached when the manager
+# has BOXKITE_SECRETS_NETWORK_POLICY_ENABLED=true set; a deployment that
+# leaves it at its default (off) never calls any of these verbs and this
+# rule sits unused. "update" covers replace_namespaced_network_policy (used
+# to refresh a pod's policy when a NEW session reclaims it from the warm
+# pool with different secret grants). Deliberately NOT list/watch, same
+# posture as the secrets rule above -- the manager always computes the
+# exact deterministic policy name (secrets_egress_policy_name(pod_name))
+# rather than enumerating.
+#
+# This same rule also covers the per-session browser-egress NetworkPolicy
+# objects (docs/BROWSER-EXEC-DESIGN.md §3, src/boxkite/browser_network_policy.py,
+# gated by BOXKITE_BROWSER_NETWORK_POLICY_ENABLED) -- same verbs, same
+# deterministic-name-not-enumerated posture
+# (browser_egress_policy_name(pod_name)), no separate rule needed.
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "create", "update", "delete"]
+
+---
+# RoleBinding for sandbox manager
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sandbox-manager-binding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  # Matches src/boxkite/k8s_auth.py's DEFAULT_CONTROL_PLANE_SERVICE_ACCOUNT_NAME,
+  # so the token self-rotation RBAC rule above works with zero extra config.
+  # If you rename this ServiceAccount, also set
+  # CONTROL_PLANE_SERVICE_ACCOUNT_NAME to match (see .env.example) --
+  # otherwise rotation fails silently (each mint attempt 403s, logged, and
+  # the app keeps running on the original
+  # static bootstrap token indefinitely).
+  name: boxkite-control-plane
+  namespace: default
+roleRef:
+  kind: Role
+  name: sandbox-manager-role
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,33 @@
+# Fully-open egress mode for sandbox pods — OPT-IN ONLY. Deliberately kept in
+# its own file, separate from deploy/network-policy.yaml, so it can never be
+# applied as a silent side effect of `kubectl apply -f deploy/network-policy.yaml`
+# (the natural command an operator would run, mirroring how every other
+# manifest in this repo is applied).
+#
+# This is an ALTERNATIVE to `sandbox-network-policy` in deploy/network-policy.yaml,
+# not an addition to it: NetworkPolicies with overlapping podSelectors are
+# ADDITIVE (the union of both policies' allow-rules applies), so applying
+# both the restrictive policy AND this one on the same pods silently
+# reintroduces fully-open egress. Apply at most one egress policy per pod
+# selector — never apply this file in the same cluster/namespace as
+# deploy/network-policy.yaml's default policy.
+#
+# Use this only if you understand you are deliberately disabling network
+# egress restriction for sandbox pods (e.g. a fully air-gapped self-host
+# where the surrounding network boundary, not this policy, is your actual
+# control) — never as a "just in case" default.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-network-policy-permissive
+  namespace: default # Change to your namespace
+  labels:
+    boxkite.dev/policy-mode: permissive-opt-in
+spec:
+  podSelector:
+    matchLabels:
+      app: sandbox
+  policyTypes:
+  - Egress
+  egress:
+  - {}  # Explicitly wide open — see the warning above before applying this.

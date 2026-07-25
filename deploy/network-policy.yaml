@@ -1,0 +1,253 @@
+# Network Policy for Sandbox Pods
+# Restricts network access for security isolation.
+#
+# ============================================================================
+# READ THIS BEFORE APPLYING
+# ============================================================================
+#
+# 1. NetworkPolicy is NOT the only, or even the primary, network isolation
+#    boundary for agent-*executed* commands. In K8s runtime mode, each
+#    `/exec` call runs inside a freshly created, empty network namespace
+#    (`unshare -n` before `nsenter`, see sidecar/main.py's
+#    `build_k8s_exec_command`) whenever `SANDBOX_EXEC_NETWORK_ISOLATION_ENABLED`
+#    is "true" (the default). That gives the executed process literally no
+#    network interfaces at all — not "restricted by policy," but physically
+#    absent. This NetworkPolicy is the backstop for everything else running
+#    in the pod (the sidecar's own storage-sync traffic, anything that
+#    doesn't go through unshare) and the SECOND independent layer for
+#    defense in depth. If you set SANDBOX_EXEC_NETWORK_ISOLATION_ENABLED=false,
+#    that per-exec protection disappears and THIS NetworkPolicy becomes the
+#    only backstop against exec'd commands reaching the network — so it must
+#    actually be restrictive, not a blanket allow.
+#
+# 2. NetworkPolicy *enforcement* is CNI-dependent. Several common managed
+#    K8s setups do not enforce NetworkPolicy out of the box (GKE Autopilot
+#    without Dataplane V2 explicitly enabled, EKS's default VPC CNI without
+#    an add-on like Calico). Verify your cluster actually enforces
+#    NetworkPolicy before relying on this file. `deploy/local-kind/` ships
+#    with NO NetworkPolicy at all (kind doesn't enforce one) — see its
+#    README.
+#
+#    Don't just trust that this manifest is "doing something" — verify
+#    enforcement on your actual cluster. The upstream network-policy-api
+#    project ships a purpose-built conformance/verification tool for exactly
+#    this:
+#      https://github.com/kubernetes-sigs/network-policy-api
+#    Quick manual check without extra tooling: apply a deny-all
+#    NetworkPolicy in a scratch namespace, then confirm a pod inside it can
+#    no longer curl out (e.g. `kubectl exec <pod> -- curl -m 3 https://example.com`
+#    should time out). If it doesn't time out, your CNI is not enforcing
+#    NetworkPolicy and this file provides no protection at all.
+#
+#    THE SINGLE HIGHEST-PRIORITY THING TO VERIFY: the cloud instance
+#    metadata endpoint, 169.254.169.254 (AWS/GCP/Azure/DigitalOcean IMDS —
+#    typically unauthenticated and able to hand out the node's own IAM
+#    credentials). This policy blocks it only by omission (default-deny
+#    egress with nothing in the allowlist naming it) — link-local
+#    addresses (169.254.0.0/16) have a history of CNI-specific enforcement
+#    gaps on real cloud clusters (e.g. EKS's VPC CNI without an explicit
+#    hop-limit/security-group-for-pods configuration, older GKE without
+#    Workload Identity's metadata concealment). Run the manual check above
+#    against 169.254.169.254 specifically, not just an arbitrary external
+#    host, before trusting this policy on a real cloud cluster:
+#      kubectl exec <sandbox-pod> -c sidecar -- curl -m 3 -s -o /dev/null -w '%{http_code}\n' http://169.254.169.254/
+#    A timeout/connection-refused means it's blocked; any HTTP response
+#    means your CNI is not enforcing this and IMDS is reachable.
+#
+# 3. Because of both of the above, the sidecar's HTTP API also requires a
+#    per-pod shared-secret header on every request except /health (see
+#    src/boxkite/sidecar_auth.py and SECURITY.md) — a THIRD independent
+#    layer that does not depend on network topology at all. Do not treat
+#    this file as sufficient on its own.
+#
+# 4. This is a real starting manifest, not an illustrative snippet — but the
+#    egress destination below is a placeholder you MUST fill in. There is no
+#    generic "restrictive" rule for arbitrary cloud storage: AWS S3 and
+#    Azure Blob do not publish small, stable CIDR blocks suitable for a
+#    NetworkPolicy ipBlock rule, and allowing 0.0.0.0/0:443 (the previous
+#    version of this file) is equivalent to no egress restriction at all —
+#    it also allows PyPI, npm, GitHub, and literally any other HTTPS
+#    endpoint, contradicting what a comment here used to claim.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-network-policy
+  namespace: default  # Change to your namespace
+spec:
+  # IMPORTANT: this selector must match the labels SandboxManager/
+  # WarmPoolManager actually set on live pods (src/boxkite/manager.py,
+  # src/boxkite/warm_pool.py both set `app: sandbox` — they do NOT set a
+  # `component` label). A selector requiring `component: execution` (as an
+  # earlier version of this file had) silently matches ZERO real pods and
+  # provides no protection at all.
+  podSelector:
+    matchLabels:
+      app: sandbox
+
+  # Default deny all ingress and egress
+  policyTypes:
+  - Ingress
+  - Egress
+
+  # Ingress rules
+  ingress:
+  # Allow traffic from API gateway/worker to sidecar :8080. This is
+  # necessary-but-not-sufficient: see src/boxkite/sidecar_auth.py for the
+  # per-pod shared-secret layer that also gates every route.
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    - podSelector:
+        matchLabels:
+          app: worker
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  # Egress rules — deny by default, explicit allowlist only.
+  egress:
+  # Allow DNS resolution.
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # --------------------------------------------------------------------
+  # CHANGEME: object storage egress. Pick ONE of the options below for
+  # your actual storage backend and delete the others. Do NOT fall back
+  # to `ipBlock: {cidr: 0.0.0.0/0}` — that defeats this entire policy.
+  # --------------------------------------------------------------------
+
+  # Option A — in-cluster MinIO/S3-compatible storage (e.g. local dev,
+  # or a self-hosted MinIO in the same cluster): target it by pod/namespace
+  # selector instead of an IP block. This is the tightest option and what
+  # deploy/docker-compose.yml's local dev topology is equivalent to.
+  # - to:
+  #   - namespaceSelector:
+  #       matchLabels:
+  #         kubernetes.io/metadata.name: storage
+  #     podSelector:
+  #       matchLabels:
+  #         app: minio
+  #   ports:
+  #   - protocol: TCP
+  #     port: 9000
+
+  # Option B — real cloud object storage (AWS S3 / Azure Blob) reached over
+  # the public internet or a cloud-provider private endpoint. Cloud object
+  # storage does not publish small, stable CIDRs, so an ipBlock rule here
+  # is only as good as the CIDR you supply — prefer a cloud-specific private
+  # endpoint/VPC-endpoint CIDR over a public one when your provider offers
+  # it. If your CNI supports FQDN-based egress (e.g. Cilium's `toFQDNs`),
+  # that is a materially better fit for cloud storage than ipBlock and is
+  # recommended over this option where available:
+  #   toFQDNs:
+  #   - matchPattern: "*.s3.amazonaws.com"        # or your bucket's regional endpoint
+  #   - matchPattern: "*.blob.core.windows.net"    # if using Azure Blob
+  # ipBlock fallback (fill in YOUR storage endpoint's actual reachable
+  # range — this is intentionally left unfilled, not defaulted to "any"):
+  # - to:
+  #   - ipBlock:
+  #       cidr: <STORAGE_ENDPOINT_CIDR>  # CHANGEME — do not leave as 0.0.0.0/0
+  #   ports:
+  #   - protocol: TCP
+  #     port: 443
+
+  # --------------------------------------------------------------------
+  # OPTIONAL — git host egress, for src/boxkite/tools/git_tools.py's
+  # git_clone/git_push/git_pull. Commented out and NOT applied by default,
+  # same "don't ship this pre-enabled" discipline as the storage-egress
+  # block above. See docs/GIT-OPERATIONS-DESIGN.md §2.4 before enabling
+  # this: it does NOT, by itself, make git operations possible — exec'd
+  # commands (including the git tool's own `git clone`/`push`/`pull`) also
+  # need SANDBOX_EXEC_NETWORK_ISOLATION_ENABLED=false, which removes the
+  # PRIMARY per-exec network-isolation layer (the empty network namespace)
+  # for EVERY exec'd command in the pod, not just git's — this NetworkPolicy
+  # rule then becomes the only remaining backstop for all of them. There is
+  # no per-call exception implemented yet (git_tools.py's module docstring
+  # documents this as a deliberate, conservative deviation from the design
+  # doc's §2.4 recommendation, pending the dedicated network-isolation-
+  # exception spike that doc calls for). Only enable this on a pod/session
+  # you are otherwise comfortable running with exec network isolation off
+  # entirely.
+  # --------------------------------------------------------------------
+  # Prefer FQDN-based egress if your CNI supports it (e.g. Cilium's
+  # `toFQDNs`) — a much tighter fit for named git hosts than an ipBlock,
+  # which would otherwise require pinning to GitHub/GitLab/etc.'s published
+  # (and occasionally rotated) IP ranges:
+  # - to:
+  #   - toFQDNs:
+  #     - matchName: "github.com"
+  #     - matchName: "api.github.com"
+  #   ports:
+  #   - protocol: TCP
+  #     port: 443
+  # ipBlock fallback (fill in the actual reachable range for your allowed
+  # git host(s) — do not default to 0.0.0.0/0):
+  # - to:
+  #   - ipBlock:
+  #       cidr: <GIT_HOST_CIDR>  # CHANGEME — do not leave as 0.0.0.0/0
+  #   ports:
+  #   - protocol: TCP
+  #     port: 443
+  #   - protocol: TCP
+  #     port: 22  # only if allowing git@ / ssh:// remotes
+
+  # Nothing else is allowed. If you need package registries (PyPI, npm,
+  # GitHub, etc.) for a specific workflow, add explicit rules here — do not
+  # widen the rule above.
+
+# ============================================================================
+# SECRETS BROKER EGRESS (issue #74) — DO NOT widen the rule above for this.
+# ============================================================================
+#
+# `/http-request` (docs/SECRETS-DESIGN.md) needs the sidecar to reach
+# whatever HTTPS destinations a session's granted secrets' allowed_hosts
+# name — a set defined per-secret, per-tenant, at session-create time, not
+# something this static, operator-authored manifest can express. Earlier
+# versions of this file's own guidance said to widen the egress rule above
+# to `0.0.0.0/0:443` for this — DO NOT do that anymore. Set
+# BOXKITE_SECRETS_NETWORK_POLICY_ENABLED=true instead (see
+# src/boxkite/secrets_network_policy.py): the manager then provisions one
+# dynamically-scoped NetworkPolicy per session, granting egress to exactly
+# that session's granted secrets' resolved destination IPs, and tears it
+# down at session end.
+#
+# CRITICAL: NetworkPolicy objects with overlapping podSelectors are
+# ADDITIVE (unioned), never intersected. If you widen THIS file's egress
+# rule to `0.0.0.0/0` (or any broad CIDR) AND ALSO enable the per-session
+# mechanism, the per-session policy adds nothing — the union of "narrow
+# per-session list" OR "0.0.0.0/0" is still "0.0.0.0/0" for every session,
+# secrets-granted or not. The per-session mechanism only provides real
+# scoping when this file is left at its storage-only (+ DNS, + whatever
+# else you've explicitly opted into above) default. This is also why the
+# RBAC granting the manager's ServiceAccount create/update/delete on
+# `networkpolicies.networking.k8s.io` (deploy/rbac.yaml) is itself scoped
+# to the manager's own deterministically-named objects, not a blanket
+# grant — see that file's comments.
+#
+# Same portable-`ipBlock`-only limitation as the storage/git-egress options
+# above applies here too: standard NetworkPolicy has no FQDN egress
+# primitive, so each secret's allowed host is resolved via DNS once, at
+# session-provisioning time, and pinned by IP — see
+# src/boxkite/secrets_network_policy.py's module docstring for the full
+# disclosure of what that does and doesn't protect against.
+# ============================================================================
+# Fully-open egress mode (opt-in, air-gapped self-host use case only) lives in
+# its OWN file: deploy/network-policy-permissive-optin.yaml. It used to be a
+# second `---`-separated document in THIS file, which meant a plain
+# `kubectl apply -f deploy/network-policy.yaml` -- the natural command an
+# operator would run, mirroring how every other manifest here is applied --
+# silently applied BOTH policies at once. NetworkPolicies with overlapping
+# podSelectors are additive, so that reintroduced fully-open egress with no
+# error from kubectl. Do not re-add a second policy to this file; see the
+# permissive file's own header for why it must stay separate.
+# ============================================================================

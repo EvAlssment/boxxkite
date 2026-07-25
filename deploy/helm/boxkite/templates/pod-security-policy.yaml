@@ -1,0 +1,51 @@
+# Wraps ../../pod-security-policy.yaml -- see that file's comments for the
+# full threat-model rationale (RBAC's pods/secrets grants aren't scopable to
+# sandbox-labeled objects, so this closes the node-compromise vectors a
+# leaked control-plane credential could otherwise reach via an arbitrary pod
+# spec). Requires the ValidatingAdmissionPolicy API (GA in Kubernetes 1.30,
+# beta since 1.28, alpha since 1.26) -- disable on older clusters.
+{{- if .Values.podSecurityPolicy.enabled }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: boxkite-sandbox-pod-hardening
+  labels:
+    {{- include "boxkite.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+  validations:
+  - expression: "!has(object.spec.hostNetwork) || object.spec.hostNetwork == false"
+    message: "hostNetwork is not permitted for pods in this cluster"
+  - expression: "!has(object.spec.hostPID) || object.spec.hostPID == false"
+    message: "hostPID is not permitted for pods in this cluster"
+  - expression: "!has(object.spec.hostIPC) || object.spec.hostIPC == false"
+    message: "hostIPC is not permitted for pods in this cluster"
+  - expression: >
+      !object.spec.volumes.exists(v, has(v.hostPath))
+    message: "hostPath volumes are not permitted for pods in this cluster"
+  - expression: >
+      object.spec.containers.all(c,
+        !has(c.securityContext) || !has(c.securityContext.privileged) || c.securityContext.privileged == false
+      )
+    message: "privileged containers are not permitted in this cluster"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: boxkite-sandbox-pod-hardening-binding
+  labels:
+    {{- include "boxkite.labels" . | nindent 4 }}
+spec:
+  policyName: boxkite-sandbox-pod-hardening
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Values.namespace }}
+{{- end }}

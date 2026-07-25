@@ -1,0 +1,77 @@
+# Informational, manual-only warm-pool/cold-start latency benchmark
+# against a real, running hosted control-plane deployment -- see
+# docs/BENCHMARKS.md for the methodology and the numbers already measured
+# by hand (scripts/benchmark_warm_pool.py's own module docstring has the
+# full detail this workflow just automates the invocation of).
+#
+# ONE-TIME MANUAL SETUP REQUIRED BEFORE THIS CAN EVER SUCCEED: this talks
+# HTTP directly to a real deployment, so it needs two repo secrets an
+# operator with access to that deployment must configure themselves
+# (Settings -> Secrets and variables -> Actions):
+#   BOXKITE_BENCHMARK_BASE_URL  -- e.g. https://your-control-plane.example.com
+#   BOXKITE_BENCHMARK_API_KEY   -- a disposable account's API key, NOT a
+#                                  production account's -- this workflow
+#                                  creates and destroys real sandbox
+#                                  sessions against whatever account owns
+#                                  this key (see docs/BENCHMARKS.md's
+#                                  "Account" note: use a fresh, disposable
+#                                  one, never a shared/pre-existing account).
+#
+# Deliberately `workflow_dispatch` only, never `schedule`/`push`/`pull_request`
+# -- this creates and destroys real sandbox sessions against a real,
+# potentially billed-by-usage deployment. Running it should always be a
+# deliberate choice an operator makes, never something that fires
+# automatically on a schedule or on every PR. Non-blocking by construction:
+# nothing in ci.yml depends on this workflow, and this workflow gates
+# nothing.
+name: Benchmark warm pool (manual, informational)
+
+on:
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: "Samples per series (claim_latency_ms / cold_start_latency_ms)"
+        required: false
+        default: "5"
+      cold-gap-seconds:
+        description: "Seconds to wait between destroy and the next create for the cold-start series"
+        required: false
+        default: "15"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Run scripts/benchmark_warm_pool.py against the configured deployment
+    runs-on: ubuntu-latest
+    # Skip cleanly (not fail loudly) when the one-time secret setup above
+    # hasn't been done yet -- a fork or a fresh clone of this repo
+    # shouldn't get a red X for a manual workflow nobody has configured.
+    if: ${{ vars.BOXKITE_BENCHMARK_CONFIGURED == 'true' }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install boxkite
+        run: pip install -e .
+
+      - name: Run benchmark
+        env:
+          BOXKITE_BASE_URL: ${{ secrets.BOXKITE_BENCHMARK_BASE_URL }}
+          BOXKITE_API_KEY: ${{ secrets.BOXKITE_BENCHMARK_API_KEY }}
+        run: |
+          python scripts/benchmark_warm_pool.py \
+            --samples "${{ github.event.inputs.samples }}" \
+            --cold-gap-seconds "${{ github.event.inputs.cold-gap-seconds }}"
+
+      - name: Reminder
+        if: always()
+        run: |
+          echo "This run is informational only -- it does not update docs/BENCHMARKS.md" \
+               "automatically. Copy the numbers above into that doc by hand if they're" \
+               "worth recording, the same way the existing dated entries were added."

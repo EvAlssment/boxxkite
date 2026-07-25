@@ -1,0 +1,106 @@
+# NetworkPolicy for declarative-builder image-build Job pods ONLY --
+# docs/DECLARATIVE-BUILDER-DESIGN.md.
+#
+# ============================================================================
+# READ THIS BEFORE APPLYING
+# ============================================================================
+#
+# This is a SEPARATE, DELIBERATELY MORE PERMISSIVE policy than
+# deploy/network-policy.yaml, and it must stay scoped ONLY to builder Job
+# pods (selected below by `app: boxkite-image-builder`, the exact label
+# `control-plane/src/control_plane/image_builder.py`'s
+# `KanikoJobBuildRunner.build_job_spec` sets on the Job's pod template) --
+# NEVER to `app: sandbox` pods. A live session sandbox pod must NEVER match
+# this policy; it keeps the default-deny egress posture in
+# deploy/network-policy.yaml unconditionally, regardless of whether this
+# file is applied.
+#
+# Why this needs to exist at all: building a custom image means running
+# `pip`/`apk`/`apt` somewhere, and those need network access to a package
+# registry. Rather than punching a hole in the *session* pod's network
+# policy (which would mean re-enabling package-fetching egress for every
+# live agent sandbox, exactly the thing this feature is designed to avoid --
+# see the design doc's section 5), this policy scopes that egress hole to
+# ONLY the one-shot builder Job pod, which exists for the lifetime of one
+# build and is deleted immediately after (see image-builder-job.yaml's
+# `ttlSecondsAfterFinished`).
+#
+# CHANGEME: the egress allowlist below (PyPI, npm registry, the
+# Wolfi/Alpine mirror deploy/sandbox.Dockerfile already trusts, and the
+# registry this image gets pushed to) needs updating to match your actual
+# package-registry/container-registry endpoints -- do NOT widen this to
+# 0.0.0.0/0 "to make builds work"; that defeats the entire point of scoping
+# this separately from general internet egress.
+#
+# This manifest ships FAIL CLOSED: the placeholder ipBlock below
+# (192.0.2.0/24) is an RFC 5737 TEST-NET-3 range that is never routable on
+# the real internet, so an unmodified `kubectl apply` of this file grants
+# egress to nothing reachable -- builds will simply fail to resolve any
+# package registry until you replace the CIDR(s) with your actual
+# registry endpoints. This is deliberate: an open `to: []` (all
+# destinations) on port 443 would be a working SSRF/exfiltration surface
+# for a malicious pinned package's install-time code if an operator applied
+# this manifest without editing the CHANGEME below.
+#
+# This feature is OFF by default (BOXKITE_IMAGE_BUILDER_ENABLED=false) --
+# do not apply this file unless you have explicitly opted into the
+# declarative builder and read docs/DECLARATIVE-BUILDER-DESIGN.md section 5
+# in full.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: boxkite-image-builder-network-policy
+  namespace: default  # Change to your namespace
+spec:
+  podSelector:
+    matchLabels:
+      app: boxkite-image-builder
+
+  policyTypes:
+  - Ingress
+  - Egress
+
+  # No ingress at all -- a build Job pod is never a request target; it only
+  # ever makes outbound calls to fetch packages and push the built image.
+  ingress: []
+
+  egress:
+  # DNS resolution.
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # CHANGEME: package registries actually used by python_packages/
+  # apt_packages -- PyPI, the npm registry, and/or the Wolfi/Alpine mirror
+  # deploy/sandbox.Dockerfile already pulls from. Named by ipBlock here only
+  # because these are public, well-known external endpoints (unlike
+  # deploy/network-policy.yaml's object-storage egress, which prefers an
+  # in-cluster podSelector where possible) -- replace with your organization's
+  # actual egress-proxy/allowlist mechanism if you run one.
+  - to:
+    # CHANGEME: replace this TEST-NET-3 placeholder with ipBlock CIDRs for
+    # your actual package registries (e.g. PyPI's/npm's published IP
+    # ranges, or your internal mirror's). Left as a non-routable
+    # documentation-only range (RFC 5737) so this manifest fails closed --
+    # no real destination matches it -- until you do.
+    - ipBlock:
+        cidr: 192.0.2.0/24
+    ports:
+    - protocol: TCP
+      port: 443
+
+  # CHANGEME: the container registry this image gets pushed to
+  # (BOXKITE_IMAGE_REGISTRY_PREFIX) -- if it's in-cluster, prefer a
+  # namespaceSelector/podSelector target instead of the blanket 443 rule
+  # above, same rationale as deploy/network-policy.yaml's storage-egress
+  # options. This too currently resolves to nothing (see the ipBlock
+  # placeholder above) until you replace it with your registry's actual
+  # endpoint.

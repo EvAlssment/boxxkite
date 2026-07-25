@@ -1,0 +1,11 @@
+# Install boxkite itself from the repo root first, with the `openai-agents`
+# extra (needed for to_openai_agents_tools()'s FunctionTool adapter -- boxkite's
+# tool surface is framework-agnostic by default):
+#   pip install -e "../..[openai-agents]"
+#
+# Then this example's own deps:
+#   pip install -r requirements.txt
+#
+# Verified working with: openai-agents 0.18.2.
+
+openai-agents>=0.18,<1

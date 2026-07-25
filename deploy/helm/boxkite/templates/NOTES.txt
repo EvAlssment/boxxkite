@@ -1,0 +1,40 @@
+boxkite cluster-level manifests installed into namespace "{{ .Values.namespace }}".
+
+This chart does NOT run boxkite for you. It applies the RBAC, NetworkPolicy,
+and ConfigMap/Secret scaffolding a self-hosted deployment needs -- the
+control plane and per-session sandbox pods are separate deployables:
+
+  1. Deploy the control-plane API (control-plane/Dockerfile) as its own
+     Deployment/Service, using ServiceAccount
+     "{{ .Values.controlPlaneServiceAccountName }}" (created by ../rbac.yaml,
+     not by this chart -- create it yourself or point RBAC at whatever
+     ServiceAccount you actually run the control plane under).
+  2. Point that deployment's RUNTIME_MODE=k8s at this cluster; SandboxManager
+     creates session pods programmatically (see ../pod-template.yaml for the
+     reference pod spec it builds -- not something `helm install` applies
+     once).
+
+Check what actually got applied:
+  kubectl get role,rolebinding,networkpolicy,configmap,secret -n {{ .Values.namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+{{- if not .Values.networkPolicy.enabled }}
+
+WARNING: networkPolicy.enabled=false -- no NetworkPolicy was applied. Session
+sandbox pods have no network restriction from this chart at all.
+{{- else if eq .Values.networkPolicy.storageEgress.mode "none" }}
+
+NOTE: networkPolicy.storageEgress.mode=none -- sandbox pods can reach DNS
+only; the sidecar's own storage sync will fail to reach S3/Azure/MinIO until
+you set storageEgress.mode to "inCluster", "ipBlock", or "fqdn".
+{{- end }}
+
+{{- if .Values.imageBuilder.enabled }}
+
+Declarative image builder RBAC/NetworkPolicy applied. Remember to bind
+ServiceAccount "{{ .Values.imageBuilder.serviceAccountName }}" to a
+registry-push-only cloud identity (IRSA/Workload Identity) outside this
+chart -- see templates/image-builder-rbac.yaml's comment.
+{{- end }}
+
+Read deploy/helm/boxkite/README.md and SECURITY.md before exposing this to
+anything beyond a private, trusted cluster.

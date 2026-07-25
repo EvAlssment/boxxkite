@@ -1,0 +1,22 @@
+# Install boxkite itself from the repo root first (the `langchain` extra
+# pulls in langchain-core, needed for create_sandbox_tools()'s LangChain
+# adapter -- boxkite's tool surface is framework-agnostic by default and
+# does not depend on langchain-core otherwise, see ../../pyproject.toml):
+#   pip install -e "../..[langchain]"
+#
+# Then this example's own deps:
+#   pip install -r requirements.txt
+#
+# Versions pinned to what was verified working with this example (as of
+# this writing): langgraph 1.2.7, langchain 1.3.11, langchain-core 1.4.8,
+# langchain-anthropic 1.4.8. `langchain` (for init_chat_model) and a
+# model-provider integration package are additive, not a boxkite requirement.
+
+langchain>=1.3,<2
+langgraph>=1.0,<2
+
+# init_chat_model("anthropic:...") needs this. Swap for langchain-openai,
+# langchain-google-genai, etc. if you use a different provider -- init_chat_model
+# dispatches on the "provider:model" prefix, see:
+# https://docs.langchain.com/oss/python/langchain/models
+langchain-anthropic>=1.0,<2

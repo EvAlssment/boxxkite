@@ -1,0 +1,343 @@
+# Sandbox Pod Template -- Kata Containers RuntimeClass variant
+# (docs/KATA-CONTAINERS-SCOPING.md)
+#
+# STATUS: opt-in, EXPERIMENTAL -- with one CONFIRMED security regression.
+# Implemented against the real Kubernetes API shape (runtimeClassName) and,
+# as of 2026-07-16, exercised against a live Kata-enabled cluster
+# (GKE + kata-deploy Helm chart v3.32.0, kata-qemu-runtime-rs -- see issue
+# #179 and docs/KATA-CONTAINERS-SCOPING.md's dated update). The pod schedules
+# and runs as a genuinely separate-kernel VM, and the sidecar's nsenter/
+# setns() exec mechanism works across the VM boundary unchanged. Enabling
+# this (BOXKITE_KATA_RUNTIME_CLASS_ENABLED=true, see resource_config.py)
+# still opts a deployment into an experimental configuration -- one that now
+# KNOWINGLY trades away the control described below.
+#
+# CONFIRMED, SECURITY-RELEVANT REGRESSION (live run, 2026-07-16) -- read
+# before enabling:
+# emptyDir.sizeLimit is NOT enforced under Kata's shipped defaults. On the
+# upstream-recommended kata-deploy install, every shim's shipped config has
+# emptydir_mode = "shared-fs" WITH disable_guest_empty_dir = false, so
+# emptyDir data lives inside the guest VM and never reaches the host
+# directory kubelet measures: writing 128Mi past a 64Mi sizeLimit left the
+# host-side path at 4.0K and the pod Running after 600s (the runc control
+# evicted in ~25s). Every volume below has a sizeLimit specifically as a
+# cross-tenant disk-DoS control (see resource_config.py's own comment) --
+# under Kata those limits are silently inert. Kata's block-backed mode does
+# NOT honor sizeLimit either (Kata's own Limitations.md), so there is
+# currently NO working mitigation; setting runtimeClassName: kata REMOVES
+# this control until one is scoped and built (in-guest quota or an
+# admission/manager-level cap are the candidate shapes).
+#
+# HOW TO (RE-)VERIFY on your own cluster (issue #179): run
+# scripts/verify-kata-live.sh against a cluster that has a Kata node pool --
+# it reproduces the security-relevant shape of this pod (with a stock image
+# and a tiny sizeLimit) and reports whether the pod runs as a separate-kernel
+# VM, whether emptyDir.sizeLimit is enforced, and whether the sidecar's
+# nsenter/setns exec survives the VM boundary. A different deployment (e.g.
+# AKS Pod Sandboxing's Cloud Hypervisor/mshv build, which ships its own
+# configuration.toml) could in principle behave differently -- but after the
+# 2026-07-16 result, non-enforcement is the default assumption until YOUR
+# deployment's own run shows otherwise.
+#
+# Node-pool prerequisites (docs/KATA-CONTAINERS-SCOPING.md §2 -- no major
+# cloud ships Kata as a managed, zero-setup option):
+# - GKE (Standard): self-managed only -- a node pool on a nested-KVM-capable
+#   instance type (reported: N1/C2 family), /dev/kvm accessible, and a
+#   self-installed kata-deploy. GKE Autopilot cannot support this at all
+#   (no node-level /dev/kvm/nested-virt configuration exposed).
+# - EKS: self-managed only -- bare-metal EC2 instance types or Nitro-based
+#   nested-virt instances; no AWS-managed option.
+# - AKS: preview only ("Kata VM Isolated Containers on AKS") -- Azure CLI
+#   2.80.0+, Kubernetes 1.27+, Azure Linux node pools, Dv3/Ev3-or-later VM
+#   sizes. Not GA.
+# - kind (this repo's own deploy/local-kind/ target): self-managed only,
+#   depends entirely on the host machine's own nested-virt support -- not
+#   something deploy/local-kind/setup.sh can guarantee portably.
+# The `RuntimeClass` object itself (kind: RuntimeClass, handler: kata) must
+# already exist on the cluster before any pod referencing it can schedule --
+# this template does not create one.
+#
+# CNI pairing: NetworkPolicy enforcement is unaffected (the CNI still sees a
+# normal pod IP/veth boundary regardless of what runs inside the guest VM),
+# but Cilium specifically is reported to show a meaningful (~46%) cross-node
+# throughput regression under Kata; Calico is reported as the better-
+# performing pairing. Not a correctness issue, a real data point for anyone
+# self-hosting on Cilium specifically.
+#
+# Resource overhead: Kata's guest VM adds a reported 60-120MB of memory
+# overhead per pod on top of whatever the workload inside requests -- large
+# relative to this template's own small-tier request (64Mi sandbox + 128Mi
+# sidecar = 192Mi). No separate "kata" resource tier is defined here; if you
+# enable this, size your node pool and any SANDBOX_*_MEMORY_REQUEST/LIMIT
+# overrides (resource_config.py) accounting for that fixed overhead
+# yourself -- this template does not do it for you.
+#
+# Everything else below is identical to deploy/pod-template.yaml -- see
+# that file's own header for the container/volume/security-context
+# rationale. This is a sibling, not a replacement; deploy/pod-template.yaml
+# (plain runc, no RuntimeClass field) remains the default, supported path.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sandbox-SESSION_ID
+  labels:
+    app: sandbox
+    component: execution
+    session-id: SESSION_ID
+    sandbox.boxkite.dev/size: "small"
+    sandbox.boxkite.dev/runtime: "kata"
+  annotations:
+    sandbox.boxkite.dev/status: "warm"  # warm, active, terminating
+    sandbox.boxkite.dev/created-at: ""
+    sandbox.boxkite.dev/last-used: ""
+spec:
+  # The only functional difference from deploy/pod-template.yaml: routes
+  # this pod through the Kata Containers OCI runtime instead of runc. The
+  # RuntimeClass object named here must already exist on the cluster (see
+  # header comment above) -- this field alone does not provision it.
+  runtimeClassName: kata
+
+  shareProcessNamespace: true
+  automountServiceAccountToken: false
+  terminationGracePeriodSeconds: 30
+
+  initContainers:
+  - name: init-prefetch
+    image: boxkite-sidecar:latest
+    imagePullPolicy: IfNotPresent
+    command: ["python", "-c", "print('Init container ready')"]
+    volumeMounts:
+    - name: uploads
+      mountPath: /mnt/user-data/uploads
+    - name: outputs
+      mountPath: /mnt/user-data/outputs
+    - name: skills
+      mountPath: /mnt/skills
+    - name: workspace
+      mountPath: /workspace
+
+  containers:
+  - name: sandbox
+    image: boxkite-sandbox:latest
+    imagePullPolicy: IfNotPresent
+
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+
+    # Same defaults as deploy/pod-template.yaml -- must match
+    # resource_config.py's DEFAULT_SANDBOX_CONTAINER_* constants (see
+    # tests/test_kata_template_parity.py). Not adjusted upward for Kata's
+    # own VM overhead -- see the resource-overhead note in the header
+    # comment above; size your own deployment's requests/limits for that
+    # separately if you enable this.
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "25m"
+      limits:
+        memory: "256Mi"
+        cpu: "250m"
+
+    env:
+    - name: PATH
+      value: "/usr/local/bin:/usr/bin:/bin"
+    - name: HOME
+      value: "/workspace"
+    - name: LANG
+      value: "C.UTF-8"
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    # NO envFrom, NO valueFrom secretKeyRef
+
+    volumeMounts:
+    - name: uploads
+      mountPath: /mnt/user-data/uploads
+      readOnly: true
+    - name: outputs
+      mountPath: /mnt/user-data/outputs
+    - name: skills
+      mountPath: /mnt/skills
+      readOnly: true
+    - name: workspace
+      mountPath: /workspace
+    - name: tmp
+      mountPath: /tmp
+
+  - name: sidecar
+    image: boxkite-sidecar:latest
+    imagePullPolicy: IfNotPresent
+
+    # Identical grant to deploy/pod-template.yaml's sidecar -- see that
+    # file's own extensive comment for why each capability is required.
+    # docs/KATA-CONTAINERS-SCOPING.md §3 verified these are ordinary OCI
+    # runtime-spec fields the kata-agent applies inside the guest exactly
+    # as runc would on the host; no documented incompatibility found.
+    securityContext:
+      runAsUser: 0
+      allowPrivilegeEscalation: false
+      capabilities:
+        add:
+        - SYS_PTRACE
+        - SYS_ADMIN
+        - CHOWN
+        - SYS_CHROOT
+        - SETUID
+        - SETGID
+        drop:
+        - ALL
+
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+
+    ports:
+    - name: http
+      containerPort: 8080
+      protocol: TCP
+
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTPS
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTPS
+      initialDelaySeconds: 3
+      periodSeconds: 5
+
+    env:
+    - name: RUNTIME_MODE
+      value: "k8s"
+    - name: SIDECAR_TLS_DISABLED
+      value: ""
+    - name: SIDECAR_AUTH_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: CHANGEME-pod-name-sidecar-auth
+          key: token
+    - name: STORAGE_BACKEND
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: storage-backend
+          optional: true
+    - name: S3_BUCKET
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: s3-bucket
+          optional: true
+    - name: AWS_REGION
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: aws-region
+          optional: true
+    - name: S3_ENDPOINT
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: s3-endpoint
+          optional: true
+    - name: AWS_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: sandbox-storage-credentials
+          key: aws-access-key-id
+          optional: true
+    - name: AWS_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: sandbox-storage-credentials
+          key: aws-secret-access-key
+          optional: true
+    - name: AZURE_STORAGE_CONTAINER
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: azure-storage-container
+          optional: true
+    - name: AZURE_STORAGE_ACCOUNT_NAME
+      valueFrom:
+        configMapKeyRef:
+          name: sandbox-config
+          key: azure-storage-account-name
+          optional: true
+    - name: AZURE_STORAGE_CONNECTION_STRING
+      valueFrom:
+        secretKeyRef:
+          name: sandbox-storage-credentials
+          key: azure-storage-connection-string
+          optional: true
+    - name: AZURE_STORAGE_ACCOUNT_KEY
+      valueFrom:
+        secretKeyRef:
+          name: sandbox-storage-credentials
+          key: azure-storage-account-key
+          optional: true
+
+    volumeMounts:
+    - name: uploads
+      mountPath: /mnt/user-data/uploads
+    - name: outputs
+      mountPath: /mnt/user-data/outputs
+    - name: skills
+      mountPath: /mnt/skills
+    - name: workspace
+      mountPath: /workspace
+    - name: tmp
+      mountPath: /tmp
+    - name: sidecar-tls
+      mountPath: /etc/boxkite/tls
+      readOnly: true
+
+  # sizeLimit CONFIRMED NOT enforced under Kata's shipped defaults (live run
+  # 2026-07-16, issue #179) -- see header comment. Values kept for parity with
+  # deploy/pod-template.yaml and for kubelet-side behavior under runc.
+  # Values must match resource_config.py's DEFAULT_SANDBOX_*_VOLUME_SIZE_LIMIT
+  # constants (see tests/test_kata_template_parity.py).
+  volumes:
+  - name: uploads
+    emptyDir:
+      sizeLimit: 5Gi
+  - name: outputs
+    emptyDir:
+      sizeLimit: 5Gi
+  - name: skills
+    emptyDir:
+      sizeLimit: 5Gi
+  - name: workspace
+    emptyDir:
+      sizeLimit: 5Gi
+  - name: tmp
+    emptyDir:
+      sizeLimit: 1Gi
+  - name: sidecar-tls
+    secret:
+      secretName: CHANGEME-pod-name-sidecar-auth
+      items:
+      - key: tls_cert
+        path: tls.crt
+      - key: tls_key
+        path: tls.key
+
+  dnsPolicy: Default

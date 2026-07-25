@@ -1,0 +1,24 @@
+apiVersion: v2
+name: boxkite
+description: >-
+  Cluster-level manifests for self-hosting boxkite on Kubernetes (RBAC,
+  NetworkPolicy, ConfigMap/Secret scaffolding, and the optional declarative
+  image-builder's RBAC/NetworkPolicy). Does NOT include the per-session
+  sandbox pod spec itself -- that is built programmatically by
+  src/boxkite/manager.py at session-creation time, not applied once via
+  `helm install` (see ../pod-template.yaml, which stays a reference doc for
+  the same reason, and this chart's README for what "install" actually
+  gives you).
+type: application
+version: 0.1.0
+appVersion: "0.2.1"
+home: https://github.com/EvAlssment/boxkite
+sources:
+  - https://github.com/EvAlssment/boxkite
+keywords:
+  - sandbox
+  - agent
+  - code-execution
+  - kubernetes
+maintainers:
+  - name: boxkite maintainers

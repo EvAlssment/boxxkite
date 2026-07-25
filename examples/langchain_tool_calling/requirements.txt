@@ -1,0 +1,20 @@
+# Install boxkite itself from the repo root first, with the `langchain`
+# extra (needed for create_bash_tool()/create_file_create_tool()'s LangChain
+# adapter -- boxkite's tool surface is framework-agnostic by default):
+#   pip install -e "../..[langchain]"
+#
+# Then this example's own deps:
+#   pip install -r requirements.txt
+#
+# Verified working with: langchain 1.3.11, langchain-core 1.4.8,
+# langchain-anthropic 1.4.8. `langchain.agents.create_agent` (used here) is
+# the current LangChain single-agent entry point as of langchain>=1.0 --
+# it's built on the same prebuilt ReAct loop as
+# langgraph.prebuilt.create_react_agent (see ../langgraph_agent), just
+# without importing langgraph directly.
+
+langchain>=1.3,<2
+
+# init_chat_model("anthropic:...") needs this. Swap for another provider's
+# LangChain integration package if you use a different model.
+langchain-anthropic>=1.0,<2

@@ -1,0 +1,67 @@
+# Opt-in RBAC for full-state (process/memory) checkpoint
+# (docs/FULL-STATE-SNAPSHOT-SCOPING.md, src/boxkite/checkpoint_backend.py).
+#
+# DO NOT apply this manifest unless you have deliberately enabled
+# BOXKITE_FULL_STATE_SNAPSHOT_ENABLED and understand what it grants. It is
+# a SEPARATE, opt-in file -- never merged into deploy/rbac.yaml's default
+# grant set -- specifically so a self-hoster who never enables this
+# feature never applies this broader permission by accident.
+#
+# WHAT THIS GRANTS, AND WHY IT MATTERS: `nodes/proxy` `create` lets its
+# holder (the control-plane's own ServiceAccount) proxy arbitrary requests
+# to any node's kubelet API in this cluster -- not scoped to sandbox pods,
+# not scoped to the checkpoint subresource specifically (Kubernetes RBAC
+# has no way to restrict a node-proxy grant to one kubelet subresource
+# path). A compromised control-plane credential with this grant could use
+# the SAME node-proxy path to reach other kubelet endpoints on the SAME or
+# OTHER nodes (e.g. a different pod's /exec or /logs), not just this
+# feature's /checkpoint path. This is a real, meaningful expansion of the
+# control-plane's own blast radius if its credentials are ever
+# compromised -- treat this with at least the scrutiny SECURITY.md already
+# applies to the sidecar's own near-root CAP_SYS_ADMIN grant, not as a
+# routine feature flag. See checkpoint_backend.py's module docstring for
+# the full disclosure.
+#
+# This has never been applied to or tested against a live cluster in this
+# codebase -- verify the ContainerCheckpoint feature gate and CRI-level
+# checkpoint support (containerd's criu plugin / CRI-O's
+# enable_criu_support) are actually enabled on your nodes before expecting
+# this to do anything (see docs/FULL-STATE-SNAPSHOT-SCOPING.md §2).
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: boxkite-full-state-checkpoint-optin
+rules:
+# nodes/proxy is cluster-scoped (nodes aren't namespaced) -- this cannot
+# be expressed as a namespaced Role the way deploy/rbac.yaml's other
+# grants are.
+- apiGroups: [""]
+  resources: ["nodes/proxy"]
+  verbs: ["create", "get"]
+# Needed to resolve which node a session's pod is scheduled on before
+# calling the proxy above (src/boxkite/_manager_checkpoint.py's
+# read_namespaced_pod call) -- deploy/rbac.yaml's default sandbox-manager-role
+# already grants "get" on pods, but only namespace-scoped; nodes/proxy
+# itself requires this separate ClusterRole regardless, so this rule is
+# included here for completeness in case this manifest is ever applied to
+# a ServiceAccount that doesn't already have deploy/rbac.yaml's grants.
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: boxkite-full-state-checkpoint-optin-binding
+subjects:
+- kind: ServiceAccount
+  # Matches deploy/rbac.yaml's RoleBinding subject -- update both if you
+  # rename this ServiceAccount.
+  name: boxkite-control-plane
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: boxkite-full-state-checkpoint-optin
+  apiGroup: rbac.authorization.k8s.io

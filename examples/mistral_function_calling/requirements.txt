@@ -1,0 +1,12 @@
+# Install boxkite itself from the repo root first (no extra needed -- like
+# the OpenAI example, this one only needs boxkite.tools.adapters.to_openai_functions,
+# which is pure stdlib):
+#   pip install -e ../..
+#
+# Then this example's own deps:
+#   pip install -r requirements.txt
+#
+# Verified working with: mistralai 2.6.0 (note: this version's Mistral class
+# lives at `mistralai.client.Mistral`, not `mistralai.Mistral` -- see agent.py).
+
+mistralai>=1.0,<3

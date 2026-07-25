@@ -1,0 +1,38 @@
+{
+  "name": "default",
+  "description": "Balanced security profile - blocks credentials and sensitive paths but allows broader filesystem access",
+  "read_only_root": false,
+  "unshare_network": false,
+  "unshare_pid": true,
+  "blocked_paths": [
+    "~/.ssh",
+    "~/.aws",
+    "~/.gnupg",
+    "~/.config/gcloud",
+    "~/.kube",
+    "/etc/shadow",
+    "/etc/sudoers",
+    "/etc/sudoers.d",
+    "/var/run/docker.sock"
+  ],
+  "allowed_write_paths": [
+    "/tmp"
+  ],
+  "env_whitelist": [
+    "PATH",
+    "HOME",
+    "TMPDIR",
+    "USER",
+    "LANG",
+    "LC_ALL",
+    "PYTHONPATH",
+    "NODE_PATH",
+    "HOSTNAME"
+  ],
+  "resource_limits": {
+    "memory_mb": 512,
+    "cpu_cores": 0.5,
+    "max_processes": 100,
+    "timeout_seconds": 120
+  }
+}

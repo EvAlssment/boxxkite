@@ -1,0 +1,8 @@
+# CODEOWNERS
+#
+# boxkite is a small, focused project (see CONTRIBUTING.md) with a single
+# maintainer. This file requests review from that maintainer on every PR;
+# it doesn't gate merges on its own — branch protection rules (if enabled)
+# control that.
+
+* @HarshitKmr10

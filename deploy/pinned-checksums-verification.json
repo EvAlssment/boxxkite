@@ -1,0 +1,71 @@
+{
+  "_comment": "Record of the last independent cross-check of deploy/sandbox.Dockerfile's pinned pandoc / Chrome-for-Testing sha256 digests. Regenerate by bumping PANDOC_VERSION/CHROME_FOR_TESTING_VERSION in the Dockerfile, then re-running scripts/verify-pinned-checksums.sh and pasting its output into this file. tests/test_pinned_checksum_verification.py asserts this file's versions and hashes stay in lockstep with deploy/sandbox.Dockerfile, so a version bump without an updated record fails CI instead of silently going unverified. See SECURITY.md ('Known follow-ups') for the full writeup.",
+  "wolfi_base_image": {
+    "reference": "cgr.dev/chainguard/wolfi-base:latest",
+    "pinned_digest": "sha256:02dab76bd852a70556b5b2002195c8a5fdab77d323c433bf6642aab080489795",
+    "verified_at": "2026-07-20",
+    "method": "OCI image-index digest resolved from cgr.dev's registry v2 API (Docker-Content-Digest header, Accept: application/vnd.oci.image.index.v1+json), cross-checked by re-fetching the raw index manifest body and computing its sha256 locally -- both produced the same digest. This is a floating tag (:latest is mutable and non-reproducible), so every `FROM cgr.dev/chainguard/wolfi-base:latest` across deploy/*.Dockerfile is pinned to `:latest@<digest>` to make base-image builds reproducible.",
+    "source_query": "curl -sSI -H 'Accept: application/vnd.oci.image.index.v1+json' https://cgr.dev/v2/chainguard/wolfi-base/manifests/latest | grep -i docker-content-digest",
+    "note": "Chainguard rebuilds wolfi-base frequently; re-resolve and re-pin this digest (and update this record's verified_at) when intentionally moving to a newer base. Pinning all Dockerfiles to one shared digest keeps them building the same base until that deliberate bump.",
+    "pinned_files": [
+      "deploy/sandbox.Dockerfile",
+      "deploy/sidecar.Dockerfile",
+      "deploy/sandbox-minimal.Dockerfile",
+      "deploy/sandbox-node.Dockerfile",
+      "deploy/sandbox-go.Dockerfile",
+      "deploy/sandbox-lsp.Dockerfile",
+      "deploy/sandbox-rust.Dockerfile",
+      "deploy/sandbox-nextjs.Dockerfile",
+      "deploy/sandbox-claude-code.Dockerfile",
+      "deploy/sandbox-desktop.Dockerfile"
+    ]
+  },
+  "pandoc": {
+    "version": "3.9.0.2",
+    "verified_at": "2026-07-12",
+    "method": "GitHub Releases API per-asset `digest` field (sha256, computed server-side by GitHub at upload time -- independent of the maintainer who recorded the Dockerfile pin), cross-checked against a fresh independent download of the same release asset.",
+    "source_query": "curl -sS https://api.github.com/repos/jgm/pandoc/releases/tags/3.9.0.2",
+    "artifacts": {
+      "pandoc-3.9.0.2-linux-amd64.tar.gz": {
+        "dockerfile_pinned_sha256": "a69abfababda8a56969a254b09f9553a7be89ddec00d4e0fe9fd585d71a67508",
+        "github_api_digest_sha256": "a69abfababda8a56969a254b09f9553a7be89ddec00d4e0fe9fd585d71a67508",
+        "fresh_download_sha256": "a69abfababda8a56969a254b09f9553a7be89ddec00d4e0fe9fd585d71a67508",
+        "result": "match"
+      },
+      "pandoc-3.9.0.2-linux-arm64.tar.gz": {
+        "dockerfile_pinned_sha256": "b6d21e8f9c3b15744f5a7ab40248019157ed7793875dbe0383d4c82ff572b528",
+        "github_api_digest_sha256": "b6d21e8f9c3b15744f5a7ab40248019157ed7793875dbe0383d4c82ff572b528",
+        "fresh_download_sha256": "b6d21e8f9c3b15744f5a7ab40248019157ed7793875dbe0383d4c82ff572b528",
+        "result": "match"
+      }
+    }
+  },
+  "chrome_for_testing": {
+    "version": "148.0.7778.179",
+    "verified_at": "2026-07-12",
+    "method": "Chrome for Testing does not publish a sha256 anywhere in its own manifests -- confirmed by fetching both googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json and last-known-good-versions-with-downloads.json and finding zero 'sha256'/hash fields in either, for any version, including the current Stable release. As a substitute independent cross-check, Google Cloud Storage's own backend computes and serves an `x-goog-hash: md5=...` header for every object in the chrome-for-testing-public bucket at upload time, independent of whoever later self-computed a sha256 for the Dockerfile pin. This record cross-checks: (1) the Dockerfile-pinned sha256 against a fresh independent re-download's sha256, and (2) that same fresh download's md5 against GCS's own server-reported md5 for the object. Note the pinned CHROME_FOR_TESTING_VERSION (148.0.7778.179) is also NOT present in the 'known-good-versions' list at all (only 148.0.7778.178 is) -- it was never part of the automated smoke-test-and-promote pipeline, though it is a real, directly downloadable build under the same public GCS path.",
+    "source_queries": [
+      "curl -sSI https://storage.googleapis.com/chrome-for-testing-public/148.0.7778.179/linux64/chrome-linux64.zip",
+      "curl -sSI https://storage.googleapis.com/chrome-for-testing-public/148.0.7778.179/linux64/chrome-headless-shell-linux64.zip",
+      "curl -sSL https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json",
+      "curl -sSL https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json"
+    ],
+    "known_good_versions_manifest_contains_pin": false,
+    "artifacts": {
+      "chrome-linux64.zip": {
+        "dockerfile_pinned_sha256": "808f79e139425ebccd8077e599bfcfbae4c54698ddea577c47254acb1971241c",
+        "fresh_download_sha256": "808f79e139425ebccd8077e599bfcfbae4c54698ddea577c47254acb1971241c",
+        "gcs_reported_md5_base64": "E0lr8AbmX9q6+0kMZR098w==",
+        "fresh_download_md5": "13496bf006e65fdabafb490c651d3df3",
+        "result": "match"
+      },
+      "chrome-headless-shell-linux64.zip": {
+        "dockerfile_pinned_sha256": "43b19e1e6dca93c87c74ed52e8fa046739e59c0e65b5397b100930415c556491",
+        "fresh_download_sha256": "43b19e1e6dca93c87c74ed52e8fa046739e59c0e65b5397b100930415c556491",
+        "gcs_reported_md5_base64": "HKpIElLV+4FmLG8lqRYnUQ==",
+        "fresh_download_md5": "1caa481252d5fb81662c6f25a9162751",
+        "result": "match"
+      }
+    }
+  }
+}

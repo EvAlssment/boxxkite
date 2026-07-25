@@ -1,0 +1,39 @@
+# Points deploy/docker-compose.yml's `sandbox` service at this example's
+# own Dockerfile instead of deploy/sandbox.Dockerfile, without editing that
+# shared file. Compose merges override files by service name -- only the
+# `build` key below is replaced; everything else (networks, volumes,
+# security_opt, cap_drop, resource limits) is inherited unchanged from
+# deploy/docker-compose.yml.
+#
+# Why an override file, not a SANDBOX_IMAGE env var: verified directly
+# against the actual code, not assumed -- in RUNTIME_MODE=compose,
+# `SandboxManager` (src/boxkite/manager.py) never creates a per-session
+# container at all; every session reuses the single, already-running
+# `sandbox` container `docker compose up --build` started. There is no
+# per-session image swap in compose mode (that's a RUNTIME_MODE=k8s-only
+# concept, via `SANDBOX_IMAGE`/a declarative-builder `image_id` --
+# see src/boxkite/manager.py's `_create_pod`). The only way to change which
+# image the compose stack's `sandbox` container runs is to change what
+# `docker compose up --build` builds for that service, which is exactly
+# what this override file does.
+#
+# Run from the repo root:
+#   docker compose \
+#     -f deploy/docker-compose.yml \
+#     -f examples/foundry_audit_sandbox/docker-compose.override.yml \
+#     up -d --build
+
+services:
+  sandbox:
+    build:
+      # Resolved relative to deploy/docker-compose.yml's own directory --
+      # Compose resolves every relative path across all `-f` files against
+      # the FIRST file's directory, not each override file's own location
+      # or the invoking shell's cwd. Verified directly with
+      # `docker compose -f deploy/docker-compose.yml -f
+      # examples/foundry_audit_sandbox/docker-compose.override.yml config`
+      # from the repo root -- a naive `examples/foundry_audit_sandbox`
+      # here resolves to the wrong, nonexistent
+      # `deploy/examples/foundry_audit_sandbox`.
+      context: ../examples/foundry_audit_sandbox
+      dockerfile: Dockerfile

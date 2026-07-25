@@ -1,0 +1,135 @@
+# Kind cluster resources for local sandbox K8s testing.
+# Apply with: kubectl apply -f deploy/local-kind/k8s-resources.yaml --context kind-boxkite-dev
+#
+# This mirrors the shape of a real cluster's sandbox resources (ServiceAccount,
+# ConfigMap, Secret, RBAC, PriorityClasses), adapted for a local kind cluster
+# (no NetworkPolicy, no image prepuller — see ../network-policy.yaml for the
+# production-equivalent network policy to layer on top of a real cluster).
+#
+# NOTE: the sidecar's per-pod HTTP auth secret (SIDECAR_AUTH_TOKEN — see
+# ../../src/boxkite/sidecar_auth.py) is NOT configured here. SandboxManager
+# and WarmPoolManager generate and inject it dynamically for every pod they
+# create via the K8s API — there is nothing static to apply for it, unlike
+# ../docker-compose.yml's single statically-defined sidecar.
+
+---
+# PriorityClass for claimed (active session) pods — harder to evict
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: sandbox-claimed-priority
+value: 100000
+globalDefault: false
+preemptionPolicy: Never
+description: "Higher priority for claimed sandbox pods serving active sessions."
+
+---
+# PriorityClass for warm (standby) pods — can be preempted first
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: sandbox-warm-priority
+value: 1000
+globalDefault: false
+preemptionPolicy: Never
+description: "Lower priority for warm standby sandbox pods."
+
+---
+# ServiceAccount for sandbox pods (no K8s API access)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sandbox-service-account
+  namespace: default
+automountServiceAccountToken: false
+
+---
+# ConfigMap for sandbox settings
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandbox-config
+  namespace: default
+data:
+  storage-backend: "azure"
+  azure-storage-container: "boxkite-storage"
+  storage-credentials-secret: "boxkite-storage-credentials"
+  warm-pool-size: "1"
+  warm-pool-max: "5"
+  pod-timeout-seconds: "1800"
+  sandbox-claimed-priority-class: "sandbox-claimed-priority"
+  sandbox-warm-priority-class: "sandbox-warm-priority"
+  # Local images loaded via `kind load docker-image`
+  sandbox-image: "boxkite-sandbox:local"
+  sidecar-image: "boxkite-sidecar:local"
+
+---
+# Secret with storage credentials for the sidecar.
+# CHANGEME: fill in real values before `kubectl apply` — never commit real
+# credentials into a manifest file. If you'd rather not put credentials in
+# a checked-in-looking file at all, skip this block and instead run:
+#   kubectl create secret generic boxkite-storage-credentials \
+#     --from-literal=storage-azure-connection-string=... \
+#     --from-literal=aws-access-key-id=... \
+#     --from-literal=aws-secret-access-key=...
+# Leaving all values empty (as below) is fine too — the sidecar simply skips
+# S3/Azure sync when no storage credentials are configured.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: boxkite-storage-credentials
+  namespace: default
+type: Opaque
+stringData:
+  storage-azure-connection-string: ""
+  storage-azure-account-key: ""
+  aws-access-key-id: ""
+  aws-secret-access-key: ""
+
+---
+# Role for managing sandbox pods (used by backend/workers via kubeconfig)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sandbox-manager-role
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch"]
+  - apiGroups: [""]
+    resources: ["pods/status"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+    resourceNames: ["sandbox-config"]
+  # Per-pod sidecar-auth Secrets (see src/boxkite/sidecar_auth.py and
+  # deploy/rbac.yaml's matching rule for the full explanation/caveats).
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "delete"]
+  # Self-rotation token minting (see deploy/rbac.yaml's matching rule) --
+  # kind's cluster-admin-by-default kubeconfig makes this Role moot in
+  # practice (per the RoleBinding comment below), but kept for parity.
+  - apiGroups: [""]
+    resources: ["serviceaccounts/token"]
+    verbs: ["create"]
+    resourceNames: ["default"]
+
+---
+# RoleBinding — kind gives kubeconfig cluster-admin by default,
+# but this is here for completeness and parity with dev/staging.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sandbox-manager-binding
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+roleRef:
+  kind: Role
+  name: sandbox-manager-role
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,38 @@
+{
+  "name": "boxkite-sandbox-skills",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pre-installed JS libraries for the sandbox runtime. Network is disabled at runtime, so all transitive deps must be pinned via overrides here.",
+  "dependencies": {
+    "docx": "9.7.1",
+    "fontkit": "2.0.4",
+    "linebreak": "1.1.0",
+    "mathjax-full": "3.2.2",
+    "pptxgenjs": "4.0.1",
+    "prismjs": "1.30.0",
+    "sharp": "0.35.3",
+    "skia-canvas": "3.0.8",
+    "playwright": "1.61.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-icons": "5.7.0",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "6.1.200"
+  },
+  "overrides": {
+    "lodash": "4.18.0",
+    "lodash.template": "4.18.0",
+    "undici": "7.24.0",
+    "flatted": "3.4.2",
+    "@babel/traverse": "7.23.2",
+    "@babel/plugin-transform-modules-systemjs": "7.29.4",
+    "tar": "7.5.8",
+    "minimatch": "10.2.1",
+    "handlebars": "4.7.9",
+    "uuid": "11.1.1",
+    "word-wrap": "1.2.4",
+    "http-cache-semantics": "4.1.1",
+    "brace-expansion": "2.0.3",
+    "serialize-javascript": "7.0.3"
+  }
+}

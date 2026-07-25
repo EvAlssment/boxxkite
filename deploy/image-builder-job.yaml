@@ -1,0 +1,108 @@
+# Reference manifest for the declarative-builder's one-shot image-build Job
+# -- docs/DECLARATIVE-BUILDER-DESIGN.md. This is a template a self-hoster
+# can inspect; the actual Job that runs is built programmatically by
+# `control-plane/src/control_plane/image_builder.py`'s
+# `KanikoJobBuildRunner.build_job_spec` (mirroring how
+# `deploy/pod-template.yaml` is a reference for the pod
+# `src/boxkite/manager.py` builds programmatically -- see
+# `tests/test_pod_template_parity.py` for that existing parity discipline).
+#
+# Load-bearing security properties, all deliberate:
+# - `restartPolicy: Never` + `backoffLimit: 0`: a build either succeeds
+#   once or is reported failed to the caller. It is never silently retried
+#   against a possibly-different package resolution the caller never saw.
+# - Rootless Kaniko (`gcr.io/kaniko-project/executor`), NOT
+#   Docker-in-Docker and NOT a privileged builder with a mounted
+#   `docker.sock` -- a live docker.sock connection is a full host-root
+#   escape primitive (`docker run --privileged -v /:/host ...`). This Job
+#   never creates that primitive.
+# - The Kaniko image is digest-pinned, not a mutable tag -- same discipline
+#   SECURITY.md documents for the pandoc/Chrome-for-Testing downloads, and
+#   the same discipline this feature enforces on its own produced images
+#   (`boxkite.manager._validate_image_ref`). Re-derive the digest with
+#   `docker buildx imagetools inspect gcr.io/kaniko-project/executor:<tag>`
+#   whenever the Kaniko version is bumped.
+# - `automountServiceAccountToken: false` + a dedicated, narrowly-scoped
+#   `serviceAccountName` (registry-push only -- see
+#   deploy/image-builder-rbac.yaml) -- no ambient cluster-admin or
+#   control-plane credential reaches this pod.
+# - `runAsNonRoot: true`, capabilities dropped, no privilege escalation --
+#   same non-negotiable baseline `deploy/pod-template.yaml` applies to the
+#   sandbox container, applied here too even though this pod never runs
+#   agent-directed commands.
+# - `ttlSecondsAfterFinished`: the Job (and its pod) is garbage-collected
+#   shortly after completion -- there is no standing builder infrastructure
+#   to attack between builds.
+# - Network egress for this pod's IS scoped by a SEPARATE, more permissive
+#   NetworkPolicy (deploy/image-builder-network-policy.yaml) than the
+#   default-deny one every session sandbox pod gets
+#   (deploy/network-policy.yaml) -- a live session pod NEVER matches that
+#   policy; only this Job's pods do.
+# - `resources.requests`/`limits` and `activeDeadlineSeconds`: a build runs
+#   untrusted caller-supplied package names/versions through a real
+#   container build -- the same request/limit discipline
+#   resource_config.py applies to every sandbox/sidecar container, plus a
+#   wall-clock cap Kubernetes enforces regardless of the container's own
+#   resource usage. Values below are the config.py defaults
+#   (BOXKITE_IMAGE_BUILD_CPU_REQUEST/_LIMIT, _MEMORY_REQUEST/_LIMIT,
+#   _TIMEOUT_SECONDS) -- keep this manifest in sync if those change.
+#
+# This feature is OFF by default (BOXKITE_IMAGE_BUILDER_ENABLED=false).
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: image-build-REPLACE_WITH_IMAGE_ID_PREFIX
+  labels:
+    app: boxkite-image-builder
+    boxkite.dev/account-id: REPLACE_WITH_ACCOUNT_ID
+    boxkite.dev/image-id: REPLACE_WITH_IMAGE_ID
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  activeDeadlineSeconds: 1200
+  template:
+    metadata:
+      labels:
+        app: boxkite-image-builder
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      serviceAccountName: boxkite-image-builder
+      containers:
+      - name: kaniko
+        image: gcr.io/kaniko-project/executor:latest@sha256:4e7a52dd1f14872430652bb3b027405b8dfd17c4538751c620ac005741ef9698
+        args:
+        - --dockerfile=/build-context/Dockerfile
+        - --context=dir:///build-context
+        - --destination=REPLACE_WITH_REGISTRY_REF
+        - --digest-file=/dev/termination-log
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+        volumeMounts:
+        - name: build-context
+          mountPath: /build-context
+          readOnly: true
+      volumes:
+      # The build context is a ConfigMap holding render_dockerfile()'s
+      # generated Dockerfile content (key "Dockerfile"), created by
+      # KanikoJobBuildRunner.run_build immediately BEFORE this Job (see
+      # image_builder.py's build_configmap_spec) and deleted again once
+      # the build finishes (success or failure) -- there is no standing
+      # build-context storage between builds. Read-only on the container
+      # mount (see the kaniko container's volumeMounts above) so a
+      # compromised build step can't rewrite its own instructions mid-build.
+      - name: build-context
+        configMap:
+          name: REPLACE_WITH_GENERATED_CONFIGMAP_NAME

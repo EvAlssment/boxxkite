@@ -1,0 +1,6 @@
+# Install boxkite itself from the repo root first -- no extras needed here
+# (no LangChain, no LLM SDK -- this example calls each tool's
+# framework-agnostic ToolSpec.handler directly):
+#   pip install -e ../..
+#
+# Then this example's own deps: none beyond boxkite itself.

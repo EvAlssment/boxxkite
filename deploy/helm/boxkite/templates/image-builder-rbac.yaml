@@ -1,0 +1,61 @@
+# Wraps ../../image-builder-rbac.yaml -- see that file's comments. OFF by
+# default (imageBuilder.enabled: false), matching
+# BOXKITE_IMAGE_BUILDER_ENABLED=false. The dedicated `boxkite-image-builder`
+# ServiceAccount below gets ZERO Kubernetes API permissions on purpose (its
+# only real credential is a registry-push identity bound outside this chart,
+# e.g. via an IRSA/Workload Identity annotation on the ServiceAccount) --
+# only the CONTROL PLANE's own ServiceAccount is granted the dispatch Role.
+{{- if .Values.imageBuilder.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.imageBuilder.serviceAccountName }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "boxkite.labels" . | nindent 4 }}
+  # CHANGEME: bind this ServiceAccount to a cloud IAM role/identity scoped
+  # ONLY to `registry push` on this deployment's image-builder registry path
+  # -- e.g. an `eks.amazonaws.com/role-arn` or `iam.gke.io/gcp-service-account`
+  # annotation. Add it via a values override, not inline here (the exact
+  # annotation key/value is cloud-provider-specific).
+automountServiceAccountToken: false
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: boxkite-image-builder-dispatch-role
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "boxkite.labels" . | nindent 4 }}
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["create", "get", "delete"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "delete"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: boxkite-image-builder-dispatch-binding
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "boxkite.labels" . | nindent 4 }}
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.controlPlaneServiceAccountName }}
+  namespace: {{ .Values.namespace }}
+roleRef:
+  kind: Role
+  name: boxkite-image-builder-dispatch-role
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

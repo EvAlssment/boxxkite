@@ -1,0 +1,65 @@
+# Blocks the actual node-compromise vectors (hostPath, hostNetwork, hostPID,
+# hostIPC, privileged containers) for pods created in this namespace --
+# without using PSA "baseline"/"restricted" labels, since those would ALSO
+# block the sidecar container's documented CAP_SYS_ADMIN/CAP_SYS_PTRACE +
+# root requirement (see boxkite's SECURITY.md: "near-root capability...
+# inherent to the current design, not a misconfiguration").
+#
+# Threat model this closes: deploy/rbac.yaml's own comments already
+# disclose that Kubernetes RBAC has no mechanism to scope pod/secret verbs
+# to a label selector or name pattern -- the sandbox-manager-role grants
+# get/list/watch/create/delete on EVERY pod (and get/create/delete on
+# EVERY secret) in the namespace, not just sandbox-labeled ones. If the
+# control-plane's ServiceAccount credential ever leaked, that RBAC grant
+# alone would let an attacker submit an arbitrary pod spec -- mounting the
+# node's root filesystem via hostPath, using hostNetwork/hostPID to see the
+# node's other workloads, or setting privileged:true for a full container
+# escape. Apply this policy for the same reason on any deployment where the
+# control-plane's ServiceAccount credential is a plausible leak target --
+# the underlying RBAC exposure is the same regardless of where or how you've
+# deployed it. None of these fields are used by boxkite's real
+# pod-template.yaml (verified: grep
+# for hostNetwork/hostPID/hostIPC/hostPath/privileged there returns
+# nothing), so blocking them costs nothing functionally.
+#
+# CHANGEME: the namespaceSelector below matches the same namespace you set
+# throughout deploy/rbac.yaml (default: "default" -- change both together).
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: boxkite-sandbox-pod-hardening
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+  validations:
+  - expression: "!has(object.spec.hostNetwork) || object.spec.hostNetwork == false"
+    message: "hostNetwork is not permitted for pods in this cluster"
+  - expression: "!has(object.spec.hostPID) || object.spec.hostPID == false"
+    message: "hostPID is not permitted for pods in this cluster"
+  - expression: "!has(object.spec.hostIPC) || object.spec.hostIPC == false"
+    message: "hostIPC is not permitted for pods in this cluster"
+  - expression: >
+      !object.spec.volumes.exists(v, has(v.hostPath))
+    message: "hostPath volumes are not permitted for pods in this cluster"
+  - expression: >
+      object.spec.containers.all(c,
+        !has(c.securityContext) || !has(c.securityContext.privileged) || c.securityContext.privileged == false
+      )
+    message: "privileged containers are not permitted in this cluster"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: boxkite-sandbox-pod-hardening-binding
+spec:
+  policyName: boxkite-sandbox-pod-hardening
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: default  # Change to your namespace (match deploy/rbac.yaml)

@@ -1,0 +1,62 @@
+# Publish the root `boxkite` package (PyPI distribution name:
+# "boxkite-sandbox" — see pyproject.toml's [project].name comment; the
+# import path stays `import boxkite`) to PyPI using OIDC trusted publishing.
+#
+# ONE-TIME MANUAL SETUP REQUIRED BEFORE THIS CAN EVER SUCCEED:
+# Trusted publishing has no API token/secret to configure here — instead,
+# PyPI must be told in advance to trust workflow runs from this exact repo
+# + workflow file. Only the project owner (an account with publish rights
+# for the "boxkite-sandbox" PyPI project — currently EvAlssment) can do
+# this, and it must be done manually on pypi.org:
+#
+#   1. Log in to https://pypi.org with the account that owns/will own the
+#      "boxkite-sandbox" project.
+#   2. If the project does NOT exist on PyPI yet: go to
+#      https://pypi.org/manage/account/publishing/ ("Publishing" under
+#      Account Settings) and use the "Add a new pending publisher" form.
+#      Fill in:
+#        PyPI Project Name: boxkite-sandbox
+#        Owner:             EvAlssment
+#        Repository name:   boxkite
+#        Workflow name:     publish-pypi.yml
+#        Environment name:  (leave blank unless you add `environment:` below)
+#      Submitting this creates a "pending" trusted publisher; the first
+#      successful run of this workflow then automatically creates the
+#      "boxkite-sandbox" project on PyPI and claims it.
+#   3. If the project already exists on PyPI: go to the project's page ->
+#      Manage -> Publishing, and add the same repo/workflow/environment
+#      values as a trusted publisher there instead.
+#
+# Until that one-time step is done, every run of this workflow will fail at
+# the publish step with an authentication error from PyPI — that is
+# expected and does not indicate a bug in this file.
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-publish:
+    name: Build and publish boxkite-sandbox
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install build tooling
+        run: pip install build
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Publish to PyPI (OIDC trusted publishing)
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1 (v1.14.0)

@@ -1,0 +1,43 @@
+{
+  "name": "code-exec",
+  "description": "Maximum security for arbitrary code execution - blocks network, credentials, and system access",
+  "read_only_root": true,
+  "unshare_network": true,
+  "unshare_pid": true,
+  "blocked_paths": [
+    "~/.ssh",
+    "~/.aws",
+    "~/.gnupg",
+    "~/.config/gcloud",
+    "~/.kube",
+    "~/.docker",
+    "/etc/shadow",
+    "/etc/sudoers",
+    "/etc/sudoers.d",
+    "/etc/ssh",
+    "/var/run/docker.sock",
+    "/root",
+    "/home",
+    "/etc/passwd",
+    "/etc/group"
+  ],
+  "allowed_write_paths": [
+    "/tmp/sandbox-exec"
+  ],
+  "env_whitelist": [
+    "PATH",
+    "HOME",
+    "TMPDIR",
+    "USER",
+    "LANG",
+    "LC_ALL",
+    "PYTHONPATH",
+    "NODE_PATH"
+  ],
+  "resource_limits": {
+    "memory_mb": 512,
+    "cpu_cores": 0.5,
+    "max_processes": 100,
+    "timeout_seconds": 120
+  }
+}

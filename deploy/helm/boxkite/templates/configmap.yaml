@@ -1,0 +1,13 @@
+# Wraps ../../rbac.yaml's sandbox-config ConfigMap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandbox-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "boxkite.labels" . | nindent 4 }}
+data:
+  s3-bucket: {{ .Values.sandboxConfig.s3Bucket | quote }}
+  aws-region: {{ .Values.sandboxConfig.awsRegion | quote }}
+  warm-pool-size: {{ .Values.sandboxConfig.warmPoolSize | quote }}
+  pod-timeout-seconds: {{ .Values.sandboxConfig.podTimeoutSeconds | quote }}
