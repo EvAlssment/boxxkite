@@ -6,9 +6,12 @@
 #     Generates a SIDECAR_AUTH_TOKEN, stores it where `boxkite exec`/`files`
 #     look for it, and runs `docker compose up -d --build` with it injected.
 #
-# Usage (raw docker compose): SIDECAR_AUTH_TOKEN has a `:?` guard below, so a
-# bare `docker compose up` fails on a fresh clone. Export a token first (the
-# same shell must run compose so the value is in its environment):
+# Usage (raw docker compose): the sidecar requires SIDECAR_AUTH_TOKEN, but the
+# check happens at the sidecar's own STARTUP (see its `command:` below), not at
+# compose parse time — so subset/lifecycle commands that don't start the sidecar
+# (`up minio`, `config`, `down`, `pull`) work on a fresh clone without it. To
+# actually start the sidecar, export a token first (the same shell must run
+# compose so the value is in its environment):
 #   export SIDECAR_AUTH_TOKEN=$(openssl rand -hex 32)
 #   docker compose -f deploy/docker-compose.yml up -d
 #
@@ -31,8 +34,6 @@
 #     google-cloud-storage SDK picks up Application Default Credentials; do
 #     not bake a static service-account-key JSON into the image or compose
 #     file for this.
-
-version: '3.8'
 
 services:
   # Sandbox container - runs user code
@@ -87,6 +88,25 @@ services:
     # Compose has no pod securityContext, so keep the local sidecar runtime
     # aligned with K8s while the image itself defaults to non-root for scanning.
     user: "0"
+    # Enforce SIDECAR_AUTH_TOKEN at the sidecar's own STARTUP, not at compose
+    # parse time. The env var below uses `:-` (not `:?`), because `:?` is
+    # evaluated when Compose interpolates the file for ANY command — it would
+    # abort `up minio`, `config`, or even `down` on a fresh clone that hasn't
+    # set a token. Moving the check into this entrypoint keeps the security
+    # property intact (the sidecar still refuses to run unauthenticated, failing
+    # loudly the moment it actually starts) while letting a fresh cloner run
+    # subsets of the stack. `$$` escapes Compose interpolation so the shell
+    # evaluates the runtime value.
+    command:
+      - /bin/sh
+      - -c
+      - |
+        if [ -z "$${SIDECAR_AUTH_TOKEN}" ]; then
+          echo "FATAL: SIDECAR_AUTH_TOKEN is required to start the sidecar." >&2
+          echo "Set it in deploy/.env (openssl rand -hex 32), or run 'boxkite up' which generates one for you." >&2
+          exit 1
+        fi
+        exec python main.py
     # Share the sandbox container's PID namespace, mirroring the real K8s
     # pod (which shares a PID namespace across containers by nature). This
     # lets get_sandbox_pid()'s pgrep-based detection work in compose mode
@@ -143,13 +163,14 @@ services:
       RUNTIME_MODE: "compose"
       # SECURITY: shared secret required on every sidecar HTTP request except
       # /health (defense in depth on top of this network's isolation — see
-      # src/boxkite/sidecar_auth.py and SECURITY.md). `:?` makes `docker
-      # compose up` fail loudly instead of silently starting an unauthenticated
-      # sidecar if SIDECAR_AUTH_TOKEN isn't set in .env. Whatever process
-      # embeds SandboxManager must be given the SAME value (as SIDECAR_AUTH_TOKEN
-      # in its own environment) so it can send it back on every call — see
-      # the README quickstart.
-      SIDECAR_AUTH_TOKEN: "${SIDECAR_AUTH_TOKEN:?Set SIDECAR_AUTH_TOKEN in .env — see .env.example (openssl rand -hex 32)}"
+      # src/boxkite/sidecar_auth.py and SECURITY.md). `:-` (empty default)
+      # instead of `:?` so Compose can interpolate the file for subset/lifecycle
+      # commands without a token; the sidecar's own `command:` above enforces
+      # that it's non-empty before it will start. Whatever process embeds
+      # SandboxManager must be given the SAME value (as SIDECAR_AUTH_TOKEN in its
+      # own environment) so it can send it back on every call — see the README
+      # quickstart.
+      SIDECAR_AUTH_TOKEN: "${SIDECAR_AUTH_TOKEN:-}"
       # Storage backend selection (s3, azure, or gcs)
       STORAGE_BACKEND: "${STORAGE_BACKEND:-s3}"
       # === S3/MinIO Configuration (default for local dev) ===

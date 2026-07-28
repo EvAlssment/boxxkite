@@ -607,22 +607,36 @@ def decode_account_link_intent_token(token: str) -> dict[str, Any]:
 ENTERPRISE_SSO_STATE_TOKEN_TYPE = "enterprise_sso_state"
 
 
-def create_enterprise_sso_state_token(*, connection: str, next_path: str | None) -> str:
+def create_enterprise_sso_state_token(*, connection: str, next_path: str | None) -> tuple[str, str]:
     """Mint the `state` param round-tripped through the hosted SSO broker's
     own authorization redirect (docs/ENTERPRISE-SSO-DESIGN.md §4) -- same
     signed-JWT-in-place-of-a-server-side-store CSRF defense
     `create_social_login_state_token` already uses, kept as its own
     function/type constant since the two flows are otherwise independent
-    and shouldn't be able to be replayed against each other."""
+    and shouldn't be able to be replayed against each other.
+
+    As with `create_social_login_state_token`, a signed `state` alone only
+    proves this server issued it -- it says nothing about which browser it
+    was issued to, leaving the same login-CSRF / session-fixation gap
+    (RFC 6749 §10.12): an attacker's own completed `(code, state)` pair
+    handed to a victim as a link would log the victim's browser into the
+    attacker's account. The returned `nonce` closes that gap identically --
+    the caller sets it in a short-lived HttpOnly cookie at `/start`
+    (routers/enterprise_sso.py), and the callback rejects the request
+    unless the state's embedded nonce matches the cookie the *same* browser
+    presents."""
+    nonce = secrets.token_urlsafe(16)
     expires = _now() + timedelta(seconds=settings.ENTERPRISE_SSO_STATE_TTL_SECONDS)
     payload = {
         "connection": connection,
         "next": next_path,
+        "nonce": nonce,
         "type": ENTERPRISE_SSO_STATE_TOKEN_TYPE,
         "iat": int(_now().timestamp()),
         "exp": int(expires.timestamp()),
     }
-    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+    return token, nonce
 
 
 def decode_enterprise_sso_state_token(token: str) -> dict[str, Any]:

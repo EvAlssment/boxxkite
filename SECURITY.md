@@ -78,11 +78,20 @@ technical details, and a maintainer will reach out for a private channel.
 
 ## Verifying released images
 
-`.github/workflows/publish-images.yml` (GitHub issue #227) generates an SPDX
-SBOM and signs both the image and its SBOM keylessly via
+> **⚠️ The current `0.2.x` GHCR images are NOT signed and have no SBOM
+> attestation.** They were published manually (pushed by a maintainer, outside
+> the signed CI pipeline), so the `cosign verify` / `cosign verify-attestation`
+> commands below **will fail** against them — that failure is expected, not a
+> tampering signal, until signed CI builds resume. The commands are kept here so
+> they're ready the moment signing is restored; verify a build's provenance
+> another way (or rebuild from source at the tagged commit) in the meantime. Do
+> not read the claims below as describing the images currently on GHCR.
+
+`.github/workflows/publish-images.yml` (GitHub issue #227) is *designed* to
+generate an SPDX SBOM and sign both the image and its SBOM keylessly via
 [cosign](https://github.com/sigstore/cosign)/Sigstore for every image it
-publishes, starting with the first release built after this landed
-(`v0.1.0`'s four GHCR images predate it and are unsigned). Keyless signing
+publishes — but see the note above: that pipeline did not produce the current
+`0.2.x` images, which were pushed manually and are unsigned. Keyless signing
 means Fulcio issues a short-lived certificate bound to that specific
 workflow run's GitHub Actions OIDC identity — no long-lived private key is
 generated, stored, or exposed to rotate — and Rekor logs the signature to a
@@ -104,7 +113,11 @@ cosign verify-attestation \
 ```
 
 Swap `boxkite-sandbox` for `boxkite-sandbox-minimal`, `boxkite-sidecar`, or
-`boxkite-control-plane` for the other three images. What a successful
+`boxkite-control-plane` for the other three images. Note that `boxkite-sandbox`
+is published for **linux/amd64 only** (its Dockerfile hard-fails on arm64 — the
+pinned Chrome-for-Testing release has no arm64 build); the other three are
+multi-arch, and arm64 / Apple-Silicon users should use `boxkite-sandbox-minimal`.
+What a successful
 `cosign verify` does and does not protect against:
 
 - **Does protect against**: a compromised GHCR account, or a

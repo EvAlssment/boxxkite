@@ -341,6 +341,13 @@ def build_hosted_mcp() -> FastMCP:
             return f"count must be between 1 and {_MAX_SANDBOX_COUNT_PER_CALL} (got {requested_count})"
 
         account = _current_account_or_raise()
+        rate_limit_message = await _enforce_mcp_rate_limit(
+            bucket="sandbox_lifecycle_ops",
+            account=account,
+            limit=settings.BOXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE,
+        )
+        if rate_limit_message:
+            return rate_limit_message
         manager = get_manager()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:
@@ -377,6 +384,13 @@ def build_hosted_mcp() -> FastMCP:
         """Tear down a boxkite sandbox by session id. Always call this when
         you're done with a sandbox to free the resource."""
         account = _current_account_or_raise()
+        rate_limit_message = await _enforce_mcp_rate_limit(
+            bucket="sandbox_lifecycle_ops",
+            account=account,
+            limit=settings.BOXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE,
+        )
+        if rate_limit_message:
+            return rate_limit_message
         manager = get_manager()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:
@@ -724,6 +738,11 @@ def build_hosted_mcp() -> FastMCP:
         """Run a shell command in a sandbox. Returns stdout, or stderr and
         the exit code if the command failed."""
         account = _current_account_or_raise()
+        rate_limit_message = await _enforce_mcp_rate_limit(
+            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+        )
+        if rate_limit_message:
+            return rate_limit_message
         manager = get_manager()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:
@@ -750,6 +769,11 @@ def build_hosted_mcp() -> FastMCP:
     async def file_create(session_id: str, path: str, content: str) -> str:
         """Create or overwrite a file in a sandbox's workspace."""
         account = _current_account_or_raise()
+        rate_limit_message = await _enforce_mcp_rate_limit(
+            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+        )
+        if rate_limit_message:
+            return rate_limit_message
         manager = get_manager()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:
@@ -766,6 +790,11 @@ def build_hosted_mcp() -> FastMCP:
         """View a file's contents (optionally a line range via view_range
         [start, end]), or list a directory's entries, in a sandbox."""
         account = _current_account_or_raise()
+        rate_limit_message = await _enforce_mcp_rate_limit(
+            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+        )
+        if rate_limit_message:
+            return rate_limit_message
         manager = get_manager()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:
@@ -788,6 +817,11 @@ def build_hosted_mcp() -> FastMCP:
         """Replace a string in a sandbox file. By default old_str must appear
         exactly once; set replace_all=true to replace every occurrence."""
         account = _current_account_or_raise()
+        rate_limit_message = await _enforce_mcp_rate_limit(
+            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+        )
+        if rate_limit_message:
+            return rate_limit_message
         manager = get_manager()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:
@@ -812,6 +846,11 @@ def build_hosted_mcp() -> FastMCP:
         instead of `exec(session_id, "ls ...")` -- same result, no shell
         round trip."""
         account = _current_account_or_raise()
+        rate_limit_message = await _enforce_mcp_rate_limit(
+            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+        )
+        if rate_limit_message:
+            return rate_limit_message
         manager = get_manager()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:
@@ -830,6 +869,11 @@ def build_hosted_mcp() -> FastMCP:
         """Find files by name pattern (e.g. '**/*.py') under a sandbox's
         workspace, starting from path (defaults to the workspace root)."""
         account = _current_account_or_raise()
+        rate_limit_message = await _enforce_mcp_rate_limit(
+            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+        )
+        if rate_limit_message:
+            return rate_limit_message
         manager = get_manager()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:
@@ -854,6 +898,11 @@ def build_hosted_mcp() -> FastMCP:
         """Search file contents by regex pattern in a sandbox's workspace.
         glob optionally restricts which files are searched (e.g. '*.py')."""
         account = _current_account_or_raise()
+        rate_limit_message = await _enforce_mcp_rate_limit(
+            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+        )
+        if rate_limit_message:
+            return rate_limit_message
         manager = get_manager()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:

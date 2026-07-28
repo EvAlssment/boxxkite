@@ -438,6 +438,12 @@ class Settings(BaseSettings):
     # BOXKITE_MAX_SNAPSHOTS_PER_ACCOUNT's rationale (unbounded rows per
     # account is a quota gap, not just an API nicety).
     BOXKITE_MAX_SECRETS_PER_ACCOUNT: int = 50
+    # Rate-limit bucket for POST/DELETE /v1/secrets specifically -- managing
+    # secrets is infrequent, low-volume caller activity, so this is
+    # deliberately much lower than sandbox_ops, mirroring
+    # BOXKITE_WEBHOOK_RATE_LIMIT_PER_MINUTE's "own, more conservative bucket"
+    # rationale.
+    BOXKITE_SECRET_RATE_LIMIT_PER_MINUTE: int = 10
 
     # ── Human takeover (docs/SANDBOX-OBSERVABILITY-DESIGN.md) ───────────
     # TTL for the short-lived, single-use token
@@ -689,6 +695,12 @@ class Settings(BaseSettings):
     # mirrors BOXKITE_MAX_SECRETS_PER_ACCOUNT's rationale (unbounded rows
     # per account is a quota gap, not just an API nicety).
     BOXKITE_MAX_MCP_CONNECTIONS_PER_ACCOUNT: int = 50
+    # Rate-limit bucket for POST/DELETE /v1/mcp-connections specifically --
+    # managing connection grants is infrequent, low-volume caller activity,
+    # so this is deliberately much lower than sandbox_ops, mirroring
+    # BOXKITE_WEBHOOK_RATE_LIMIT_PER_MINUTE's "own, more conservative bucket"
+    # rationale.
+    BOXKITE_MCP_CONNECTION_RATE_LIMIT_PER_MINUTE: int = 10
 
     # ── Independent Storage Volumes (docs/EXTERNAL-STORAGE-MOUNTING-DESIGN.md's
     # Volume addendum) ────────────────────────────────────────────────────

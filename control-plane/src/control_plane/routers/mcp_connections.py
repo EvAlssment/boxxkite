@@ -16,7 +16,7 @@ per-pod NetworkPolicy egress allowlist (issue #74's existing mechanism).
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Path, Response, status
+from fastapi import APIRouter, Depends, Path, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -25,10 +25,26 @@ from ..deps import get_current_account_via_api_key
 from ..errors import ApiError, LimitExceededError
 from ..mcp_catalog import resolve_catalog_host
 from ..models_orm import Account
+from ..rate_limit import enforce_rate_limit
 from ..repository import McpConnectionRepository
 from ..schemas import McpConnectionCreatedResponse, McpConnectionCreateRequest, McpConnectionOut
 
 router = APIRouter(prefix="/v1/mcp-connections", tags=["mcp-connections"])
+
+
+async def _enforce_mcp_connection_rate_limit(request: Request, response: Response, account: Account) -> None:
+    """Rate-limit MCP connection-grant create/delete per account -- mirrors
+    routers/webhooks.py's `_enforce_webhook_rate_limit`: keyed per account
+    (these routes are already API-key-authenticated) with its own
+    conservative bucket, since managing connection grants is low-volume
+    caller activity, not the high-volume exec/file-op path."""
+    await enforce_rate_limit(
+        request,
+        bucket="mcp_connection_ops",
+        subject=str(account.id),
+        limit=settings.BOXKITE_MCP_CONNECTION_RATE_LIMIT_PER_MINUTE,
+        response=response,
+    )
 
 
 @router.post(
@@ -45,9 +61,13 @@ router = APIRouter(prefix="/v1/mcp-connections", tags=["mcp-connections"])
 )
 async def create_mcp_connection(
     body: McpConnectionCreateRequest,
+    request: Request,
+    response: Response,
     account: Account = Depends(get_current_account_via_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> McpConnectionCreatedResponse:
+    await _enforce_mcp_connection_rate_limit(request, response, account)
+
     connections = McpConnectionRepository(db)
 
     existing_count = await connections.count_for_account(account.id)
@@ -97,10 +117,14 @@ async def list_mcp_connections(
     description="Deletes an MCP connection grant belonging to the authenticated account. 404 if already gone or never owned by this account.",
 )
 async def delete_mcp_connection(
+    request: Request,
+    response: Response,
     connection_id: str = Path(...),
     account: Account = Depends(get_current_account_via_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
+    await _enforce_mcp_connection_rate_limit(request, response, account)
+
     deleted = await McpConnectionRepository(db).delete(account_id=account.id, connection_id=connection_id)
     if not deleted:
         raise ApiError(404, "not_found", "MCP connection not found")

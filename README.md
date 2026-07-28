@@ -122,6 +122,34 @@ Full walkthroughs for every path above (Kubernetes, Helm, Render, the
 `boxkite` CLI's hosted mode, secrets, webhooks, MCP, and every SDK) live on
 the [developer docs site](https://boxkite-site.vercel.app/developers).
 
+### Run the control-plane locally
+
+The `control-plane/` multi-tenant API is a **separate service** from the
+`boxkite up` SDK path — it is *not* part of `deploy/docker-compose.yml`, and you
+run it on its own. To bring it up against a throwaway SQLite database (no
+Postgres required) for API exploration:
+
+```bash
+cd control-plane
+uv venv                              # create .venv
+uv pip install -e '../[dev]'         # install the boxkite runtime (sibling pkg)
+uv pip install -e '.[dev]'           # install the control-plane itself
+ENVIRONMENT=development DATABASE_URL=sqlite+aiosqlite:///./cp.db \
+  uv run uvicorn control_plane.main:app --port 8099
+```
+
+Then check it's up:
+
+- `http://localhost:8099/health` — liveness (process is up)
+- `http://localhost:8099/health/ready` — readiness (round-trips a DB query)
+- `http://localhost:8099/docs` — interactive OpenAPI docs
+
+This gets you the API surface (accounts, API keys, session bookkeeping), but
+**actually executing sandbox pods still needs a real Kubernetes cluster** — the
+control-plane creates per-session pods programmatically at runtime (a local
+`kind` cluster via `deploy/local-kind/setup.sh` works). Against SQLite with no
+cluster you can exercise the HTTP/auth surface, not real code execution.
+
 ## What's in this repo
 
 One repo, several independently-versioned pieces, kept together deliberately
@@ -163,6 +191,23 @@ covers the same ground with runnable examples.
 | `boxkite-mcp` | [PyPI](https://pypi.org/project/boxkite-mcp/) |
 | `boxkite-client` (Go) | [pkg.go.dev](https://pkg.go.dev/github.com/EvAlssment/boxkite/sdk-go) |
 | `boxkite-client` (Rust) | [crates.io](https://crates.io/crates/boxkite-client) |
+
+Container images are published to GHCR (`ghcr.io/evalssment/…`):
+
+| Image | Architectures |
+|---|---|
+| `boxkite-sandbox` | **linux/amd64 only** |
+| `boxkite-sandbox-minimal` | linux/amd64, linux/arm64 |
+| `boxkite-sidecar` | linux/amd64, linux/arm64 |
+| `boxkite-control-plane` | linux/amd64, linux/arm64 |
+
+> **`boxkite-sandbox` is amd64-only.** Its Dockerfile deliberately hard-fails on
+> arm64 because the pinned Chrome-for-Testing release has no `linux/arm64` build
+> (`deploy/sandbox.Dockerfile`). **arm64 / Apple-Silicon users should use
+> `boxkite-sandbox-minimal`** (multi-arch, no Chrome/LibreOffice/pandoc stack),
+> or build/run the full image under `linux/amd64` emulation — `docker-compose.yml`
+> already forces `platform: linux/amd64` for exactly this reason. The other three
+> images are multi-arch.
 
 ## License
 

@@ -78,6 +78,29 @@ async def test_duplicate_secret_name_within_account_is_409(client: httpx.AsyncCl
     assert second.json()["error"]["code"] == "secret_name_taken"
 
 
+async def test_create_secret_is_rate_limited(client: httpx.AsyncClient, monkeypatch):
+    """Every other mutating router rate-limits its writes (webhooks/images/
+    volumes) -- secret create must too, in its own conservative bucket."""
+    monkeypatch.setattr(settings, "BOXKITE_SECRET_RATE_LIMIT_PER_MINUTE", 2)
+    api_key = await _account_with_key(client, "secrets-rate-limited@example.com")
+
+    for i in range(2):
+        resp = await client.post(
+            "/v1/secrets",
+            json={"name": f"s{i}", "value": "v", "allowed_hosts": ["example.com"]},
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+        assert resp.status_code == 201, resp.text
+
+    blocked = await client.post(
+        "/v1/secrets",
+        json={"name": "s-over", "value": "v", "allowed_hosts": ["example.com"]},
+        headers={"Authorization": f"Bearer {api_key}"},
+    )
+    assert blocked.status_code == 429
+    assert blocked.json()["detail"]["error"]["code"] == "rate_limited"
+
+
 async def test_cannot_delete_another_accounts_secret(client: httpx.AsyncClient):
     api_key_a = await _account_with_key(client, "secrets-owner-a@example.com")
     api_key_b = await _account_with_key(client, "secrets-owner-b@example.com")

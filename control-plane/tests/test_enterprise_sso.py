@@ -27,6 +27,20 @@ from control_plane.enterprise_sso_client import EnterpriseSsoProfile, WorkOSSsoC
 from control_plane.routers import enterprise_sso
 
 
+def _state_with_nonce_cookie(client: httpx.AsyncClient, *, connection: str, next_path: str | None = None) -> str:
+    """Mint an SSO state token AND set the matching nonce cookie on
+    `client`, the two halves /v1/auth/sso/start hands the browser together.
+    Mirrors test_social_login.py's `_state_with_nonce_cookie`: the callback
+    now rejects any state whose embedded nonce doesn't match a cookie set by
+    the same browser (login-CSRF protection, see
+    create_enterprise_sso_state_token's docstring)."""
+    from control_plane.security import create_enterprise_sso_state_token
+
+    state, nonce = create_enterprise_sso_state_token(connection=connection, next_path=next_path)
+    client.cookies.set(enterprise_sso._STATE_NONCE_COOKIE, nonce)
+    return state
+
+
 # ── Layer 1: WorkOSSsoClient against a fake transport ───────────────────
 def test_authorization_url_includes_connection_and_state():
     client = WorkOSSsoClient()
@@ -134,11 +148,14 @@ def _enable_sso(monkeypatch) -> None:
 
 async def test_sso_start_redirects_to_broker_with_connection_and_state(client: httpx.AsyncClient, monkeypatch):
     _enable_sso(monkeypatch)
-    resp = await client.get("/v1/auth/sso/start", params={"connection": "conn_abc123"})
+    resp = await client.get("/v1/auth/sso/start", params={"connection": "conn_abc123"}, follow_redirects=False)
     assert resp.status_code == 302
     location = resp.headers["location"]
     assert "connection=conn_abc123" in location
     assert "state=" in location
+    # /start binds the flow to this browser via the state-nonce cookie,
+    # mirroring social login -- see create_enterprise_sso_state_token.
+    assert enterprise_sso._STATE_NONCE_COOKIE in resp.cookies
 
 
 async def test_sso_start_drops_unsafe_next(client: httpx.AsyncClient, monkeypatch):
@@ -170,9 +187,7 @@ async def test_sso_callback_auto_registers_new_account(client: httpx.AsyncClient
         ),
     )
 
-    from control_plane.security import create_enterprise_sso_state_token
-
-    state = create_enterprise_sso_state_token(connection="conn_1", next_path=None)
+    state = _state_with_nonce_cookie(client, connection="conn_1")
     resp = await client.get("/v1/auth/sso/callback", params={"code": "auth-code-1", "state": state})
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -212,9 +227,7 @@ async def test_sso_callback_logs_in_already_linked_account(client: httpx.AsyncCl
         ),
     )
 
-    from control_plane.security import create_enterprise_sso_state_token
-
-    state = create_enterprise_sso_state_token(connection="conn_1", next_path=None)
+    state = _state_with_nonce_cookie(client, connection="conn_1")
     resp = await client.get("/v1/auth/sso/callback", params={"code": "auth-code-2", "state": state})
     assert resp.status_code == 200
     assert resp.json()["account"]["id"] == existing.id
@@ -235,9 +248,7 @@ async def test_sso_callback_refuses_to_link_on_email_collision(client: httpx.Asy
         ),
     )
 
-    from control_plane.security import create_enterprise_sso_state_token
-
-    state = create_enterprise_sso_state_token(connection="conn_1", next_path=None)
+    state = _state_with_nonce_cookie(client, connection="conn_1")
     resp = await client.get("/v1/auth/sso/callback", params={"code": "auth-code-3", "state": state})
     assert resp.status_code == 409
     assert resp.json()["error"]["code"] == "account_email_exists"
@@ -267,9 +278,7 @@ async def test_sso_callback_with_dashboard_next_redirects_error_on_email_collisi
         ),
     )
 
-    from control_plane.security import create_enterprise_sso_state_token
-
-    state = create_enterprise_sso_state_token(connection="conn_1", next_path=dashboard_next)
+    state = _state_with_nonce_cookie(client, connection="conn_1", next_path=dashboard_next)
     resp = await client.get(
         "/v1/auth/sso/callback", params={"code": "auth-code-dash", "state": state}, follow_redirects=False
     )
@@ -293,9 +302,7 @@ async def test_sso_callback_rejects_unknown_authorization_code(client: httpx.Asy
     _enable_sso(monkeypatch)
     monkeypatch.setattr(enterprise_sso, "get_enterprise_sso_client", lambda: fake_enterprise_sso_client)
 
-    from control_plane.security import create_enterprise_sso_state_token
-
-    state = create_enterprise_sso_state_token(connection="conn_1", next_path=None)
+    state = _state_with_nonce_cookie(client, connection="conn_1")
     resp = await client.get("/v1/auth/sso/callback", params={"code": "never-seeded", "state": state})
     assert resp.status_code == 401
     assert resp.json()["error"]["code"] == "enterprise_sso_failed"
@@ -316,13 +323,77 @@ async def test_sso_callback_resumes_into_oauth_authorize_via_cookie(
         ),
     )
 
-    from control_plane.security import create_enterprise_sso_state_token
-
     next_path = "/oauth/authorize?client_id=abc&response_type=code"
-    state = create_enterprise_sso_state_token(connection="conn_1", next_path=next_path)
+    state = _state_with_nonce_cookie(client, connection="conn_1", next_path=next_path)
     resp = await client.get(
         "/v1/auth/sso/callback", params={"code": "auth-code-4", "state": state}, follow_redirects=False
     )
     assert resp.status_code == 303
     assert resp.headers["location"] == next_path
     assert "boxkite_oauth_session" in resp.cookies
+
+
+# ── Negative-path coverage for the login-CSRF nonce fix ─────────────────
+# Mirrors test_social_login.py's own two nonce negative tests: every
+# callback test above supplies a CORRECT nonce cookie via
+# _state_with_nonce_cookie; these assert the exploit scenario the fix
+# exists to prevent -- a validly-signed state JWT presented by a browser
+# that never held (or holds the wrong) matching cookie -- is rejected 400,
+# not silently accepted (see create_enterprise_sso_state_token's docstring).
+
+
+async def test_sso_callback_rejects_state_with_no_nonce_cookie(
+    client: httpx.AsyncClient, monkeypatch, fake_enterprise_sso_client
+):
+    _enable_sso(monkeypatch)
+    monkeypatch.setattr(enterprise_sso, "get_enterprise_sso_client", lambda: fake_enterprise_sso_client)
+    fake_enterprise_sso_client.seed_profile(
+        "auth-code-csrf",
+        EnterpriseSsoProfile(
+            provider_user_id="prof_csrf_victim",
+            email="csrf-victim@enterprise.example.com",
+            organization_id="org_1",
+            connection_id="conn_1",
+        ),
+    )
+
+    from control_plane.security import create_enterprise_sso_state_token
+
+    state, _nonce = create_enterprise_sso_state_token(connection="conn_1", next_path=None)
+    # Deliberately do NOT set the boxkite_sso_state_nonce cookie -- this
+    # client never called /v1/auth/sso/start, so it never received one.
+    resp = await client.get("/v1/auth/sso/callback", params={"code": "auth-code-csrf", "state": state})
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "invalid_state"
+
+    # And no account was created from the rejected callback.
+    from control_plane import db as db_module
+    from control_plane.repository import AccountRepository
+
+    async with db_module.get_session_factory()() as db:
+        account = await AccountRepository(db).get_by_sso_subject_id("prof_csrf_victim")
+        assert account is None
+
+
+async def test_sso_callback_rejects_state_with_mismatched_nonce_cookie(
+    client: httpx.AsyncClient, monkeypatch, fake_enterprise_sso_client
+):
+    _enable_sso(monkeypatch)
+    monkeypatch.setattr(enterprise_sso, "get_enterprise_sso_client", lambda: fake_enterprise_sso_client)
+    fake_enterprise_sso_client.seed_profile(
+        "auth-code-csrf-2",
+        EnterpriseSsoProfile(
+            provider_user_id="prof_csrf_victim_2",
+            email="csrf-victim-2@enterprise.example.com",
+            organization_id="org_1",
+            connection_id="conn_1",
+        ),
+    )
+
+    from control_plane.security import create_enterprise_sso_state_token
+
+    state, _nonce = create_enterprise_sso_state_token(connection="conn_1", next_path=None)
+    client.cookies.set(enterprise_sso._STATE_NONCE_COOKIE, "some-other-unrelated-nonce-value")
+    resp = await client.get("/v1/auth/sso/callback", params={"code": "auth-code-csrf-2", "state": state})
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "invalid_state"

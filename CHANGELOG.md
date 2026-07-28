@@ -12,6 +12,14 @@ Relicense release — no functional code changes.
   (adds an explicit patent grant). New package versions are published so the
   Apache-2.0 metadata propagates to PyPI, npm, crates.io, and pkg.go.dev.
 
+> **Note on image signing:** the `0.2.x` GHCR images (`boxkite-sandbox`,
+> `-sandbox-minimal`, `-sidecar`, `-control-plane`) were published **manually**,
+> outside the signed CI pipeline, and are therefore **unsigned with no SBOM
+> attestation** — despite the cosign/SBOM tooling added to
+> `publish-images.yml` in v0.2.0. The `cosign verify` commands in
+> [SECURITY.md](SECURITY.md) will fail against these images until signed CI
+> builds resume. See SECURITY.md → "Verifying released images".
+
 ## v0.2.1 — 2026-07-20
 
 Post-launch review remediation.

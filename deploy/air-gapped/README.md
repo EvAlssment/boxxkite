@@ -67,10 +67,10 @@ pull the already-published `ghcr.io/evalssment/boxkite-sandbox` /
 table) instead of rebuilding from Dockerfiles. Both failed anonymously:
 
 ```
-$ docker pull ghcr.io/evalssment/boxkite-sidecar:0.1.0
+$ docker pull ghcr.io/evalssment/boxkite-sidecar:0.2.2
 Error response from daemon: error from registry: unauthorized
 
-$ curl -sI https://ghcr.io/v2/evalssment/boxkite-sidecar/manifests/0.1.0
+$ curl -sI https://ghcr.io/v2/evalssment/boxkite-sidecar/manifests/0.2.2
 HTTP/2 401
 www-authenticate: Bearer realm="https://ghcr.io/token",service="ghcr.io",...
 ```

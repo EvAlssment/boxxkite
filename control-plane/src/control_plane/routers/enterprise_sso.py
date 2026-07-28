@@ -19,7 +19,7 @@ identifier, rather than a public consumer identity provider.
 from __future__ import annotations
 
 import jwt
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +32,39 @@ from ..security import create_enterprise_sso_state_token, decode_enterprise_sso_
 from .social_login import _any_safe_next, _base_url, _dashboard_error_redirect, _finish_login
 
 router = APIRouter(prefix="/v1/auth/sso", tags=["auth"])
+
+# Binds `state` to the browser that started this flow, exactly as
+# routers/social_login.py's `_STATE_NONCE_COOKIE` does for GitHub/Google
+# (see create_enterprise_sso_state_token's docstring for the login-CSRF /
+# session-fixation this closes) -- set at /start, checked and cleared at
+# /callback. Its own cookie name and `/v1/auth/sso`-scoped `path` keep it
+# independent of social login's cookie, matching the two flows' otherwise-
+# independent state tokens.
+_STATE_NONCE_COOKIE = "boxkite_sso_state_nonce"
+_STATE_NONCE_COOKIE_PATH = "/v1/auth/sso"
+
+
+def _set_state_nonce_cookie(response: Response, *, nonce: str) -> None:
+    response.set_cookie(
+        _STATE_NONCE_COOKIE,
+        nonce,
+        max_age=settings.ENTERPRISE_SSO_STATE_TTL_SECONDS,
+        httponly=True,
+        secure=not settings.is_dev_environment,
+        samesite="lax",
+        path=_STATE_NONCE_COOKIE_PATH,
+    )
+
+
+def _verify_and_clear_state_nonce(request: Request, response: Response, *, expected_nonce: str | None) -> bool:
+    """True only if the cookie set at /start on this same browser matches
+    the nonce embedded in `state`. Always clears the cookie afterward
+    (single-use, whether the check passed or failed) so a captured callback
+    URL can't be replayed against a second, later cookie -- mirrors
+    social_login's `_verify_and_clear_state_nonce` exactly."""
+    presented = request.cookies.get(_STATE_NONCE_COOKIE)
+    response.delete_cookie(_STATE_NONCE_COOKIE, path=_STATE_NONCE_COOKIE_PATH)
+    return presented is not None and expected_nonce is not None and presented == expected_nonce
 
 
 def _require_enterprise_sso_enabled() -> None:
@@ -146,11 +179,13 @@ async def sso_start(
     next: str | None = Query(default=None),
 ) -> RedirectResponse:
     base = _base_url(request)
-    state = create_enterprise_sso_state_token(connection=connection, next_path=_any_safe_next(next))
+    state, nonce = create_enterprise_sso_state_token(connection=connection, next_path=_any_safe_next(next))
     redirect_uri = f"{base}/v1/auth/sso/callback"
     client = get_enterprise_sso_client()
     authorize_url = client.authorization_url(connection_selector=connection, redirect_uri=redirect_uri, state=state)
-    return RedirectResponse(authorize_url, status_code=302)
+    redirect = RedirectResponse(authorize_url, status_code=302)
+    _set_state_nonce_cookie(redirect, nonce=nonce)
+    return redirect
 
 
 @router.get(
@@ -160,6 +195,7 @@ async def sso_start(
 )
 async def sso_callback(
     request: Request,
+    response: Response,
     code: str = Query(...),
     state: str = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -169,13 +205,19 @@ async def sso_callback(
         state_payload = decode_enterprise_sso_state_token(state)
     except jwt.PyJWTError:
         raise ApiError(400, "invalid_state", "Invalid or expired SSO state") from None
+    if not _verify_and_clear_state_nonce(request, response, expected_nonce=state_payload.get("nonce")):
+        # Valid signature, wrong browser -- the (code, state) pair wasn't
+        # issued to whoever is presenting it now (see
+        # create_enterprise_sso_state_token's docstring for the login-CSRF
+        # scenario this catches), mirroring social_login's callback check.
+        raise ApiError(400, "invalid_state", "OAuth state was not issued to this browser")
 
     next_path = state_payload.get("next")
     try:
         client = get_enterprise_sso_client()
         profile = await client.fetch_profile(code=code, redirect_uri=f"{base}/v1/auth/sso/callback")
         account = await _resolve_or_create_account(db, profile=profile)
-        return await _finish_login(request, next_path, account, db)
+        result = await _finish_login(request, next_path, account, db)
     except ApiError as err:
         # Same treatment as social_login.py's github_callback/
         # google_callback: without this, any ApiError here (invalid
@@ -186,4 +228,14 @@ async def sso_callback(
         redirect = _dashboard_error_redirect(next_path, err)
         if redirect is None:
             raise
-        return redirect
+        result = redirect
+    if isinstance(result, Response):
+        # _verify_and_clear_state_nonce already cleared it on the injected
+        # `response` dependency, which FastAPI only merges into the final
+        # response when a plain (non-Response) value is returned -- when
+        # _finish_login/_dashboard_error_redirect hand back their own
+        # concrete Response (a redirect), that merge doesn't happen, so
+        # clear it again directly on the object actually being returned,
+        # exactly as social_login's callbacks do.
+        result.delete_cookie(_STATE_NONCE_COOKIE, path=_STATE_NONCE_COOKIE_PATH)
+    return result

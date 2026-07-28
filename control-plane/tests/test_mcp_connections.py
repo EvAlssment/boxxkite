@@ -41,6 +41,30 @@ async def test_create_mcp_connection_resolves_catalog_host(client: httpx.AsyncCl
     assert body["host"] == "mcp.slack.com"
 
 
+async def test_create_mcp_connection_is_rate_limited(client: httpx.AsyncClient, monkeypatch):
+    """Every other mutating router rate-limits its writes (webhooks/images/
+    volumes/secrets) -- MCP connection create must too, in its own
+    conservative bucket."""
+    monkeypatch.setattr(settings, "BOXKITE_MCP_CONNECTION_RATE_LIMIT_PER_MINUTE", 2)
+    api_key = await _account_with_key(client, "mcp-rate-limited@example.com")
+
+    for i in range(2):
+        resp = await client.post(
+            "/v1/mcp-connections",
+            json={"label": f"c{i}", "catalog_id": "slack"},
+            headers={"Authorization": f"Bearer {api_key}"},
+        )
+        assert resp.status_code == 201, resp.text
+
+    blocked = await client.post(
+        "/v1/mcp-connections",
+        json={"label": "c-over", "catalog_id": "slack"},
+        headers={"Authorization": f"Bearer {api_key}"},
+    )
+    assert blocked.status_code == 429
+    assert blocked.json()["detail"]["error"]["code"] == "rate_limited"
+
+
 async def test_create_mcp_connection_rejects_unknown_catalog_id(client: httpx.AsyncClient):
     api_key = await _account_with_key(client, "mcp-unknown-catalog@example.com")
 

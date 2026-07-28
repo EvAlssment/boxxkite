@@ -213,6 +213,55 @@ async def test_exec_tool_runs_command(client: httpx.AsyncClient, fake_manager, m
         assert exec_resp.status_code == 200
 
 
+async def test_exec_tool_is_rate_limited(client: httpx.AsyncClient, fake_manager, monkeypatch):
+    """The exec/file-op MCP tools reach the same SandboxManager the REST
+    exec/file routes do, so they must share the same `sandbox_ops` rate
+    limit -- past it the tool returns a plain rate-limit message, not an
+    unthrottled execution."""
+    from control_plane.config import settings
+
+    monkeypatch.setattr(hosted_mcp, "get_manager", lambda: fake_manager)
+    monkeypatch.setattr(settings, "BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE", 2)
+    api_key = await signup_and_get_api_key(client, "mcp-exec-rl@example.com")
+
+    async with _mcp_test_client() as http_client:
+        session = _McpSession(http_client, api_key)
+        await session.initialize()
+        create_resp = await session.call_tool("create_sandbox", {})
+        session_id = create_resp.text.split("Created sandbox ")[1].split(" ")[0]
+
+        for _ in range(2):
+            ok = await session.call_tool("exec", {"session_id": session_id, "command": "echo hi"})
+            assert "Too many requests" not in _tool_text(ok)
+
+        blocked = await session.call_tool("exec", {"session_id": session_id, "command": "echo hi"})
+        assert "Too many requests" in _tool_text(blocked)
+
+
+async def test_create_sandbox_tool_is_rate_limited(client: httpx.AsyncClient, fake_manager, monkeypatch):
+    """create_sandbox/destroy_sandbox MCP tools trigger real pod lifecycle
+    work, so they must be throttled by the lifecycle bucket, separate from
+    (and tighter than) the exec/file-op bucket."""
+    from control_plane.config import settings
+
+    monkeypatch.setattr(hosted_mcp, "get_manager", lambda: fake_manager)
+    monkeypatch.setattr(settings, "BOXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE", 2)
+    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
+    api_key = await signup_and_get_api_key(client, "mcp-lifecycle-rl@example.com")
+
+    async with _mcp_test_client() as http_client:
+        session = _McpSession(http_client, api_key)
+        await session.initialize()
+
+        for _ in range(2):
+            ok = await session.call_tool("create_sandbox", {})
+            assert "Created sandbox" in _tool_text(ok)
+
+        blocked = await session.call_tool("create_sandbox", {})
+        assert "Too many requests" in _tool_text(blocked)
+
+
 async def test_command_whitelist_blocks_disallowed_command(
     client: httpx.AsyncClient, fake_manager, monkeypatch
 ):

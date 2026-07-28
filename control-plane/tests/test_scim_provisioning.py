@@ -394,7 +394,8 @@ async def test_scim_provisioned_account_auto_links_on_first_sso_login(
 
     from control_plane.security import create_enterprise_sso_state_token
 
-    state = create_enterprise_sso_state_token(connection="conn_1", next_path=None)
+    state, nonce = create_enterprise_sso_state_token(connection="conn_1", next_path=None)
+    client.cookies.set(enterprise_sso._STATE_NONCE_COOKIE, nonce)
     resp = await client.get(
         "/v1/auth/sso/callback", params={"code": "auth-code-first-login", "state": state}
     )
@@ -460,7 +461,8 @@ async def test_scim_shell_with_different_organization_does_not_auto_link(
 
     from control_plane.security import create_enterprise_sso_state_token
 
-    state = create_enterprise_sso_state_token(connection="conn_a", next_path=None)
+    state, nonce = create_enterprise_sso_state_token(connection="conn_a", next_path=None)
+    client.cookies.set(enterprise_sso._STATE_NONCE_COOKIE, nonce)
     resp = await client.get(
         "/v1/auth/sso/callback", params={"code": "auth-code-cross-tenant-attack", "state": state}
     )

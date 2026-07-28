@@ -10,7 +10,7 @@ SecretCreatedResponse in schemas.py.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Path, Response, status
+from fastapi import APIRouter, Depends, Path, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -19,11 +19,27 @@ from ..deps import get_current_account_via_api_key
 from ..errors import ApiError, LimitExceededError
 from ..host_safety import resolve_host_is_unsafe
 from ..models_orm import Account
+from ..rate_limit import enforce_rate_limit
 from ..repository import SecretRepository
 from ..schemas import SecretCreatedResponse, SecretCreateRequest, SecretOut
 from ..secrets_kms import get_secrets_kms_client
 
 router = APIRouter(prefix="/v1/secrets", tags=["secrets"])
+
+
+async def _enforce_secret_rate_limit(request: Request, response: Response, account: Account) -> None:
+    """Rate-limit secret create/delete per account -- mirrors
+    routers/webhooks.py's `_enforce_webhook_rate_limit`: keyed per account
+    (these routes are already API-key-authenticated) with its own
+    conservative bucket, since managing secrets is low-volume caller
+    activity, not the high-volume exec/file-op path."""
+    await enforce_rate_limit(
+        request,
+        bucket="secret_ops",
+        subject=str(account.id),
+        limit=settings.BOXKITE_SECRET_RATE_LIMIT_PER_MINUTE,
+        response=response,
+    )
 
 
 _ACCEPTED_TRUST_TIERS = {"testnet"}
@@ -80,9 +96,13 @@ def _validate_allowed_hosts(allowed_hosts: list[str]) -> None:
 )
 async def create_secret(
     body: SecretCreateRequest,
+    request: Request,
+    response: Response,
     account: Account = Depends(get_current_account_via_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> SecretCreatedResponse:
+    await _enforce_secret_rate_limit(request, response, account)
+
     secrets = SecretRepository(db)
 
     existing_count = await secrets.count_for_account(account.id)
@@ -136,10 +156,14 @@ async def list_secrets(
     description="Deletes a secret belonging to the authenticated account. 404 if already gone or never owned by this account.",
 )
 async def delete_secret(
+    request: Request,
+    response: Response,
     secret_id: str = Path(...),
     account: Account = Depends(get_current_account_via_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
+    await _enforce_secret_rate_limit(request, response, account)
+
     deleted = await SecretRepository(db).delete(account_id=account.id, secret_id=secret_id)
     if not deleted:
         raise ApiError(404, "not_found", "Secret not found")
