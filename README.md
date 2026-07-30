@@ -60,17 +60,52 @@ local dev-session sandbox like the built-in `bash` tool in an IDE or CLI
 coding agent — if you just want your own assistant to run shell commands on
 your machine, boxkite is the wrong layer.
 
+## Start Here
+
+If you are new to the repo, use this decision tree:
+
+1. **I just want to try the sandbox locally**  
+   Use `boxkite up` from the Quickstart below. This is the fastest path and
+   does not require Kubernetes.
+2. **I want the real Kubernetes deployment on my laptop**  
+   Use [`deploy/local-kind/README.md`](deploy/local-kind/README.md). It
+   explains the kind-based flow, the Apple Silicon limitation, and the
+   `kubectl proxy` step.
+3. **I want the hosted API / multi-tenant control-plane**  
+   Use the control-plane section below, then the
+   [`examples/hosted_control_plane/`](examples/hosted_control_plane/) guide.
+
+For contributors, the important mental model is: the root package gives you
+the sandbox runtime, while `control-plane/`, the SDKs, and `mcp-server/` are
+separate packages with their own installs and tests.
+
 ## Quickstart
+
+Clone the repo, create a virtualenv, install the root package, then start
+the local stack:
 
 ```bash
 git clone https://github.com/EvAlssment/boxkite.git boxkite && cd boxkite
-pip install -e .          # NOT "pip install boxkite" -- see note below
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 boxkite up                # builds + starts sandbox, sidecar, and local MinIO
 boxkite exec "python3 -c 'print(1 + 1)'"
 ```
 
-> The PyPI name is `boxkite-sandbox`, not `boxkite` (already taken) — the
-> import path (`import boxkite`) and the `boxkite` CLI command are unaffected.
+> The PyPI name is `boxkite-sandbox`, not `boxkite` (already taken). Install
+> it with `pip install -e ".[dev]"` from the repo root; the import path
+> (`import boxkite`) and the `boxkite` CLI command are unaffected.
+
+If `boxkite up` succeeds, the quickest smoke test is:
+
+```bash
+boxkite exec "python3 -c 'print(1 + 1)'"
+boxkite files ls /
+```
+
+That confirms the sandbox, the sidecar, and the CLI are talking to each other
+correctly.
 
 ```python
 from uuid import uuid4
