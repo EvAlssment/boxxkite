@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark: time-to-usable-sandbox against a real, running boxkite
+"""Benchmark: time-to-usable-sandbox against a real, running boxxkite
 control-plane deployment.
 
 Same live-deployment pattern as `mcp-server/tests/live_smoke.py` and
@@ -7,12 +7,12 @@ Same live-deployment pattern as `mcp-server/tests/live_smoke.py` and
 script that talks HTTP directly to a real control-plane instance (no mocks,
 no fakes). Run it with:
 
-    BOXKITE_BASE_URL=https://your-control-plane.example.com \\
-    BOXKITE_API_KEY=bxk_live_... \\
+    BOXXKITE_BASE_URL=https://your-control-plane.example.com \\
+    BOXXKITE_API_KEY=bxk_live_... \\
     python scripts/benchmark_warm_pool.py --samples 5
 
 Install first (repo root): `pip install -e .` (this script only needs the
-`httpx` dependency that already ships with the `boxkite` package).
+`httpx` dependency that already ships with the `boxxkite` package).
 
 What this measures
 -------------------
@@ -20,7 +20,7 @@ Two named latency series, both wall-clock time from the moment this script
 issues `POST /v1/sandboxes` to the moment the control-plane responds 201
 with a session the caller can immediately `exec` against (the control-plane
 already waits for the sidecar's `/configure` call to succeed before
-returning -- see `src/boxkite/manager.py::_create_k8s_session` -- so a 201
+returning -- see `src/boxxkite/manager.py::_create_k8s_session` -- so a 201
 response IS "usable", not just "pod object created"):
 
   - ``claim_latency_ms``: latency of a create call when a warm pod *may* be
@@ -46,7 +46,7 @@ conditions the only way an external, black-box HTTP caller can:
 IMPORTANT deployment-specific caveat, verified by reading the source of
 *this* repo before running this script: `control-plane/src/control_plane/main.py`'s
 `lifespan()` never constructs or starts a `WarmPoolManager` (there is no
-call to `boxkite.get_warm_pool()` or `WarmPoolManager()` anywhere in
+call to `boxxkite.get_warm_pool()` or `WarmPoolManager()` anywhere in
 `control-plane/`), and no `deploy/` manifest runs one as a separate process
 either. `SandboxManager._claim_warm_pod_via_k8s` (the method every create
 call actually invokes) queries K8s directly by pod label
@@ -79,11 +79,11 @@ Deliberately excluded, and why
   the results doc instead of quietly discarding it.
 - **Concurrent multi-tenant load.** Samples are taken serially, one sandbox
   session at a time (this also respects the hosted control-plane's
-  concurrent-sandbox fair-use cap -- see `BOXKITE_MAX_CONCURRENT_SANDBOXES`
+  concurrent-sandbox fair-use cap -- see `BOXXKITE_MAX_CONCURRENT_SANDBOXES`
   in `control-plane/src/control_plane/config.py`). This does not measure
   contention effects under many simultaneous callers.
 - **Any competitor's (e.g. GKE Agent Sandbox) own cold-start number.** This
-  script only exercises boxkite's control-plane; it cannot measure a
+  script only exercises boxxkite's control-plane; it cannot measure a
   third-party managed service it has no credentials for. Any comparison to
   a competitor's published number is a citation, not something this script
   produces -- see docs/BENCHMARKS.md.
@@ -220,10 +220,10 @@ def main() -> int:
     parser.add_argument("--json-out", default=None, help="Optional path to write the full JSON result to.")
     args = parser.parse_args()
 
-    base_url = os.environ.get("BOXKITE_BASE_URL", "").rstrip("/")
-    api_key = os.environ.get("BOXKITE_API_KEY", "")
+    base_url = os.environ.get("BOXXKITE_BASE_URL", "").rstrip("/")
+    api_key = os.environ.get("BOXXKITE_API_KEY", "")
     if not base_url or not api_key:
-        print("BOXKITE_BASE_URL and BOXKITE_API_KEY must both be set.", file=sys.stderr)
+        print("BOXXKITE_BASE_URL and BOXXKITE_API_KEY must both be set.", file=sys.stderr)
         return 2
 
     with httpx.Client(

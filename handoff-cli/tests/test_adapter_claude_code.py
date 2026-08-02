@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from boxkite_handoff.adapters.claude_code import ClaudeCodeAdapter, encode_project_dir
-from boxkite_handoff.core import HandoffError
+from boxxkite_handoff.adapters.claude_code import ClaudeCodeAdapter, encode_project_dir
+from boxxkite_handoff.core import HandoffError
 
 SANDBOX_HOME_ENCODED = "-workspace"
 
@@ -45,7 +45,7 @@ def _adapter(config_dir: Path, cwd: Path) -> ClaudeCodeAdapter:
 
 class TestEncodeProjectDir:
     def test_replaces_slashes_with_dashes(self) -> None:
-        assert encode_project_dir("/Users/dev/Desktop/boxkite") == "-Users-dev-Desktop-boxkite"
+        assert encode_project_dir("/Users/dev/Desktop/boxxkite") == "-Users-dev-Desktop-boxxkite"
 
     def test_replaces_dots_with_dashes(self) -> None:
         assert encode_project_dir("/Users/h/.hidden.dir/sub") == "-Users-h--hidden-dir-sub"

@@ -3,9 +3,9 @@
 - Passwords are hashed with argon2 (via passlib's `CryptContext`) — a modern,
   memory-hard KDF, per SECURITY.md's "web/security" expectations.
 - JWTs are short-lived access tokens for the dashboard UI. Refresh-token
-  rotation (opt-in, `BOXKITE_REFRESH_TOKENS_ENABLED`), password reset
-  (opt-in, `BOXKITE_PASSWORD_RESET_ENABLED`), and email verification
-  (opt-in, `BOXKITE_EMAIL_VERIFICATION_ENABLED`) are implemented in
+  rotation (opt-in, `BOXXKITE_REFRESH_TOKENS_ENABLED`), password reset
+  (opt-in, `BOXXKITE_PASSWORD_RESET_ENABLED`), and email verification
+  (opt-in, `BOXXKITE_EMAIL_VERIFICATION_ENABLED`) are implemented in
   routers/auth.py — see that module's docstring for the gating rationale
   (issue #79).
 - API keys and the three token kinds above are all opaque, high-entropy
@@ -294,7 +294,7 @@ def create_demo_session_token(*, session_id: str, ttl_seconds: int) -> tuple[str
     `decode_takeover_token`/`decode_preview_token` already follow).
 
     `ttl_seconds` is always the caller's own already-clamped
-    `BOXKITE_DEMO_LIFETIME_MINUTES` window (see routers/demo_playground.py)
+    `BOXXKITE_DEMO_LIFETIME_MINUTES` window (see routers/demo_playground.py)
     -- a caller cannot request a longer-lived token than the sandbox itself
     will live."""
     expires_at = _now() + timedelta(seconds=ttl_seconds)
@@ -397,7 +397,7 @@ def mcp_resource_identifier(base_url: str) -> str:
     advertises as its own `resource` value, and what `hosted_mcp.py`'s
     protected-resource boundary expects as an access token's `aud` claim.
     `base_url` should already be this deployment's own canonical origin
-    (`BOXKITE_PUBLIC_URL` if configured, else the incoming request's own
+    (`BOXXKITE_PUBLIC_URL` if configured, else the incoming request's own
     origin) -- this function only appends the fixed `/mcp/` resource path."""
     return f"{base_url.rstrip('/')}/mcp/"
 
@@ -421,7 +421,7 @@ def create_mcp_access_token(*, account_id: str, client_id: str, audience: str) -
     minted for one resource server can't be replayed against a different
     one that happens to trust the same `JWT_SECRET` (GitHub issue #115).
     """
-    ttl = timedelta(minutes=settings.BOXKITE_MCP_ACCESS_TOKEN_TTL_MINUTES)
+    ttl = timedelta(minutes=settings.BOXXKITE_MCP_ACCESS_TOKEN_TTL_MINUTES)
     expires = _now() + ttl
     payload = {
         "sub": account_id,
@@ -485,7 +485,7 @@ def create_oauth_login_session_token(*, account_id: str) -> tuple[str, int]:
     client," set as an `HttpOnly`/`Secure` cookie restricted to `/oauth/*`
     (see routers/oauth.py), and carries no other API privilege even though
     it's signed with the same JWT_SECRET."""
-    ttl = timedelta(minutes=settings.BOXKITE_MCP_LOGIN_SESSION_TTL_MINUTES)
+    ttl = timedelta(minutes=settings.BOXXKITE_MCP_LOGIN_SESSION_TTL_MINUTES)
     expires = _now() + ttl
     payload = {
         "sub": account_id,

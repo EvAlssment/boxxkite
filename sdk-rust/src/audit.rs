@@ -10,7 +10,7 @@ use reqwest_eventsource::{Event, EventSource};
 use serde::Deserialize;
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
 /// One row of `GET /v1/sandboxes/{id}/log`'s audit trail -- one exec/file
 /// operation, whether issued by the agent (`source: "agent"`) or by a human
@@ -73,7 +73,7 @@ impl Client {
         &self,
         session_id: &str,
         options: GetLogOptions,
-    ) -> Result<AuditLogResponse, BoxkiteError> {
+    ) -> Result<AuditLogResponse, BoxxkiteError> {
         let mut query = Vec::new();
         if let Some(limit) = options.limit {
             query.push(("limit", limit.to_string()));
@@ -98,7 +98,7 @@ impl Client {
     ///
     /// ```no_run
     /// # use futures_util::StreamExt;
-    /// # async fn example(client: boxkite_client::Client, session_id: &str) {
+    /// # async fn example(client: boxxkite_client::Client, session_id: &str) {
     /// let mut entries = client.watch(session_id);
     /// while let Some(entry) = entries.next().await {
     ///     match entry {
@@ -114,7 +114,7 @@ impl Client {
     pub fn watch(
         &self,
         session_id: &str,
-    ) -> Pin<Box<dyn Stream<Item = Result<AuditLogEntry, BoxkiteError>> + Send + 'static>> {
+    ) -> Pin<Box<dyn Stream<Item = Result<AuditLogEntry, BoxxkiteError>> + Send + 'static>> {
         let request_builder =
             self.request(Method::GET, &format!("/v1/sandboxes/{session_id}/watch"));
 
@@ -122,7 +122,7 @@ impl Client {
             let mut event_source = match EventSource::new(request_builder) {
                 Ok(event_source) => event_source,
                 Err(err) => {
-                    yield Err(BoxkiteError::Config(format!("failed to build watch request: {err}")));
+                    yield Err(BoxxkiteError::Config(format!("failed to build watch request: {err}")));
                     return;
                 }
             };
@@ -131,7 +131,7 @@ impl Client {
                 match event {
                     Ok(Event::Open) => continue,
                     Ok(Event::Message(message)) => {
-                        yield serde_json::from_str::<AuditLogEntry>(&message.data).map_err(BoxkiteError::from);
+                        yield serde_json::from_str::<AuditLogEntry>(&message.data).map_err(BoxxkiteError::from);
                     }
                     Err(reqwest_eventsource::Error::StreamEnded) => break,
                     Err(reqwest_eventsource::Error::InvalidStatusCode(status, response)) => {
@@ -140,7 +140,7 @@ impl Client {
                         break;
                     }
                     Err(err) => {
-                        yield Err(BoxkiteError::from(err));
+                        yield Err(BoxxkiteError::from(err));
                         break;
                     }
                 }

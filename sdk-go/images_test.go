@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -16,7 +16,7 @@ func TestCreateImage_SendsExactRequestBody(t *testing.T) {
 		raw, _ := io.ReadAll(r.Body)
 		var body map[string]any
 		_ = json.Unmarshal(raw, &body)
-		if body["base"] != "boxkite-minimal" {
+		if body["base"] != "boxxkite-minimal" {
 			t.Errorf("unexpected base: %v", body["base"])
 		}
 		pythonPackages, _ := body["python_packages"].([]any)
@@ -24,7 +24,7 @@ func TestCreateImage_SendsExactRequestBody(t *testing.T) {
 			t.Errorf("unexpected python_packages: %v", body["python_packages"])
 		}
 		writeJSON(t, w, 202, `{
-			"id": "img-1", "label": "data-eng", "base": "boxkite-minimal",
+			"id": "img-1", "label": "data-eng", "base": "boxxkite-minimal",
 			"python_packages": ["polars==1.9.0", "duckdb==1.1.3"], "apt_packages": [], "npm_packages": [],
 			"status": "queued", "digest": null, "registry_ref": null, "scan_result": null,
 			"failure_reason": null, "created_at": "2026-01-01T00:00:00Z", "completed_at": null
@@ -34,7 +34,7 @@ func TestCreateImage_SendsExactRequestBody(t *testing.T) {
 
 	image, err := client.CreateImage(context.Background(), CreateImageRequest{
 		Label:          Ptr("data-eng"),
-		Base:           "boxkite-minimal",
+		Base:           "boxxkite-minimal",
 		PythonPackages: []string{"polars==1.9.0", "duckdb==1.1.3"},
 	})
 	if err != nil {
@@ -67,7 +67,7 @@ func TestGetImage(t *testing.T) {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
 		writeJSON(t, w, 200, `{
-			"id": "img-1", "label": null, "base": "boxkite-default", "python_packages": [], "apt_packages": [], "npm_packages": [],
+			"id": "img-1", "label": null, "base": "boxxkite-default", "python_packages": [], "apt_packages": [], "npm_packages": [],
 			"status": "completed", "digest": "sha256:abc", "registry_ref": "registry.internal/img-1@sha256:abc",
 			"scan_result": {"critical": 0, "high": 0}, "failure_reason": null,
 			"created_at": "2026-01-01T00:00:00Z", "completed_at": "2026-01-01T00:05:00Z"

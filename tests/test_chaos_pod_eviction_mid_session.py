@@ -27,7 +27,7 @@ from uuid import uuid4
 import httpx
 import pytest
 
-from boxkite.manager import SandboxManager
+from boxxkite.manager import SandboxManager
 
 pytestmark = pytest.mark.pr
 

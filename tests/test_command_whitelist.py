@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from boxkite.command_whitelist import validate_command_whitelist
+from boxxkite.command_whitelist import validate_command_whitelist
 
 
 def _allowed(command, allow):

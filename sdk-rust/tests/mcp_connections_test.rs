@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::McpCatalogId;
+use boxxkite_client::McpCatalogId;
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, ResponseTemplate};

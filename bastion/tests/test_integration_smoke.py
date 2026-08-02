@@ -16,7 +16,7 @@ import asyncio
 import asyncssh
 import pytest
 
-from boxkite_bastion.bridge import build_server_factory
+from boxxkite_bastion.bridge import build_server_factory
 
 
 class _FakeTakeoverWS:

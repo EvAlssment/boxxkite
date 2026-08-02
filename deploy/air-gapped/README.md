@@ -56,21 +56,21 @@ name from the other direction — `get_sandbox_pid()` in `sidecar/main.py`
 finds the sandbox's init process by pgrep'ing for this exact container name.
 Fixed by keeping `container_name: sandbox` in this compose file too (see the
 inline comment) — this is a real constraint worth knowing if anyone ever
-wants to run more than one boxkite Compose stack side by side on the same
+wants to run more than one boxxkite Compose stack side by side on the same
 Docker host.
 
 ## A real finding about the "already published" GHCR images
 
 Before building anything, this bundle first tried the obvious shortcut:
-pull the already-published `ghcr.io/evalssment/boxkite-sandbox` /
-`boxkite-sidecar` images (per README.md's "Published packages and images"
+pull the already-published `ghcr.io/evalssment/boxxkite-sandbox` /
+`boxxkite-sidecar` images (per README.md's "Published packages and images"
 table) instead of rebuilding from Dockerfiles. Both failed anonymously:
 
 ```
-$ docker pull ghcr.io/evalssment/boxkite-sidecar:0.2.2
+$ docker pull ghcr.io/evalssment/boxxkite-sidecar:0.2.2
 Error response from daemon: error from registry: unauthorized
 
-$ curl -sI https://ghcr.io/v2/evalssment/boxkite-sidecar/manifests/0.2.2
+$ curl -sI https://ghcr.io/v2/evalssment/boxxkite-sidecar/manifests/0.2.2
 HTTP/2 401
 www-authenticate: Bearer realm="https://ghcr.io/token",service="ghcr.io",...
 ```
@@ -93,11 +93,11 @@ once the packages are actually anonymously pullable.
 First cold build (no Docker layer cache at all, this same machine/day):
 
 ```
-$ time docker build -f deploy/sandbox-minimal.Dockerfile -t boxkite-sandbox-minimal:airgapped .
+$ time docker build -f deploy/sandbox-minimal.Dockerfile -t boxxkite-sandbox-minimal:airgapped .
 ...
 real  2m1.53s
 
-$ time docker build -f deploy/sidecar.Dockerfile -t boxkite-sidecar:airgapped .
+$ time docker build -f deploy/sidecar.Dockerfile -t boxxkite-sidecar:airgapped .
 ...
 real  2m8.96s
 ```
@@ -114,8 +114,8 @@ $ time ./mirror-images.sh
 == [4/5] docker save (5 images) ==                     real 0m5.2s
 == [5/5] gzip compress ==                              real 0m7.0s
 
-Bundle:   deploy/air-gapped/bundle/boxkite-airgapped-bundle.tar.gz
--rw-------  433M  boxkite-airgapped-bundle.tar.gz
+Bundle:   deploy/air-gapped/bundle/boxxkite-airgapped-bundle.tar.gz
+-rw-------  433M  boxxkite-airgapped-bundle.tar.gz
 ```
 
 `bundle-manifest.json` (image IDs + uncompressed sizes):
@@ -123,8 +123,8 @@ Bundle:   deploy/air-gapped/bundle/boxkite-airgapped-bundle.tar.gz
 ```json
 {
   "images": [
-    {"tag": "boxkite-sandbox-minimal:bundle", "size_bytes": 106190617},
-    {"tag": "boxkite-sidecar:bundle",         "size_bytes": 120233313},
+    {"tag": "boxxkite-sandbox-minimal:bundle", "size_bytes": 106190617},
+    {"tag": "boxxkite-sidecar:bundle",         "size_bytes": 120233313},
     {"tag": "minio/minio:latest",             "size_bytes": 57548825},
     {"tag": "minio/mc:latest",                "size_bytes": 27371684},
     {"tag": "hashicorp/vault:1.16",           "size_bytes": 143004011}
@@ -144,7 +144,7 @@ cache (`docker rmi ...`) to simulate a machine that never built or pulled
 anything:
 
 ```
-$ docker images | grep -E "boxkite-sandbox-minimal|boxkite-sidecar|minio/minio|minio/mc|hashicorp/vault"
+$ docker images | grep -E "boxxkite-sandbox-minimal|boxxkite-sidecar|minio/minio|minio/mc|hashicorp/vault"
 NONE FOUND (clean slate confirmed)
 ```
 
@@ -153,9 +153,9 @@ registry fallback**, not just "happens to work because nothing tried to
 reach the network":
 
 ```
-$ docker compose -f docker-compose.airgapped.yml -p boxkite-airgapped up -d
- Container sandbox-airgapped Error response from daemon: No such image: boxkite-sandbox-minimal:bundle
-Error response from daemon: No such image: boxkite-sandbox-minimal:bundle
+$ docker compose -f docker-compose.airgapped.yml -p boxxkite-airgapped up -d
+ Container sandbox-airgapped Error response from daemon: No such image: boxxkite-sandbox-minimal:bundle
+Error response from daemon: No such image: boxxkite-sandbox-minimal:bundle
 $ echo $?
 1
 ```
@@ -168,22 +168,22 @@ registry pull attempt.
 
 ```
 $ ./load-images.sh
-== Loading .../boxkite-airgapped-bundle.tar.gz (no network access required or used) ==
-Loaded image: boxkite-sandbox-minimal:bundle
-Loaded image: boxkite-sidecar:bundle
+== Loading .../boxxkite-airgapped-bundle.tar.gz (no network access required or used) ==
+Loaded image: boxxkite-sandbox-minimal:bundle
+Loaded image: boxxkite-sidecar:bundle
 Loaded image: minio/minio:latest
 Loaded image: minio/mc:latest
 Loaded image: hashicorp/vault:1.16
 real  0m9.194s
 == Verifying loaded images against expected tags ==
-  OK   boxkite-sandbox-minimal:bundle
-  OK   boxkite-sidecar:bundle
+  OK   boxxkite-sandbox-minimal:bundle
+  OK   boxxkite-sidecar:bundle
   OK   minio/minio:latest
   OK   minio/mc:latest
   OK   hashicorp/vault:1.16
 Load verified — all bundled images present locally, no registry contacted.
 
-$ time docker compose -f docker-compose.airgapped.yml -p boxkite-airgapped up -d
+$ time docker compose -f docker-compose.airgapped.yml -p boxxkite-airgapped up -d
 ...
 real  0m10.693s
 ```
@@ -200,9 +200,9 @@ $ curl -s -X POST http://localhost:8080/exec \
     -d '{"command": "echo air-gapped-proof-$((21+21))"}'
 {"exit_code":0,"stdout":"air-gapped-proof-42\n","stderr":""}
 
-$ docker logs boxkite-airgapped-minio-setup-1
+$ docker logs boxxkite-airgapped-minio-setup-1
 Added `myminio` successfully.
-Bucket created successfully `myminio/boxkite-sandbox`.
+Bucket created successfully `myminio/boxxkite-sandbox`.
 ```
 
 `/exec` round-tripped through the sidecar's real `nsenter` path into the
@@ -263,7 +263,7 @@ variant was taken here (see above).
   scoping doc's §2.5 (the declarative builder's *runtime*, not just
   build-time, internet dependency) is still fully open.
 - **The declarative image builder** (`control-plane/src/control_plane/image_builder.py`,
-  `BOXKITE_IMAGE_BUILDER_ENABLED`) — off by default, not exercised here at
+  `BOXXKITE_IMAGE_BUILDER_ENABLED`) — off by default, not exercised here at
   all.
 - **The control-plane image and deployment** — `control-plane/Dockerfile`
   (`python:3.11-slim` base, plain `pip install -r requirements.txt`) was
@@ -279,7 +279,7 @@ variant was taken here (see above).
 - **A version-pinned bundle manifest tying a bundle to a release tag**
   (scoping doc §3 point 7) — `bundle-manifest.json` here only records this
   run's own image IDs/sizes, not a signed/versioned artifact tied to a
-  boxkite release. That's still a real design gap for a production offline
+  boxxkite release. That's still a real design gap for a production offline
   bundle process.
 - **An offline update/license model** — unchanged from the scoping doc;
   still undefined.
@@ -293,9 +293,9 @@ variant was taken here (see above).
 cd deploy/air-gapped
 cp .env.example .env   # or: echo "SIDECAR_AUTH_TOKEN=$(openssl rand -hex 32)" > .env
 ./mirror-images.sh                      # needs internet access
-# --- simulate carrying bundle/boxkite-airgapped-bundle.tar.gz across the gap ---
+# --- simulate carrying bundle/boxxkite-airgapped-bundle.tar.gz across the gap ---
 ./load-images.sh                        # zero network calls
-docker compose -f docker-compose.airgapped.yml -p boxkite-airgapped up -d
+docker compose -f docker-compose.airgapped.yml -p boxxkite-airgapped up -d
 curl -sf http://localhost:8080/health
-docker compose -f docker-compose.airgapped.yml -p boxkite-airgapped down -v
+docker compose -f docker-compose.airgapped.yml -p boxxkite-airgapped down -v
 ```

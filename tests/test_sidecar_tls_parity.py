@@ -1,7 +1,7 @@
-"""Parity test: src/boxkite/tls.py vs sidecar/main.py's duplicated constants.
+"""Parity test: src/boxxkite/tls.py vs sidecar/main.py's duplicated constants.
 
 sidecar/main.py is a separately deployed service that intentionally does not
-depend on the `boxkite` package (see tests/test_sidecar_auth_parity.py for
+depend on the `boxxkite` package (see tests/test_sidecar_auth_parity.py for
 the analogous test on the auth-token constants), so it re-declares the TLS
 mount path/filenames/env var name as local constants instead of importing
 tls.py. This test is the drift guard for that intentional duplication.
@@ -9,7 +9,7 @@ tls.py. This test is the drift guard for that intentional duplication.
 
 import main as sidecar_main
 
-from boxkite.tls import (
+from boxxkite.tls import (
     SIDECAR_TLS_CERT_FILENAME,
     SIDECAR_TLS_DISABLED_ENV,
     SIDECAR_TLS_KEY_FILENAME,

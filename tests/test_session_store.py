@@ -2,8 +2,8 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.manager import SandboxManager
-from boxkite.session_store import SQLiteSessionMetadataStore
+from boxxkite.manager import SandboxManager
+from boxxkite.session_store import SQLiteSessionMetadataStore
 
 
 @pytest.mark.asyncio

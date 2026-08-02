@@ -45,7 +45,7 @@ async def test_create_mcp_connection_is_rate_limited(client: httpx.AsyncClient, 
     """Every other mutating router rate-limits its writes (webhooks/images/
     volumes/secrets) -- MCP connection create must too, in its own
     conservative bucket."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_CONNECTION_RATE_LIMIT_PER_MINUTE", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_CONNECTION_RATE_LIMIT_PER_MINUTE", 2)
     api_key = await _account_with_key(client, "mcp-rate-limited@example.com")
 
     for i in range(2):

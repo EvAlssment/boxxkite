@@ -236,7 +236,7 @@ async def create_invite(
         role=body.role,
         token_hash=hash_secret(raw_token),
         invited_by_account_id=account.id,
-        expires_at=now + timedelta(hours=settings.BOXKITE_ORG_INVITE_TTL_HOURS),
+        expires_at=now + timedelta(hours=settings.BOXXKITE_ORG_INVITE_TTL_HOURS),
     )
     db.add(invite)
     await db.commit()

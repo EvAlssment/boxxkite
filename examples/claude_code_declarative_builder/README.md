@@ -33,14 +33,14 @@ gap, exercised concretely.
 // POST /v1/images
 {
   "label": "claude-code-declarative",
-  "base": "boxkite-minimal",
+  "base": "boxxkite-minimal",
   "apt_packages": ["git==2.54.0-r0", "openssh-client==10.0_p1-r2"],
   "npm_packages": ["@anthropic-ai/claude-code==2.0.1"]
 }
 ```
 
 This is the declarative equivalent of
-`deploy/sandbox-claude-code.Dockerfile`'s content: `boxkite-minimal` is the
+`deploy/sandbox-claude-code.Dockerfile`'s content: `boxxkite-minimal` is the
 same lean python+node base `deploy/sandbox-minimal.Dockerfile` builds (no
 preinstalled data-science/document/browser stack), `git` +
 `openssh-client` are the two apt/apk packages that Dockerfile adds on top of
@@ -57,8 +57,8 @@ additionally allows a leading `@scope/` segment) — no ranges, no `latest`.
 ## Prerequisites
 
 - A control-plane instance (self-deployed; there is no public hosted
-  boxkite service — see the main README) with
-  **`BOXKITE_IMAGE_BUILDER_ENABLED=true`**. This route family 404s on every
+  boxxkite service — see the main README) with
+  **`BOXXKITE_IMAGE_BUILDER_ENABLED=true`**. This route family 404s on every
   deployment that hasn't explicitly opted in.
 - `pip install httpx`
 
@@ -89,7 +89,7 @@ what's implemented and what isn't, and this example does not oversell past
 that:
 
 - The declarative builder is **off by default**
-  (`BOXKITE_IMAGE_BUILDER_ENABLED=false`) and, per that doc, **has not had a
+  (`BOXXKITE_IMAGE_BUILDER_ENABLED=false`) and, per that doc, **has not had a
   dedicated security review** for untrusted multi-tenant traffic yet. Don't
   point this at a real, internet-facing, multi-tenant deployment without
   doing that review first.
@@ -109,7 +109,7 @@ that:
 ## What was verified for real, and what wasn't
 
 **Verified for real, against a locally-running control-plane instance in
-this environment** (SQLite backend, `BOXKITE_IMAGE_BUILDER_ENABLED=true`,
+this environment** (SQLite backend, `BOXXKITE_IMAGE_BUILDER_ENABLED=true`,
 `FakeImageBuildRunner`, no mocking of the HTTP layer):
 
 - `POST /v1/auth/signup` → `POST /v1/api-keys` → `POST /v1/images` all
@@ -122,7 +122,7 @@ this environment** (SQLite backend, `BOXKITE_IMAGE_BUILDER_ENABLED=true`,
 
   ```
   Image built: digest=sha256:cac4d4f99d3c27a7257453715697dba93108b72fc90aad134226f5a9a9d82a01
-  registry_ref=registry.internal/boxkite-images/<account_id>/<image_id>@sha256:cac4d...
+  registry_ref=registry.internal/boxxkite-images/<account_id>/<image_id>@sha256:cac4d...
   ```
 
 - This confirms the request/response shapes in this README and script are
@@ -163,7 +163,7 @@ Kubernetes cluster with a finished `KanikoJobBuildRunner`:**
 ## Pinned package versions used, and how they were confirmed real
 
 `git` and `openssh-client` versions were confirmed installable against the
-live Wolfi package repo `boxkite-minimal`'s base
+live Wolfi package repo `boxxkite-minimal`'s base
 (`cgr.dev/chainguard/wolfi-base:latest`) is built from, by actually running:
 
 ```bash

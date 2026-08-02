@@ -1,9 +1,9 @@
-# boxkite-client (Rust)
+# boxxkite-client (Rust)
 
-[![crates.io](https://img.shields.io/crates/v/boxkite-client.svg)](https://crates.io/crates/boxkite-client)
+[![crates.io](https://img.shields.io/crates/v/boxxkite-client.svg)](https://crates.io/crates/boxxkite-client)
 
-A Rust client for a **hosted** boxkite control-plane — create sandboxes, run
-commands, edit files, over HTTP/WebSocket. Not the `boxkite` package itself
+A Rust client for a **hosted** boxxkite control-plane — create sandboxes, run
+commands, edit files, over HTTP/WebSocket. Not the `boxxkite` package itself
 (the self-hosted Python core that embeds `SandboxManager` against your own
 Kubernetes cluster) — use this to talk to *someone else's* running
 control-plane, hosted or self-hosted, over its API. Async-first (`tokio`),
@@ -13,17 +13,17 @@ mirroring the same `/v1/*` REST API `sdk-python`/`sdk-js` wrap.
 
 ```toml
 [dependencies]
-boxkite-client = "0.1"
+boxxkite-client = "0.1"
 tokio = { version = "1", features = ["full"] }
 ```
 
 ## Quickstart
 
 ```rust
-use boxkite_client::{Client, CreateSandboxOptions, ExecOptions};
+use boxxkite_client::{Client, CreateSandboxOptions, ExecOptions};
 
 #[tokio::main]
-async fn main() -> Result<(), boxkite_client::BoxkiteError> {
+async fn main() -> Result<(), boxxkite_client::BoxxkiteError> {
     let client = Client::new("https://your-control-plane.example.com", "bxk_live_...")?;
 
     let sandbox = client
@@ -35,7 +35,7 @@ async fn main() -> Result<(), boxkite_client::BoxkiteError> {
         .await?;
     println!("{}", result.stdout); // "2\n"
 
-    client.file_create(&sandbox.id, "notes.txt", "hello from boxkite-client\n", Default::default()).await?;
+    client.file_create(&sandbox.id, "notes.txt", "hello from boxxkite-client\n", Default::default()).await?;
     println!("{}", client.view(&sandbox.id, "notes.txt", Default::default()).await?.content);
 
     client.destroy_sandbox(&sandbox.id).await?;
@@ -54,20 +54,20 @@ and desktop (GUI) takeover over the same raw-WebSocket pattern
 (`desktop_takeover`) — plus CRUD for custom images, independent storage volumes,
 outbound-MCP connections, and webhook subscriptions. Full reference with
 examples for all of these:
-[`docs/API.md`](https://github.com/EvAlssment/boxkite/blob/main/docs/API.md).
+[`docs/API.md`](https://github.com/EvAlssment/boxxkite/blob/main/docs/API.md).
 
 ## Error handling
 
-Every fallible call returns `Result<T, BoxkiteError>`. A non-2xx response
-becomes `BoxkiteError::Api { status, code, message }`; a transport-level
-failure becomes `BoxkiteError::Connection`.
+Every fallible call returns `Result<T, BoxxkiteError>`. A non-2xx response
+becomes `BoxxkiteError::Api { status, code, message }`; a transport-level
+failure becomes `BoxxkiteError::Connection`.
 
 ```rust
-use boxkite_client::BoxkiteError;
+use boxxkite_client::BoxxkiteError;
 
 match client.exec(&sandbox.id, "echo hi", Default::default()).await {
     Ok(result) => println!("{}", result.stdout),
-    Err(BoxkiteError::Api { code, .. }) if code == "concurrent_sandbox_limit_reached" => {
+    Err(BoxxkiteError::Api { code, .. }) if code == "concurrent_sandbox_limit_reached" => {
         // back off, destroy an old session, etc.
     }
     Err(err) => return Err(err),
@@ -135,12 +135,12 @@ since `wiremock` is HTTP-only.
 ## Related tools
 
 Moving an in-progress local Claude Code/Codex CLI/opencode session (full
-conversation history, not just a diff) into a fresh boxkite sandbox is
-handled by the separate `boxkite-handoff` CLI (Python, built on
+conversation history, not just a diff) into a fresh boxxkite sandbox is
+handled by the separate `boxxkite-handoff` CLI (Python, built on
 `sdk-python`, not this crate) — see
 [`../docs/handoff-adapters.md`](../docs/handoff-adapters.md) and
 [`../handoff-cli/README.md`](../handoff-cli/README.md). Not yet published
 to PyPI.
 
-See the [root README](https://github.com/EvAlssment/boxkite#readme) for
-what boxkite is and the full self-hosting story.
+See the [root README](https://github.com/EvAlssment/boxxkite#readme) for
+what boxxkite is and the full self-hosting story.

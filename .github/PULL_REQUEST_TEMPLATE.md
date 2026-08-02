@@ -16,7 +16,7 @@
       `control-plane/` if this touches `control-plane/`) and it passes.
 - [ ] I did not introduce billing/pricing language into API responses or
       user-facing copy (see `control-plane/tests/test_usage_limits.py`'s
-      `_assert_no_pricing_language` — boxkite is a self-hosted sandbox, not a
+      `_assert_no_pricing_language` — boxxkite is a self-hosted sandbox, not a
       priced product).
 - [ ] If this touches sidecar authentication, network policy, or Linux
       capabilities, I've read [SECURITY.md](../SECURITY.md)'s "What's in

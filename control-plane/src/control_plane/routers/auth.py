@@ -4,10 +4,10 @@ issue #79: refresh-token rotation, password reset, and email verification.
 Signup/login remain unconditional -- the v1 baseline this module already
 shipped. The three additions below are each gated by their own settings
 flag, off by default, per this repo's standard new-attack-surface
-convention (BOXKITE_IMAGE_BUILDER_ENABLED, BOXKITE_VOLUMES_ENABLED,
+convention (BOXXKITE_IMAGE_BUILDER_ENABLED, BOXXKITE_VOLUMES_ENABLED,
 enable_git_tools, ...):
 
-- `BOXKITE_REFRESH_TOKENS_ENABLED` -- `POST /refresh`, `POST /logout`. When
+- `BOXXKITE_REFRESH_TOKENS_ENABLED` -- `POST /refresh`, `POST /logout`. When
   disabled, `TokenResponse.refresh_token` stays null and behavior is
   unchanged from before this issue: an access token simply expires and the
   caller re-authenticates via `POST /login`. When enabled, every
@@ -15,7 +15,7 @@ enable_git_tools, ...):
   one (rotation, not reuse) -- presenting an already-revoked token again is
   treated as a replay/theft signal and revokes every refresh token on the
   account as a precaution (see `RefreshTokenRepository.revoke_all_for_account`).
-- `BOXKITE_PASSWORD_RESET_ENABLED` -- `POST /password-reset/request`,
+- `BOXXKITE_PASSWORD_RESET_ENABLED` -- `POST /password-reset/request`,
   `POST /password-reset/confirm`. Email delivery is stubbed behind
   `EmailSender` (see `email_sender.py`) -- this repo has no real mail
   transport to wire up -- but the token generation/validation/password-update
@@ -25,7 +25,7 @@ enable_git_tools, ...):
   successful `confirm` also revokes every outstanding refresh token for the
   account (if refresh tokens are enabled), since a password reset is
   exactly the situation where an existing session might be compromised.
-- `BOXKITE_EMAIL_VERIFICATION_ENABLED` -- `POST /verify-email`,
+- `BOXXKITE_EMAIL_VERIFICATION_ENABLED` -- `POST /verify-email`,
   `POST /resend-verification`. Purely informational today:
   `Account.email_verified_at` is surfaced on `AccountOut` but no route
   gates access on it -- enforcing that is a deliberate, separate follow-up,
@@ -33,7 +33,7 @@ enable_git_tools, ...):
   pre-existing account (which all have `email_verified_at = NULL`).
 
 All four new endpoints get their own rate-limit bucket (see config.py),
-separate from `BOXKITE_AUTH_RATE_LIMIT_PER_MINUTE`'s signup/login bucket.
+separate from `BOXXKITE_AUTH_RATE_LIMIT_PER_MINUTE`'s signup/login bucket.
 
 OAuth/SSO login is explicitly NOT covered here -- tracked as a separate,
 lower-priority follow-up per issue #79's acceptance criteria.
@@ -87,7 +87,7 @@ router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
 def _require_flag(enabled: bool, feature_name: str) -> None:
     """Same 404-not-403 discipline `routers/images.py` uses for
-    `BOXKITE_IMAGE_BUILDER_ENABLED` -- a deployment that hasn't opted into
+    `BOXXKITE_IMAGE_BUILDER_ENABLED` -- a deployment that hasn't opted into
     a feature exposes no functional trace of it beyond the bare route
     existing in the OpenAPI schema."""
     if not enabled:
@@ -154,7 +154,7 @@ async def signup(
 
     account = await accounts.create(email=str(body.email), password_hash=hash_password(body.password))
 
-    if settings.BOXKITE_EMAIL_VERIFICATION_ENABLED:
+    if settings.BOXXKITE_EMAIL_VERIFICATION_ENABLED:
         await _send_verification_email_best_effort(db, account, email_sender)
 
     return await _issue_token_response(db, account)
@@ -199,7 +199,7 @@ async def login(
     response_model=TokenResponse,
     summary="Rotate a refresh token for a new access token",
     description=(
-        "Opt-in (BOXKITE_REFRESH_TOKENS_ENABLED). Exchanges a still-valid refresh token "
+        "Opt-in (BOXXKITE_REFRESH_TOKENS_ENABLED). Exchanges a still-valid refresh token "
         "for a brand new access_token + refresh_token pair, revoking the presented one in "
         "the same request. Presenting an already-revoked token is treated as a replay "
         "signal and revokes every refresh token on the account."
@@ -211,11 +211,11 @@ async def refresh(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    _require_flag(settings.BOXKITE_REFRESH_TOKENS_ENABLED, "Refresh-token rotation")
+    _require_flag(settings.BOXXKITE_REFRESH_TOKENS_ENABLED, "Refresh-token rotation")
     await enforce_rate_limit(
         request,
         bucket="refresh",
-        limit=settings.BOXKITE_REFRESH_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_REFRESH_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -251,11 +251,11 @@ async def refresh(
     "/logout",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Revoke a refresh token",
-    description="Opt-in (BOXKITE_REFRESH_TOKENS_ENABLED). Revokes one refresh token immediately.",
+    description="Opt-in (BOXXKITE_REFRESH_TOKENS_ENABLED). Revokes one refresh token immediately.",
 )
 async def logout(body: LogoutRequest, request: Request, db: AsyncSession = Depends(get_db)) -> None:
-    _require_flag(settings.BOXKITE_REFRESH_TOKENS_ENABLED, "Refresh-token rotation")
-    await enforce_rate_limit(request, bucket="logout", limit=settings.BOXKITE_REFRESH_RATE_LIMIT_PER_MINUTE)
+    _require_flag(settings.BOXXKITE_REFRESH_TOKENS_ENABLED, "Refresh-token rotation")
+    await enforce_rate_limit(request, bucket="logout", limit=settings.BOXXKITE_REFRESH_RATE_LIMIT_PER_MINUTE)
 
     tokens = RefreshTokenRepository(db)
     row = await tokens.get_by_hash(hash_secret(body.refresh_token))
@@ -271,7 +271,7 @@ async def logout(body: LogoutRequest, request: Request, db: AsyncSession = Depen
     response_model=MessageResponse,
     summary="Request a password reset email",
     description=(
-        "Opt-in (BOXKITE_PASSWORD_RESET_ENABLED). Always returns the same response whether "
+        "Opt-in (BOXXKITE_PASSWORD_RESET_ENABLED). Always returns the same response whether "
         "or not the email is registered, so this endpoint cannot be used to enumerate accounts."
     ),
 )
@@ -282,11 +282,11 @@ async def request_password_reset(
     db: AsyncSession = Depends(get_db),
     email_sender: EmailSender = Depends(get_email_sender_dep),
 ) -> MessageResponse:
-    _require_flag(settings.BOXKITE_PASSWORD_RESET_ENABLED, "Password reset")
+    _require_flag(settings.BOXXKITE_PASSWORD_RESET_ENABLED, "Password reset")
     await enforce_rate_limit(
         request,
         bucket="password_reset_request",
-        limit=settings.BOXKITE_PASSWORD_RESET_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_PASSWORD_RESET_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -308,7 +308,7 @@ async def request_password_reset(
     response_model=MessageResponse,
     summary="Confirm a password reset",
     description=(
-        "Opt-in (BOXKITE_PASSWORD_RESET_ENABLED). Consumes a password-reset token minted by "
+        "Opt-in (BOXXKITE_PASSWORD_RESET_ENABLED). Consumes a password-reset token minted by "
         "POST /password-reset/request and sets a new password. Also revokes every outstanding "
         "refresh token for the account, if refresh tokens are enabled."
     ),
@@ -319,11 +319,11 @@ async def confirm_password_reset(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
-    _require_flag(settings.BOXKITE_PASSWORD_RESET_ENABLED, "Password reset")
+    _require_flag(settings.BOXXKITE_PASSWORD_RESET_ENABLED, "Password reset")
     await enforce_rate_limit(
         request,
         bucket="password_reset_confirm",
-        limit=settings.BOXKITE_PASSWORD_RESET_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_PASSWORD_RESET_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -337,7 +337,7 @@ async def confirm_password_reset(
     await tokens.mark_used(token_id=row.id)
     await tokens.invalidate_active_for_account(row.account_id)
 
-    if settings.BOXKITE_REFRESH_TOKENS_ENABLED:
+    if settings.BOXXKITE_REFRESH_TOKENS_ENABLED:
         await RefreshTokenRepository(db).revoke_all_for_account(row.account_id)
 
     return MessageResponse(message="Password has been reset. Please log in with your new password.")
@@ -347,7 +347,7 @@ async def confirm_password_reset(
     "/verify-email",
     response_model=MessageResponse,
     summary="Confirm email verification",
-    description="Opt-in (BOXKITE_EMAIL_VERIFICATION_ENABLED).",
+    description="Opt-in (BOXXKITE_EMAIL_VERIFICATION_ENABLED).",
 )
 async def verify_email(
     body: EmailVerificationConfirmRequest,
@@ -355,11 +355,11 @@ async def verify_email(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
-    _require_flag(settings.BOXKITE_EMAIL_VERIFICATION_ENABLED, "Email verification")
+    _require_flag(settings.BOXXKITE_EMAIL_VERIFICATION_ENABLED, "Email verification")
     await enforce_rate_limit(
         request,
         bucket="email_verify",
-        limit=settings.BOXKITE_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -379,7 +379,7 @@ async def verify_email(
     "/resend-verification",
     response_model=MessageResponse,
     summary="Resend the verification email",
-    description="Opt-in (BOXKITE_EMAIL_VERIFICATION_ENABLED). Requires a dashboard session token.",
+    description="Opt-in (BOXXKITE_EMAIL_VERIFICATION_ENABLED). Requires a dashboard session token.",
 )
 async def resend_verification(
     request: Request,
@@ -388,12 +388,12 @@ async def resend_verification(
     current_account: Account = Depends(get_current_user),
     email_sender: EmailSender = Depends(get_email_sender_dep),
 ) -> MessageResponse:
-    _require_flag(settings.BOXKITE_EMAIL_VERIFICATION_ENABLED, "Email verification")
+    _require_flag(settings.BOXXKITE_EMAIL_VERIFICATION_ENABLED, "Email verification")
     await enforce_rate_limit(
         request,
         bucket="email_verify_resend",
         subject=str(current_account.id),
-        limit=settings.BOXKITE_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -420,7 +420,7 @@ async def _issue_token_response(db: AsyncSession, account: Account) -> TokenResp
     token, expires_in = create_access_token(account_id=account.id, email=account.email)
 
     refresh_token_raw: str | None = None
-    if settings.BOXKITE_REFRESH_TOKENS_ENABLED:
+    if settings.BOXXKITE_REFRESH_TOKENS_ENABLED:
         refresh_token_raw = await issue_refresh_token(db, account.id)
 
     return TokenResponse(

@@ -1,5 +1,5 @@
 """Email verification on signup (issue #79), opt-in via
-BOXKITE_EMAIL_VERIFICATION_ENABLED.
+BOXXKITE_EMAIL_VERIFICATION_ENABLED.
 
 Deliberately informational only today: verifying (or not) never blocks
 login or any other route -- see test_unverified_account_can_still_log_in.
@@ -33,7 +33,7 @@ async def test_signup_sends_verification_email_when_enabled(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_EMAIL_VERIFICATION_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_EMAIL_VERIFICATION_ENABLED", True)
 
     body = await signup(client, "verify-me@example.com")
     assert body["account"]["email_verified_at"] is None
@@ -56,7 +56,7 @@ async def test_verify_email_marks_account_verified(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_EMAIL_VERIFICATION_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_EMAIL_VERIFICATION_ENABLED", True)
 
     await signup(client, "verify-confirm@example.com")
     raw_token = fake_email_sender.verification_calls[0]["verification_token"]
@@ -76,7 +76,7 @@ async def test_verify_email_token_is_single_use(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_EMAIL_VERIFICATION_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_EMAIL_VERIFICATION_ENABLED", True)
 
     await signup(client, "verify-single-use@example.com")
     raw_token = fake_email_sender.verification_calls[0]["verification_token"]
@@ -92,7 +92,7 @@ async def test_verify_email_token_is_single_use(
 async def test_verify_email_rejects_unknown_token(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_EMAIL_VERIFICATION_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_EMAIL_VERIFICATION_ENABLED", True)
 
     resp = await client.post("/v1/auth/verify-email", json={"token": "not-a-real-token"})
     assert resp.status_code == 400
@@ -104,7 +104,7 @@ async def test_verify_email_rejects_expired_token(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_EMAIL_VERIFICATION_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_EMAIL_VERIFICATION_ENABLED", True)
     # Negative TTL means the token is already expired the instant it's minted.
     monkeypatch.setattr(settings, "EMAIL_VERIFICATION_TOKEN_TTL_HOURS", -1)
 
@@ -121,7 +121,7 @@ async def test_resend_verification_sends_a_new_email(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_EMAIL_VERIFICATION_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_EMAIL_VERIFICATION_ENABLED", True)
 
     signup_resp = await signup(client, "resend@example.com")
     assert len(fake_email_sender.verification_calls) == 1
@@ -139,7 +139,7 @@ async def test_resend_verification_requires_dashboard_jwt_not_api_key(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_EMAIL_VERIFICATION_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_EMAIL_VERIFICATION_ENABLED", True)
 
     signup_resp = await signup(client, "resend-wrong-cred@example.com")
     created_key = await create_api_key(client, signup_resp["access_token"])
@@ -156,7 +156,7 @@ async def test_resend_verification_no_ops_if_already_verified(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_EMAIL_VERIFICATION_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_EMAIL_VERIFICATION_ENABLED", True)
 
     signup_resp = await signup(client, "already-verified@example.com")
     raw_token = fake_email_sender.verification_calls[0]["verification_token"]
@@ -177,7 +177,7 @@ async def test_unverified_account_can_still_log_in(client: httpx.AsyncClient, mo
     legitimate, unverified account out of login."""
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_EMAIL_VERIFICATION_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_EMAIL_VERIFICATION_ENABLED", True)
 
     await signup(client, "never-verifies@example.com", password="correct-horse-1")
 

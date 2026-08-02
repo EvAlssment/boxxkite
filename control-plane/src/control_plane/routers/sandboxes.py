@@ -20,7 +20,7 @@ The exec/file routes below (`/exec`, `/files`, `/files/view`,
 `/files/str-replace`) are the operational counterpart to create/list/delete:
 once a caller owns a session, these proxy straight to
 `SandboxManager.execute`/`.file_create`/`.view`/`.str_replace` — the exact
-same high-level, session_id-keyed methods `src/boxkite/tools/*.py` already
+same high-level, session_id-keyed methods `src/boxxkite/tools/*.py` already
 use internally (pod resolution, sidecar auth token lookup, and HTTP retry/
 recovery all stay inside SandboxManager; nothing here reaches into its
 private `_`-prefixed internals). Ownership is checked with the identical
@@ -39,8 +39,8 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 import websockets
-from boxkite import resource_config
-from boxkite.command_whitelist import validate_command_whitelist
+from boxxkite import resource_config
+from boxxkite.command_whitelist import validate_command_whitelist
 from fastapi import APIRouter, Depends, Path, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -171,7 +171,7 @@ TAKEOVER_TYPED_SNAPSHOT_MAX_LENGTH = SANDBOX_FILE_CONTENT_MAX_LENGTH
 # replicas of a multi-instance deployment, so single-use is only
 # guaranteed within one replica until a shared store backs it (tracked
 # here rather than silently assumed away). The token's short TTL
-# (BOXKITE_TAKEOVER_TOKEN_TTL_SECONDS) bounds the exposure either way.
+# (BOXXKITE_TAKEOVER_TOKEN_TTL_SECONDS) bounds the exposure either way.
 _takeover_jti_seen: dict[str, float] = {}
 
 
@@ -348,7 +348,7 @@ async def _enforce_sandbox_rate_limit(request: Request, response: Response, acco
         request,
         bucket="sandbox_ops",
         subject=str(account.id),
-        limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -362,7 +362,7 @@ async def _enforce_sandbox_lifecycle_rate_limit(request: Request, response: Resp
         request,
         bucket="sandbox_lifecycle",
         subject=str(account.id),
-        limit=settings.BOXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -380,7 +380,7 @@ def _sandbox_operation_error(operation: str, exc: Exception) -> ApiError:
 
 
 def _to_out(row: SandboxSession) -> SandboxSessionOut:
-    expires_at = row.created_at + timedelta(minutes=settings.BOXKITE_MAX_SESSION_MINUTES)
+    expires_at = row.created_at + timedelta(minutes=settings.BOXXKITE_MAX_SESSION_MINUTES)
     return SandboxSessionOut(
         id=row.id,
         status="destroyed" if row.destroyed_at else "active",
@@ -444,7 +444,7 @@ def _validate_gpu_count_or_422(gpu_count: int | None) -> None:
             422,
             "gpu_support_disabled",
             "GPU support is an opt-in, experimental configuration (docs/GPU-SUPPORT-SCOPING.md) "
-            "that this deployment has not enabled (BOXKITE_GPU_ENABLED).",
+            "that this deployment has not enabled (BOXXKITE_GPU_ENABLED).",
         )
     ceiling = resource_config.max_gpu_count_per_session()
     if gpu_count <= 0 or gpu_count > ceiling:
@@ -483,9 +483,9 @@ async def _create_one_sandbox(
         **out.model_dump(),
         usage=UsageSummary(
             monthly_sandbox_hours_used=round(hours_used, 4),
-            monthly_sandbox_hours_limit=settings.BOXKITE_FREE_MONTHLY_SANDBOX_HOURS,
+            monthly_sandbox_hours_limit=settings.BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS,
             concurrent_sandboxes=active_count,
-            concurrent_sandboxes_limit=settings.BOXKITE_MAX_CONCURRENT_SANDBOXES,
+            concurrent_sandboxes_limit=settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES,
         ),
     )
 
@@ -498,14 +498,14 @@ async def _create_one_sandbox(
     description=(
         "Creates a new sandbox session via SandboxManager, scoped to the "
         "authenticated account. Enforces, in order: the concurrent-sandbox "
-        "cap (BOXKITE_MAX_CONCURRENT_SANDBOXES) and the monthly usage cap "
-        "(BOXKITE_FREE_MONTHLY_SANDBOX_HOURS) — a 429 with code "
+        "cap (BOXXKITE_MAX_CONCURRENT_SANDBOXES) and the monthly usage cap "
+        "(BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS) — a 429 with code "
         "`concurrent_sandbox_limit_reached` or `monthly_usage_limit_reached` "
         "is returned if either is hit, before any pod is created. Every "
-        "session is also hard-capped at BOXKITE_MAX_SESSION_MINUTES by a "
+        "session is also hard-capped at BOXXKITE_MAX_SESSION_MINUTES by a "
         "background reaper, independent of this call. `size` and "
-        "`storage_gb` are each capped per-account (BOXKITE_MAX_SANDBOX_SIZE, "
-        "BOXKITE_MAX_SANDBOX_STORAGE_GB) — exceeding either returns a 429 "
+        "`storage_gb` are each capped per-account (BOXXKITE_MAX_SANDBOX_SIZE, "
+        "BOXXKITE_MAX_SANDBOX_STORAGE_GB) — exceeding either returns a 429 "
         "before any pod is created. If `count` is greater than 1, a bare "
         "list of that many created sessions is returned instead of a single "
         "object, matching the shape `GET /v1/sandboxes` already uses for "
@@ -670,7 +670,7 @@ async def exec_in_sandbox(
         "SandboxManager.lsp_start(), which is exec-budgeted the same as "
         "/exec (docs/LSP-SUPPORT-SCOPING.md). 404s for a session_id owned "
         "by a different account, identical to /exec, and 404s "
-        "unconditionally when BOXKITE_LSP_ENABLED is unset on this "
+        "unconditionally when BOXXKITE_LSP_ENABLED is unset on this "
         "deployment."
     ),
 )
@@ -683,7 +683,7 @@ async def start_lsp_in_sandbox(
     db: AsyncSession = Depends(get_db),
     manager=Depends(get_manager),
 ) -> SandboxLspStartResponse:
-    if not settings.BOXKITE_LSP_ENABLED:
+    if not settings.BOXXKITE_LSP_ENABLED:
         raise ApiError(404, "not_found", "Language server support is not enabled on this deployment")
     await _enforce_sandbox_rate_limit(request, response, account)
     await _get_active_session_or_404(session_id=session_id, account=account, db=db)
@@ -713,7 +713,7 @@ async def start_lsp_in_sandbox(
         "/lsp/start. Proxies to SandboxManager.lsp_open() -- not "
         "exec-budgeted (docs/LSP-SUPPORT-SCOPING.md). 404s for a "
         "session_id owned by a different account, and 404s unconditionally "
-        "when BOXKITE_LSP_ENABLED is unset on this deployment."
+        "when BOXXKITE_LSP_ENABLED is unset on this deployment."
     ),
 )
 async def open_lsp_document_in_sandbox(
@@ -726,7 +726,7 @@ async def open_lsp_document_in_sandbox(
     db: AsyncSession = Depends(get_db),
     manager=Depends(get_manager),
 ) -> SandboxLspStatusResponse:
-    if not settings.BOXKITE_LSP_ENABLED:
+    if not settings.BOXXKITE_LSP_ENABLED:
         raise ApiError(404, "not_found", "Language server support is not enabled on this deployment")
     await _enforce_sandbox_rate_limit(request, response, account)
     await _get_active_session_or_404(session_id=session_id, account=account, db=db)
@@ -761,7 +761,7 @@ async def open_lsp_document_in_sandbox(
         "(see /lsp/{lsp_id}/open). Proxies to SandboxManager.lsp_completion(), "
         "which is exec-budgeted the same as /exec "
         "(docs/LSP-SUPPORT-SCOPING.md). 404s for a session_id owned by a "
-        "different account, and 404s unconditionally when BOXKITE_LSP_ENABLED "
+        "different account, and 404s unconditionally when BOXXKITE_LSP_ENABLED "
         "is unset on this deployment."
     ),
 )
@@ -775,7 +775,7 @@ async def lsp_completion_in_sandbox(
     db: AsyncSession = Depends(get_db),
     manager=Depends(get_manager),
 ) -> SandboxLspCompletionResponse:
-    if not settings.BOXKITE_LSP_ENABLED:
+    if not settings.BOXXKITE_LSP_ENABLED:
         raise ApiError(404, "not_found", "Language server support is not enabled on this deployment")
     await _enforce_sandbox_rate_limit(request, response, account)
     await _get_active_session_or_404(session_id=session_id, account=account, db=db)
@@ -810,7 +810,7 @@ async def lsp_completion_in_sandbox(
         "/lsp/start. Proxies to SandboxManager.lsp_stop() -- not "
         "exec-budgeted (docs/LSP-SUPPORT-SCOPING.md). 404s for a "
         "session_id owned by a different account, and 404s unconditionally "
-        "when BOXKITE_LSP_ENABLED is unset on this deployment."
+        "when BOXXKITE_LSP_ENABLED is unset on this deployment."
     ),
 )
 async def stop_lsp_in_sandbox(
@@ -822,7 +822,7 @@ async def stop_lsp_in_sandbox(
     db: AsyncSession = Depends(get_db),
     manager=Depends(get_manager),
 ) -> SandboxLspStatusResponse:
-    if not settings.BOXKITE_LSP_ENABLED:
+    if not settings.BOXXKITE_LSP_ENABLED:
         raise ApiError(404, "not_found", "Language server support is not enabled on this deployment")
     await _enforce_sandbox_rate_limit(request, response, account)
     await _get_active_session_or_404(session_id=session_id, account=account, db=db)
@@ -902,7 +902,7 @@ async def http_request_in_sandbox(
     description=(
         "Creates or overwrites a file in the session's sandbox workspace. "
         "Proxies to SandboxManager.file_create(), the same call "
-        "src/boxkite/tools/file_tools.py's file_create tool makes. 404s for "
+        "src/boxxkite/tools/file_tools.py's file_create tool makes. 404s for "
         "a session_id owned by a different account, identical to GET/DELETE."
     ),
 )
@@ -1748,7 +1748,7 @@ async def _resolve_account_via_takeover_token(
         raise ApiError(401, "invalid_takeover_token", "Account for this takeover token no longer exists")
     # This token is minted from an already-authenticated (and therefore
     # already deactivation-checked) API key, but its short TTL
-    # (BOXKITE_TAKEOVER_TOKEN_TTL_SECONDS, default 30s) is still a real
+    # (BOXXKITE_TAKEOVER_TOKEN_TTL_SECONDS, default 30s) is still a real
     # window: an account deactivated between mint and redemption must not
     # be able to complete the takeover WS handshake on the strength of a
     # token minted moments before -- same already-issued-credential
@@ -1859,7 +1859,7 @@ async def _relay_client_to_sidecar(
     was actually typed into the PTY for a read-only observer.
 
     `recording` (GitHub issue #133, optional -- only passed when
-    `BOXKITE_TAKEOVER_RECORDING_ENABLED`) mirrors the same bytes `typed_buffer`
+    `BOXXKITE_TAKEOVER_RECORDING_ENABLED`) mirrors the same bytes `typed_buffer`
     gets, as an "i" (input) asciicast event, for the full-duplex session
     recording -- same read_only exemption as `typed_buffer` above, since a
     read-only observer never actually sends input to the PTY."""
@@ -1972,7 +1972,7 @@ async def _periodic_typed_snapshot_flush(
     response_model=SandboxTakeoverTokenResponse,
     summary="Mint a short-lived, single-use token for WS /takeover",
     description=(
-        "Mints a short-lived (default 30s, BOXKITE_TAKEOVER_TOKEN_TTL_SECONDS), "
+        "Mints a short-lived (default 30s, BOXXKITE_TAKEOVER_TOKEN_TTL_SECONDS), "
         "single-use token scoped to exactly this (account, session) pair, "
         "for browser clients (the dashboard, the JS SDK) that cannot set a "
         "custom Authorization header on a WebSocket upgrade request. Pass "
@@ -2011,7 +2011,7 @@ async def mint_sandbox_takeover_token(
     token, expires_at = create_takeover_token(
         account_id=account.id,
         session_id=session_id,
-        ttl_seconds=settings.BOXKITE_TAKEOVER_TOKEN_TTL_SECONDS,
+        ttl_seconds=settings.BOXXKITE_TAKEOVER_TOKEN_TTL_SECONDS,
         read_only=read_only,
         api_key_id=key_row.id,
     )
@@ -2052,7 +2052,7 @@ async def takeover_sandbox(
     but `_relay_client_to_sidecar` drops every client->PTY byte instead of
     forwarding it -- see that function's docstring.
 
-    GitHub issue #133: when `BOXKITE_TAKEOVER_RECORDING_ENABLED`, a
+    GitHub issue #133: when `BOXXKITE_TAKEOVER_RECORDING_ENABLED`, a
     full-duplex, timestamped asciicast-v2 recording of the whole session
     (not just typed input) is also built up in memory and uploaded to
     object storage (`pty_recording.py`) once the session ends, with a
@@ -2099,7 +2099,7 @@ async def takeover_sandbox(
 
     typed_buffer = bytearray()
     flush_state = {"flushed_len": 0}
-    recording = _acquire_takeover_recording(session_id) if settings.BOXKITE_TAKEOVER_RECORDING_ENABLED else None
+    recording = _acquire_takeover_recording(session_id) if settings.BOXXKITE_TAKEOVER_RECORDING_ENABLED else None
     try:
         async with websockets.connect(
             target["ws_url"],
@@ -2299,7 +2299,7 @@ async def _authenticate_desktop_or_close(
     response_model=SandboxDesktopTokenResponse,
     summary="Mint a short-lived, single-use token for WS /desktop",
     description=(
-        "Mints a short-lived (default 30s, BOXKITE_DESKTOP_TOKEN_TTL_SECONDS), "
+        "Mints a short-lived (default 30s, BOXXKITE_DESKTOP_TOKEN_TTL_SECONDS), "
         "single-use token scoped to exactly this (account, session) pair, "
         "for browser clients (the dashboard, the JS SDK) that cannot set a "
         "custom Authorization header on a WebSocket upgrade request. Pass "
@@ -2309,7 +2309,7 @@ async def _authenticate_desktop_or_close(
         "API key (see `POST /v1/api-keys`' `role` field) -- a 'member'-role "
         "key gets 403 `desktop_not_permitted`. 404s for a session_id owned "
         "by a different account, identical to GET/DELETE, and 404s "
-        "unconditionally when BOXKITE_DESKTOP_ENABLED is unset on this "
+        "unconditionally when BOXXKITE_DESKTOP_ENABLED is unset on this "
         "deployment."
     ),
 )
@@ -2320,7 +2320,7 @@ async def mint_sandbox_desktop_token(
     account_and_key: tuple[Account, ApiKey] = Depends(get_current_account_and_key_via_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> SandboxDesktopTokenResponse:
-    if not settings.BOXKITE_DESKTOP_ENABLED:
+    if not settings.BOXXKITE_DESKTOP_ENABLED:
         raise ApiError(404, "not_found", "GUI desktop takeover is not enabled on this deployment")
     account, key_row = account_and_key
     await _enforce_sandbox_rate_limit(request, response, account)
@@ -2335,7 +2335,7 @@ async def mint_sandbox_desktop_token(
     token, expires_at = create_desktop_token(
         account_id=account.id,
         session_id=session_id,
-        ttl_seconds=settings.BOXKITE_DESKTOP_TOKEN_TTL_SECONDS,
+        ttl_seconds=settings.BOXXKITE_DESKTOP_TOKEN_TTL_SECONDS,
         api_key_id=key_row.id,
     )
     await _log_exec_entry(
@@ -2369,15 +2369,15 @@ async def desktop_sandbox(
        actually parsing it). Only `desktop_start`/`desktop_end` rows are
        written.
     2. No session recording (docs/GUI-COMPUTER-USE-SCOPING.md's deferred
-       list) -- unlike `BOXKITE_TAKEOVER_RECORDING_ENABLED`, there is no
+       list) -- unlike `BOXXKITE_TAKEOVER_RECORDING_ENABLED`, there is no
        pixel-stream recording option for this first pass.
 
-    404s unconditionally when BOXKITE_DESKTOP_ENABLED is unset, checked
+    404s unconditionally when BOXXKITE_DESKTOP_ENABLED is unset, checked
     BEFORE `_authenticate_desktop_or_close` runs any auth work at all (fail
     fast, no wasted auth work for a deployment that hasn't opted into this
     feature).
     """
-    if not settings.BOXKITE_DESKTOP_ENABLED:
+    if not settings.BOXXKITE_DESKTOP_ENABLED:
         await websocket.close(code=4404, reason="GUI desktop takeover is not enabled on this deployment")
         return
 
@@ -2477,7 +2477,7 @@ async def desktop_sandbox(
         "ownership check as `GET .../log`. 404s if `entry_id` doesn't belong "
         "to the caller's account, doesn't belong to this `session_id`, isn't "
         "a `takeover_end` row, or has no recording pointer at all (recording "
-        "was disabled via BOXKITE_TAKEOVER_RECORDING_ENABLED, or nothing was "
+        "was disabled via BOXXKITE_TAKEOVER_RECORDING_ENABLED, or nothing was "
         "ever typed/printed during that session). Works even after the "
         "sandbox session itself has been destroyed -- the recording is "
         "durable object-storage content, independent of the pod's lifecycle."
@@ -2533,7 +2533,7 @@ def _build_preview_url(*, session_id: str, port: int, token: str) -> str:
     trailing slash would 404 against a bare root fetch. See the design
     doc's "known limitations" section for the tradeoffs of a path-prefixed
     proxy (this one) vs. E2B/Daytona's subdomain-based approach."""
-    base = settings.BOXKITE_PUBLIC_URL.rstrip("/")
+    base = settings.BOXXKITE_PUBLIC_URL.rstrip("/")
     path = f"/v1/sandboxes/{session_id}/preview/{port}/?token={token}"
     return f"{base}{path}" if base else path
 
@@ -2749,7 +2749,7 @@ async def proxy_sandbox_preview(
         request,
         bucket="sandbox_preview",
         subject=session_id,
-        limit=settings.BOXKITE_PREVIEW_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_PREVIEW_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 

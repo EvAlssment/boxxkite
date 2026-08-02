@@ -3,12 +3,12 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-# PyPI distribution name is "boxkite-sandbox" — the plain "boxkite" name was
+# PyPI distribution name is "boxxkite-sandbox" — the plain "boxxkite" name was
 # already taken on PyPI. This does NOT change the import path: the package
-# directory stays `src/boxkite/`, so `import boxkite` keeps working exactly
+# directory stays `src/boxxkite/`, so `import boxxkite` keeps working exactly
 # as before. Same split as `beautifulsoup4` (dist name) vs `bs4` (import
-# name) — pip installs "boxkite-sandbox", code imports "boxkite".
-name = "boxkite-sandbox"
+# name) — pip installs "boxxkite-sandbox", code imports "boxxkite".
+name = "boxxkite-sandbox"
 version = "0.2.2"
 description = "A self-hostable, Kubernetes-native sandbox for agent code execution — pod-per-session isolation plus a complete bash/python/file tool surface."
 # PYPI_README.md is a short, PyPI-page-specific readme -- deliberately
@@ -19,7 +19,7 @@ description = "A self-hostable, Kubernetes-native sandbox for agent code executi
 readme = "PYPI_README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
-authors = [{ name = "boxkite contributors" }]
+authors = [{ name = "boxxkite contributors" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -38,40 +38,40 @@ dependencies = [
     "aiohttp>=3.10,<4",
     "typer>=0.12,<1",
     # Per-pod self-signed TLS cert generation for manager-to-sidecar
-    # transport (see src/boxkite/tls.py, docs/SIDECAR-TRANSPORT-TLS-DESIGN.md).
+    # transport (see src/boxxkite/tls.py, docs/SIDECAR-TRANSPORT-TLS-DESIGN.md).
     # Already an indirect dependency via azure-identity/msal in some
     # deployments, but this package uses it directly now, so it's pinned
     # here explicitly rather than relying on that transitive path.
     "cryptography>=42",
-    # `boxkite mcp init codex` writes ~/.codex/config.toml -- reading is
+    # `boxxkite mcp init codex` writes ~/.codex/config.toml -- reading is
     # stdlib tomllib (3.11+), but tomllib has no writer, hence tomli-w.
     "tomli-w>=1.0,<2",
 ]
 
 [project.urls]
-Homepage = "https://github.com/EvAlssment/boxkite"
-Repository = "https://github.com/EvAlssment/boxkite"
-Issues = "https://github.com/EvAlssment/boxkite/issues"
+Homepage = "https://github.com/EvAlssment/boxxkite"
+Repository = "https://github.com/EvAlssment/boxxkite"
+Issues = "https://github.com/EvAlssment/boxxkite/issues"
 
 [project.optional-dependencies]
-# The sandbox tool surface (src/boxkite/tools/) is framework-agnostic by
-# default (see boxkite.tools.create_sandbox_tool_specs) and has no
+# The sandbox tool surface (src/boxxkite/tools/) is framework-agnostic by
+# default (see boxxkite.tools.create_sandbox_tool_specs) and has no
 # LangChain/LangGraph dependency at all. Install this extra only if you
-# want boxkite.tools.create_sandbox_tools()/create_bash_tool()/etc. (or
-# boxkite.tools.adapters.to_langchain_tools) to hand back LangChain
+# want boxxkite.tools.create_sandbox_tools()/create_bash_tool()/etc. (or
+# boxxkite.tools.adapters.to_langchain_tools) to hand back LangChain
 # BaseTool objects directly. Mirrors sdk-python/pyproject.toml's own
 # `langchain` extra for the hosted-client package.
 langchain = [
     "langchain-core>=1.0,<2",
 ]
-# Install this extra only if you want boxkite.tools.adapters.to_llamaindex_tools
+# Install this extra only if you want boxxkite.tools.adapters.to_llamaindex_tools
 # to hand back LlamaIndex FunctionTool objects for a ReActAgent/FunctionAgent.
 # llama-index-core pulls in pydantic itself, which the schema-conversion
 # helper in adapters.py relies on -- no separate pydantic pin needed here.
 llamaindex = [
     "llama-index-core>=0.11,<1",
 ]
-# Install this extra only if you want boxkite.tools.adapters.to_openai_agents_tools
+# Install this extra only if you want boxxkite.tools.adapters.to_openai_agents_tools
 # to hand back agents.tool.FunctionTool objects for the OpenAI Agents SDK's
 # Agent(tools=[...]). See adapters.py's own module docstring for why this is
 # a function-tool-level integration, not the deeper native sandbox-provider
@@ -84,7 +84,7 @@ openai-agents = [
 # tests/test_tool_factory.py, tests/test_search_tools.py,
 # tests/test_tools_adapters.py), so dev pulls in all three extras.
 dev = [
-    "boxkite-sandbox[langchain,llamaindex,openai-agents]",
+    "boxxkite-sandbox[langchain,llamaindex,openai-agents]",
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "pytest-cov>=5.0",
@@ -93,7 +93,7 @@ dev = [
 ]
 
 [project.scripts]
-boxkite = "boxkite.cli:app"
+boxxkite = "boxxkite.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -131,19 +131,19 @@ select = ["F"]
 # the existing test suite (which exercises every mixin through
 # SandboxManager directly). Re-evaluate if this module ever moves to
 # explicit imports.
-"src/boxkite/manager.py" = ["F403", "F405"]
+"src/boxxkite/manager.py" = ["F403", "F405"]
 # _manager_config.py is the shared re-export hub every other mixin module
 # star-imports from -- every name it imports is intentionally imported
 # FOR re-export via its own `import *`, not for local use in this file, so
 # F401 ("imported but unused") is expected here specifically, not a real
 # unused-import bug.
-"src/boxkite/_manager_config.py" = ["F401", "F403", "F405"]
-"src/boxkite/_manager_create.py" = ["F403", "F405"]
-"src/boxkite/_manager_files_skills.py" = ["F403", "F405"]
-"src/boxkite/_manager_http_client.py" = ["F403", "F405"]
-"src/boxkite/_manager_metadata.py" = ["F403", "F405"]
-"src/boxkite/_manager_proxy.py" = ["F403", "F405"]
-"src/boxkite/_manager_recovery.py" = ["F403", "F405"]
-"src/boxkite/_manager_sessions_lookup.py" = ["F403", "F405"]
-"src/boxkite/_manager_tls_auth.py" = ["F403", "F405"]
-"src/boxkite/_manager_warm_pool.py" = ["F403", "F405"]
+"src/boxxkite/_manager_config.py" = ["F401", "F403", "F405"]
+"src/boxxkite/_manager_create.py" = ["F403", "F405"]
+"src/boxxkite/_manager_files_skills.py" = ["F403", "F405"]
+"src/boxxkite/_manager_http_client.py" = ["F403", "F405"]
+"src/boxxkite/_manager_metadata.py" = ["F403", "F405"]
+"src/boxxkite/_manager_proxy.py" = ["F403", "F405"]
+"src/boxxkite/_manager_recovery.py" = ["F403", "F405"]
+"src/boxxkite/_manager_sessions_lookup.py" = ["F403", "F405"]
+"src/boxxkite/_manager_tls_auth.py" = ["F403", "F405"]
+"src/boxxkite/_manager_warm_pool.py" = ["F403", "F405"]

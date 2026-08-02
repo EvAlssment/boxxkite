@@ -1,7 +1,17 @@
 # Changelog
 
-All notable changes to boxkite are documented here. Format loosely follows
+All notable changes to boxxkite are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); dates are UTC.
+
+## Unreleased
+
+### Changed
+- **Project renamed from "boxkite" to "boxxkite"** (new domain: boxxkite.com).
+  Package names, the Python import path (`boxkite` → `boxxkite`), the Go
+  module path, the Helm chart, and every `BOXKITE_*` environment variable
+  (now `BOXXKITE_*`) all move together. Entries below this point predate the
+  rename and describe the project as "boxkite" at the time they were written
+  — left as-is for historical accuracy.
 
 ## v0.2.2 — 2026-07-25
 

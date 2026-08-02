@@ -1,12 +1,12 @@
 """SandboxManager compose-mode fallback: auto-load the sidecar token + URL from
-~/.boxkite/local.env (written by `boxkite up`) so callers don't have to export
+~/.boxxkite/local.env (written by `boxxkite up`) so callers don't have to export
 them by hand. Explicit env vars still take precedence.
 """
 
 from __future__ import annotations
 
-import boxkite.local_env as local_env
-from boxkite import SandboxManager
+import boxxkite.local_env as local_env
+from boxxkite import SandboxManager
 
 
 def _write_local_env(tmp_path, token="filetoken", url="http://localhost:9999"):

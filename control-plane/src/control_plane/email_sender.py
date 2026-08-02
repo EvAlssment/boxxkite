@@ -18,7 +18,7 @@ deps.py). The default, `LoggingEmailSender`, is a clearly-marked
 in dev/test environments only, logs the raw token too (so a developer can
 exercise the full reset/verify flow locally without a real mail transport).
 It never actually delivers anything. A production deployment that enables
-`BOXKITE_PASSWORD_RESET_ENABLED` or `BOXKITE_EMAIL_VERIFICATION_ENABLED`
+`BOXXKITE_PASSWORD_RESET_ENABLED` or `BOXXKITE_EMAIL_VERIFICATION_ENABLED`
 MUST supply a real `EmailSender` implementation (SMTP, SES, SendGrid, ...)
 via `set_email_sender_for_production` (or by overriding `get_email_sender`
 in a deployment-specific entrypoint) -- the same "insecure-dev-default,

@@ -17,7 +17,7 @@ from typing import Any, Literal
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from boxkite.audit import GENESIS_HASH, compute_row_hash
+from boxxkite.audit import GENESIS_HASH, compute_row_hash
 
 from .audit_chain import canonical_started_at
 from .audit_chain_lock import get_exec_log_chain_lock
@@ -496,7 +496,7 @@ class SandboxSessionRepository:
 
     async def list_active_older_than(self, *, cutoff: datetime) -> list[SandboxSession]:
         """All still-active sessions across every account created before
-        `cutoff` — used by the reaper to enforce BOXKITE_MAX_SESSION_MINUTES."""
+        `cutoff` — used by the reaper to enforce BOXXKITE_MAX_SESSION_MINUTES."""
         result = await self.db.execute(
             select(SandboxSession).where(
                 SandboxSession.destroyed_at.is_(None), SandboxSession.created_at <= cutoff
@@ -509,11 +509,11 @@ class SandboxSessionRepository:
     ) -> list[SandboxSession]:
         """Same as `list_active_older_than`, scoped to one account — used by
         the reaper to ALSO reap the demo-playground account's sessions on
-        their own much shorter BOXKITE_DEMO_LIFETIME_MINUTES cutoff,
-        independent of the global BOXKITE_MAX_SESSION_MINUTES cutoff every
+        their own much shorter BOXXKITE_DEMO_LIFETIME_MINUTES cutoff,
+        independent of the global BOXXKITE_MAX_SESSION_MINUTES cutoff every
         other account gets (see reaper.py). Without this, a demo session's
         bookkeeping row would sit "active" — still counting against
-        BOXKITE_DEMO_MAX_CONCURRENT — for up to BOXKITE_MAX_SESSION_MINUTES
+        BOXXKITE_DEMO_MAX_CONCURRENT — for up to BOXXKITE_MAX_SESSION_MINUTES
         even though its pod was already killed minutes earlier by its own
         K8s activeDeadlineSeconds."""
         result = await self.db.execute(
@@ -1111,7 +1111,7 @@ class SnapshotRepository:
         return list(result.scalars().all())
 
     async def count_active_for_account(self, account_id: str) -> int:
-        """Non-deleted snapshot count -- backs BOXKITE_MAX_SNAPSHOTS_PER_ACCOUNT."""
+        """Non-deleted snapshot count -- backs BOXXKITE_MAX_SNAPSHOTS_PER_ACCOUNT."""
         result = await self.db.execute(
             select(func.count())
             .select_from(Snapshot)
@@ -1185,7 +1185,7 @@ class SandboxImageRepository:
         return list(result.scalars().all())
 
     async def count_active_for_account(self, account_id: str) -> int:
-        """Non-deleted image count -- backs BOXKITE_MAX_IMAGES_PER_ACCOUNT."""
+        """Non-deleted image count -- backs BOXXKITE_MAX_IMAGES_PER_ACCOUNT."""
         result = await self.db.execute(
             select(func.count())
             .select_from(SandboxImage)
@@ -1196,7 +1196,7 @@ class SandboxImageRepository:
     async def count_in_flight_total(self) -> int:
         """Cluster-wide count of builds not yet resolved to a terminal
         status ("queued", "building", or "scanning"), across ALL accounts
-        combined -- backs BOXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS.
+        combined -- backs BOXXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS.
         Deliberately NOT the same query as count_active_for_account (which
         also counts completed/failed/rejected non-deleted rows, the right
         definition for the per-account image-count cap, but the wrong one
@@ -1701,7 +1701,7 @@ class WebhookSubscriptionRepository:
         nonce: str,
         wrapped_data_key: str,
         encryption_key_id: str,
-        payload_format: str = "boxkite_v1",
+        payload_format: str = "boxxkite_v1",
         hec_token_ciphertext: str | None = None,
         hec_token_nonce: str | None = None,
         hec_token_wrapped_data_key: str | None = None,
@@ -1886,7 +1886,7 @@ class WebhookDeliveryRepository:
         exhausted: bool,
     ) -> None:
         """Records one failed attempt. If `exhausted` is True (attempt_count
-        has reached BOXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS), marks the row
+        has reached BOXXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS), marks the row
         `failed` terminally; otherwise schedules the next retry at
         `next_attempt_at` and leaves status as `pending`."""
         result = await self.db.execute(select(WebhookDelivery).where(WebhookDelivery.id == delivery_id))

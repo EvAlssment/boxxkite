@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from boxkite_handoff.adapters.codex import CodexAdapter
-from boxkite_handoff.core import HandoffError
+from boxxkite_handoff.adapters.codex import CodexAdapter
+from boxxkite_handoff.core import HandoffError
 
 UUID_OLD = "5973b6c0-94b8-487b-a530-2aeb6098ae0e"
 UUID_NEW = "123e4567-e89b-12d3-a456-426614174000"

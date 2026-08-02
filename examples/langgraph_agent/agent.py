@@ -1,4 +1,4 @@
-"""LangGraph agent wired to boxkite's 5 sandbox tools.
+"""LangGraph agent wired to boxxkite's 5 sandbox tools.
 
 This is the headline example: `create_sandbox_tools(...)` returns plain
 LangChain tools (bash_tool, file_create, view, str_replace, present_files),
@@ -11,9 +11,9 @@ That exercises all three of the tools an agent actually needs for real work
 (file_create, bash_tool, view) end to end against a real sandbox pod.
 
 Prerequisites:
-  - `boxkite up` running (docker-compose sidecar reachable at localhost:8080),
-    with the token it wrote to ~/.boxkite/local.env.
-  - `pip install -r requirements.txt` (this repo's `boxkite` package, plus
+  - `boxxkite up` running (docker-compose sidecar reachable at localhost:8080),
+    with the token it wrote to ~/.boxxkite/local.env.
+  - `pip install -r requirements.txt` (this repo's `boxxkite` package, plus
     langgraph + a LangChain chat model integration).
   - An LLM API key. This example uses Anthropic's Claude by default
     (`ANTHROPIC_API_KEY`); swap `init_chat_model`'s argument for any other
@@ -21,7 +21,7 @@ Prerequisites:
 
 Run:
     export ANTHROPIC_API_KEY=sk-ant-...
-    export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxkite/local.env | cut -d= -f2)
+    export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxxkite/local.env | cut -d= -f2)
     export RUNTIME_MODE=compose SIDECAR_URL=http://localhost:8080
     python agent.py
 """
@@ -35,8 +35,8 @@ from uuid import uuid4
 from langchain.chat_models import init_chat_model
 from langgraph.prebuilt import create_react_agent
 
-from boxkite import SandboxManager
-from boxkite.tools import create_sandbox_tools
+from boxxkite import SandboxManager
+from boxxkite.tools import create_sandbox_tools
 
 TASK = """\
 You have a sandbox with bash_tool, file_create, view, str_replace, and
@@ -64,7 +64,7 @@ present_files available.
 
 
 async def main() -> None:
-    model_name = os.environ.get("BOXKITE_EXAMPLE_MODEL", "anthropic:claude-sonnet-4-5")
+    model_name = os.environ.get("BOXXKITE_EXAMPLE_MODEL", "anthropic:claude-sonnet-4-5")
     model = init_chat_model(model_name)
 
     manager = SandboxManager()

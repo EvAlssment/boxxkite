@@ -23,7 +23,7 @@ def _enable_image_builder(monkeypatch):
     # Off by default (opt-in feature) -- every test in this file explicitly
     # turns it on, so a test that forgets this fixture would get a 404 and
     # fail loudly rather than silently exercising a disabled feature.
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_BUILDER_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_BUILDER_ENABLED", True)
 
 
 async def _build_image(
@@ -31,7 +31,7 @@ async def _build_image(
     key: str,
     *,
     label: str = "data-eng",
-    base: str = "boxkite-default",
+    base: str = "boxxkite-default",
     python_packages: list[str] | None = None,
     apt_packages: list[str] | None = None,
     npm_packages: list[str] | None = None,
@@ -68,11 +68,11 @@ async def _wait_for_status(client: httpx.AsyncClient, key: str, image_id: str, *
 
 
 async def test_build_disabled_by_default(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_BUILDER_ENABLED", False)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_BUILDER_ENABLED", False)
     key = await signup_and_get_api_key(client, "images-disabled@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-default", "python_packages": ["polars==1.9.0"]},
+        json={"base": "boxxkite-default", "python_packages": ["polars==1.9.0"]},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 404
@@ -98,7 +98,7 @@ async def test_npm_package_build_is_queued_then_completes(client: httpx.AsyncCli
     accepted = await _build_image(
         client,
         key,
-        base="boxkite-minimal",
+        base="boxxkite-minimal",
         python_packages=[],
         npm_packages=["@anthropic-ai/claude-code==2.0.1"],
     )
@@ -112,20 +112,20 @@ async def test_npm_package_build_is_queued_then_completes(client: httpx.AsyncCli
 async def test_node_base_build_is_queued_then_completes(client: httpx.AsyncClient):
     key = await signup_and_get_api_key(client, "images-node-base@example.com")
     accepted = await _build_image(
-        client, key, base="boxkite-node", python_packages=[], npm_packages=["typescript==5.6.0"]
+        client, key, base="boxxkite-node", python_packages=[], npm_packages=["typescript==5.6.0"]
     )
     assert accepted["status"] == "queued"
 
     final = await _wait_for_status(client, key, accepted["id"])
     assert final["status"] == "completed"
-    assert final["base"] == "boxkite-node"
+    assert final["base"] == "boxxkite-node"
 
 
 async def test_node_base_rejects_python_packages_with_422(client: httpx.AsyncClient):
     key = await signup_and_get_api_key(client, "images-node-python@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-node", "python_packages": ["polars==1.9.0"]},
+        json={"base": "boxxkite-node", "python_packages": ["polars==1.9.0"]},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 422, resp.text
@@ -134,13 +134,13 @@ async def test_node_base_rejects_python_packages_with_422(client: httpx.AsyncCli
 async def test_nextjs_base_build_is_queued_then_completes(client: httpx.AsyncClient):
     key = await signup_and_get_api_key(client, "images-nextjs-base@example.com")
     accepted = await _build_image(
-        client, key, base="boxkite-nextjs", python_packages=[], npm_packages=["typescript==5.6.0"]
+        client, key, base="boxxkite-nextjs", python_packages=[], npm_packages=["typescript==5.6.0"]
     )
     assert accepted["status"] == "queued"
 
     final = await _wait_for_status(client, key, accepted["id"])
     assert final["status"] == "completed"
-    assert final["base"] == "boxkite-nextjs"
+    assert final["base"] == "boxxkite-nextjs"
     assert final["npm_packages"] == ["typescript==5.6.0"]
 
 
@@ -148,7 +148,7 @@ async def test_nextjs_base_rejects_python_packages_with_422(client: httpx.AsyncC
     key = await signup_and_get_api_key(client, "images-nextjs-python@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-nextjs", "python_packages": ["polars==1.9.0"]},
+        json={"base": "boxxkite-nextjs", "python_packages": ["polars==1.9.0"]},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 422, resp.text
@@ -157,20 +157,20 @@ async def test_nextjs_base_rejects_python_packages_with_422(client: httpx.AsyncC
 async def test_go_base_build_is_queued_then_completes(client: httpx.AsyncClient):
     key = await signup_and_get_api_key(client, "images-go-base@example.com")
     accepted = await _build_image(
-        client, key, base="boxkite-go", python_packages=[], apt_packages=["ripgrep==14.1.0-1"]
+        client, key, base="boxxkite-go", python_packages=[], apt_packages=["ripgrep==14.1.0-1"]
     )
     assert accepted["status"] == "queued"
 
     final = await _wait_for_status(client, key, accepted["id"])
     assert final["status"] == "completed"
-    assert final["base"] == "boxkite-go"
+    assert final["base"] == "boxxkite-go"
 
 
 async def test_go_base_rejects_python_packages_with_422(client: httpx.AsyncClient):
     key = await signup_and_get_api_key(client, "images-go-python@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-go", "python_packages": ["polars==1.9.0"]},
+        json={"base": "boxxkite-go", "python_packages": ["polars==1.9.0"]},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 422, resp.text
@@ -180,7 +180,7 @@ async def test_go_base_rejects_npm_packages_with_422(client: httpx.AsyncClient):
     key = await signup_and_get_api_key(client, "images-go-npm@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-go", "python_packages": [], "npm_packages": ["typescript==5.6.0"]},
+        json={"base": "boxxkite-go", "python_packages": [], "npm_packages": ["typescript==5.6.0"]},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 422, resp.text
@@ -189,20 +189,20 @@ async def test_go_base_rejects_npm_packages_with_422(client: httpx.AsyncClient):
 async def test_rust_base_build_is_queued_then_completes(client: httpx.AsyncClient):
     key = await signup_and_get_api_key(client, "images-rust-base@example.com")
     accepted = await _build_image(
-        client, key, base="boxkite-rust", python_packages=[], apt_packages=["ripgrep==14.1.0-1"]
+        client, key, base="boxxkite-rust", python_packages=[], apt_packages=["ripgrep==14.1.0-1"]
     )
     assert accepted["status"] == "queued"
 
     final = await _wait_for_status(client, key, accepted["id"])
     assert final["status"] == "completed"
-    assert final["base"] == "boxkite-rust"
+    assert final["base"] == "boxxkite-rust"
 
 
 async def test_rust_base_rejects_python_packages_with_422(client: httpx.AsyncClient):
     key = await signup_and_get_api_key(client, "images-rust-python@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-rust", "python_packages": ["polars==1.9.0"]},
+        json={"base": "boxxkite-rust", "python_packages": ["polars==1.9.0"]},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 422, resp.text
@@ -212,7 +212,7 @@ async def test_rust_base_rejects_npm_packages_with_422(client: httpx.AsyncClient
     key = await signup_and_get_api_key(client, "images-rust-npm@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-rust", "python_packages": [], "npm_packages": ["typescript==5.6.0"]},
+        json={"base": "boxxkite-rust", "python_packages": [], "npm_packages": ["typescript==5.6.0"]},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 422, resp.text
@@ -222,7 +222,7 @@ async def test_unpinned_npm_package_is_rejected_with_400(client: httpx.AsyncClie
     key = await signup_and_get_api_key(client, "images-npm-unpinned@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-minimal", "python_packages": [], "npm_packages": ["typescript"]},
+        json={"base": "boxxkite-minimal", "python_packages": [], "npm_packages": ["typescript"]},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 422, resp.text
@@ -232,7 +232,7 @@ async def test_unpinned_python_package_is_rejected_with_400(client: httpx.AsyncC
     key = await signup_and_get_api_key(client, "images-unpinned@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-default", "python_packages": ["polars"], "apt_packages": []},
+        json={"base": "boxxkite-default", "python_packages": ["polars"], "apt_packages": []},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 422, resp.text
@@ -242,7 +242,7 @@ async def test_range_pinned_package_is_rejected_with_400(client: httpx.AsyncClie
     key = await signup_and_get_api_key(client, "images-ranged@example.com")
     resp = await client.post(
         "/v1/images",
-        json={"base": "boxkite-default", "python_packages": ["polars>=1.9.0"], "apt_packages": []},
+        json={"base": "boxxkite-default", "python_packages": ["polars>=1.9.0"], "apt_packages": []},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 422, resp.text
@@ -258,13 +258,13 @@ async def test_non_default_base_is_rejected(client: httpx.AsyncClient):
     assert resp.status_code == 422, resp.text
 
 
-async def test_boxkite_minimal_base_is_accepted_and_builds(client: httpx.AsyncClient):
-    """boxkite-minimal is a second pre-approved base (still an enum value,
+async def test_boxxkite_minimal_base_is_accepted_and_builds(client: httpx.AsyncClient):
+    """boxxkite-minimal is a second pre-approved base (still an enum value,
     never a free-form image reference) for callers who want a lean base
-    with none of boxkite-default's preinstalled data-science/document/
+    with none of boxxkite-default's preinstalled data-science/document/
     browser stack."""
     key = await signup_and_get_api_key(client, "images-minimal@example.com")
-    accepted = await _build_image(client, key, base="boxkite-minimal", python_packages=["duckdb==1.1.3"])
+    accepted = await _build_image(client, key, base="boxxkite-minimal", python_packages=["duckdb==1.1.3"])
     final = await _wait_for_status(client, key, accepted["id"])
     assert final["status"] == "completed"
     assert final["digest"] is not None
@@ -298,12 +298,12 @@ async def test_build_cache_hit_reuses_digest_within_window(client: httpx.AsyncCl
 
 
 async def test_image_build_limit_returns_429(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_IMAGES_PER_ACCOUNT", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_IMAGES_PER_ACCOUNT", 1)
     key = await signup_and_get_api_key(client, "images-limit@example.com")
     await _build_image(client, key, label="one", python_packages=["polars==1.9.0"])
     resp = await client.post(
         "/v1/images",
-        json={"label": "two", "base": "boxkite-default", "python_packages": ["duckdb==1.1.3"]},
+        json={"label": "two", "base": "boxxkite-default", "python_packages": ["duckdb==1.1.3"]},
         headers={"Authorization": f"Bearer {key}"},
     )
     assert resp.status_code == 429

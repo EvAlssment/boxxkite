@@ -1,14 +1,14 @@
-"""Tests for `boxkite keys ls/rm` and `boxkite whoami`. Same mocking
+"""Tests for `boxxkite keys ls/rm` and `boxxkite whoami`. Same mocking
 pattern as test_cli.py: httpx is monkeypatched, no real control-plane."""
 
 from __future__ import annotations
 
 from typer.testing import CliRunner
 
-from boxkite.cli import app
-from boxkite.cli import client as client_module
-from boxkite.cli import cmd_keys
-from boxkite.cli import config_store
+from boxxkite.cli import app
+from boxxkite.cli import client as client_module
+from boxxkite.cli import cmd_keys
+from boxxkite.cli import config_store
 
 runner = CliRunner()
 
@@ -30,14 +30,14 @@ import pytest  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _isolated_config(tmp_path, monkeypatch):
-    config_dir = tmp_path / ".boxkite"
+    config_dir = tmp_path / ".boxxkite"
     monkeypatch.setattr(config_store, "CONFIG_DIR", config_dir)
     monkeypatch.setattr(config_store, "CONFIG_FILE", config_dir / "config.toml")
     monkeypatch.setattr(config_store, "LOCAL_ENV_FILE", config_dir / "local.env")
     yield
 
 
-# ── boxkite keys ls/rm: JWT login flow, not the stored API key ──────────
+# ── boxxkite keys ls/rm: JWT login flow, not the stored API key ──────────
 def test_keys_ls_logs_in_and_lists_keys(monkeypatch):
     config_store.write_hosted_config(base_url="https://cp.example.com")
 
@@ -99,10 +99,10 @@ def test_keys_ls_requires_configured_url():
     result = runner.invoke(app, ["keys", "ls", "--email", "a@example.com", "--password", "x"])
 
     assert result.exit_code == 1
-    assert "boxkite config set-url" in result.output
+    assert "boxxkite config set-url" in result.output
 
 
-# ── boxkite whoami: uses the already-stored API key, no prompt ──────────
+# ── boxxkite whoami: uses the already-stored API key, no prompt ──────────
 def test_whoami_shows_email_and_usage(monkeypatch):
     config_store.write_hosted_config(base_url="https://cp.example.com", api_key="bxk_live_x")
 

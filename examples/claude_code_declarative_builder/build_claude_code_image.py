@@ -10,7 +10,7 @@ sandbox pattern this script follows (same HTTP client, same auth flow, same
 
 What this proves that the Dockerfile can't show by itself: that
 `deploy/sandbox-claude-code.Dockerfile`'s content (git + openssh-client on
-top of `boxkite-minimal`, Claude Code installed globally via npm, npm
+top of `boxxkite-minimal`, Claude Code installed globally via npm, npm
 stripped afterwards) can be expressed as a single `POST /v1/images` call
 instead of a hand-maintained Dockerfile, now that `npm_packages` exists on
 `SandboxImageBuildRequest` (it didn't when that Dockerfile was written --
@@ -19,7 +19,7 @@ see its own header comment).
 IMPORTANT -- read before running this against anything but a local dev
 instance:
   - The declarative builder is OFF by default
-    (`BOXKITE_IMAGE_BUILDER_ENABLED=false`); every /v1/images route 404s
+    (`BOXXKITE_IMAGE_BUILDER_ENABLED=false`); every /v1/images route 404s
     until an operator opts in.
   - Per docs/DECLARATIVE-BUILDER-DESIGN.md's own status note, the real
     Kubernetes build path (`KanikoJobBuildRunner.run_build`) is not
@@ -34,7 +34,7 @@ instance:
 
 Prerequisites:
   - A running control-plane instance reachable at CONTROL_PLANE_URL with
-    BOXKITE_IMAGE_BUILDER_ENABLED=true (see this directory's README).
+    BOXXKITE_IMAGE_BUILDER_ENABLED=true (see this directory's README).
   - `pip install httpx`
 
 Run:
@@ -57,10 +57,10 @@ POLL_INTERVAL_SECONDS = 1.0
 POLL_TIMEOUT_SECONDS = 120.0
 
 # The exact-version pins equivalent to deploy/sandbox-claude-code.Dockerfile's
-# content, layered on the "boxkite-minimal" base (lean python+node, no
+# content, layered on the "boxxkite-minimal" base (lean python+node, no
 # data-science/document/browser stack -- see schemas.py's `base` field
 # description). Every pin below was verified installable against the live
-# Wolfi package repo `boxkite-minimal` is built from -- see this directory's
+# Wolfi package repo `boxxkite-minimal` is built from -- see this directory's
 # README for exactly how and when that was checked, and the caveat that
 # Wolfi is a rolling-release distro so old package builds get pruned; a pin
 # that resolves today is not guaranteed to still resolve months from now.
@@ -113,7 +113,7 @@ def _build_image(api_headers: dict[str, str]) -> dict:
         f"{CONTROL_PLANE_URL}/v1/images",
         json={
             "label": "claude-code-declarative",
-            "base": "boxkite-minimal",
+            "base": "boxxkite-minimal",
             "apt_packages": APT_PACKAGES,
             "npm_packages": NPM_PACKAGES,
         },

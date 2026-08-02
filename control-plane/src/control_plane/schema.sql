@@ -1,4 +1,4 @@
--- boxkite control-plane schema (PostgreSQL).
+-- boxxkite control-plane schema (PostgreSQL).
 --
 -- AUTO-GENERATED from src/control_plane/models_orm.py by
 -- scripts/generate_schema_sql.py — do NOT edit by hand. Run that script after

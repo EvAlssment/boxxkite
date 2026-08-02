@@ -1,13 +1,13 @@
 [package]
-name = "boxkite-client"
+name = "boxxkite-client"
 version = "0.2.2"
 edition = "2021"
 rust-version = "1.75"
-description = "Rust client for a hosted boxkite control-plane (sandboxes, exec, files, audit log, human takeover)"
+description = "Rust client for a hosted boxxkite control-plane (sandboxes, exec, files, audit log, human takeover)"
 license = "Apache-2.0"
-repository = "https://github.com/EvAlssment/boxkite"
+repository = "https://github.com/EvAlssment/boxxkite"
 readme = "README.md"
-keywords = ["sandbox", "agent", "code-execution", "boxkite"]
+keywords = ["sandbox", "agent", "code-execution", "boxxkite"]
 categories = ["api-bindings", "asynchronous"]
 
 [dependencies]

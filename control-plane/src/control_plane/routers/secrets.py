@@ -37,7 +37,7 @@ async def _enforce_secret_rate_limit(request: Request, response: Response, accou
         request,
         bucket="secret_ops",
         subject=str(account.id),
-        limit=settings.BOXKITE_SECRET_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_SECRET_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -106,11 +106,11 @@ async def create_secret(
     secrets = SecretRepository(db)
 
     existing_count = await secrets.count_for_account(account.id)
-    if existing_count >= settings.BOXKITE_MAX_SECRETS_PER_ACCOUNT:
+    if existing_count >= settings.BOXXKITE_MAX_SECRETS_PER_ACCOUNT:
         raise LimitExceededError(
             code="secret_limit_reached",
             message="Secret limit reached for this account.",
-            details={"limit": settings.BOXKITE_MAX_SECRETS_PER_ACCOUNT},
+            details={"limit": settings.BOXXKITE_MAX_SECRETS_PER_ACCOUNT},
         )
 
     if await secrets.get_by_name_for_account(account_id=account.id, name=body.name) is not None:

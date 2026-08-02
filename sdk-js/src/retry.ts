@@ -3,7 +3,7 @@
  * honoring a server `Retry-After` header, applied only to idempotent
  * requests that fail transiently (a connection error, HTTP 429, or 5xx).
  *
- * Retries are off by default -- a BoxkiteClient constructed without a
+ * Retries are off by default -- a BoxxkiteClient constructed without a
  * `retry` option behaves exactly as before (one attempt, no backoff).
  * Passing `retry: {}` enables it with the sensible defaults below; every
  * knob is individually overridable.

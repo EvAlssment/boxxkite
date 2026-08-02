@@ -4,7 +4,7 @@
 Mirrors tests/test_sidecar_browser.py's/tests/test_sidecar_pty.py's coverage
 shape:
 
-- 404 (well, WS close code 4404) when BOXKITE_DESKTOP_ENABLED is off (the
+- 404 (well, WS close code 4404) when BOXXKITE_DESKTOP_ENABLED is off (the
   default).
 - Auth is checked before accept()/before any stack is spawned.
 - _ensure_desktop_stack_running spawns Xvfb -> WM -> x11vnc in that order,
@@ -14,7 +14,7 @@ shape:
 - kill_desktop_session terminates every tracked process and clears the
   tracking dict; safe no-op when nothing is running.
 - /configure kills any live desktop stack before wiping session state,
-  unconditionally (regardless of the current BOXKITE_DESKTOP_ENABLED
+  unconditionally (regardless of the current BOXXKITE_DESKTOP_ENABLED
   value) -- same cross-tenant-leak guard class as issue #130/#144's tmux
   fix.
 
@@ -79,7 +79,7 @@ async def _noop_wait() -> None:
 
 
 def test_desktop_ws_closes_4404_when_disabled(monkeypatch):
-    monkeypatch.setattr(sidecar_main, "BOXKITE_DESKTOP_ENABLED", False)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_DESKTOP_ENABLED", False)
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
     client = _client()
 
@@ -91,7 +91,7 @@ def test_desktop_ws_closes_4404_when_disabled(monkeypatch):
 
 
 def test_desktop_ws_rejects_missing_auth_before_spawning_stack(monkeypatch):
-    monkeypatch.setattr(sidecar_main, "BOXKITE_DESKTOP_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_DESKTOP_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
 
     called = {"count": 0}
@@ -112,7 +112,7 @@ def test_desktop_ws_rejects_missing_auth_before_spawning_stack(monkeypatch):
 
 
 def test_desktop_ws_fails_closed_when_token_unconfigured(monkeypatch):
-    monkeypatch.setattr(sidecar_main, "BOXKITE_DESKTOP_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_DESKTOP_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", "")
     client = _client()
 

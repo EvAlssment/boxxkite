@@ -1,25 +1,25 @@
 /**
- * LangChain.js tool factory over a hosted boxkite control-plane.
+ * LangChain.js tool factory over a hosted boxxkite control-plane.
  *
  * Mirrors the Python SDK's create_sandbox_tools (same twelve tool names:
  * bash_tool, file_create, view, str_replace, ls, glob, grep, start_process,
  * get_process_output, send_process_input, stop_process, list_processes; plus
- * an optional http_request tool) and boxkite.tools' own shapes, so switching
+ * an optional http_request tool) and boxxkite.tools' own shapes, so switching
  * between a self-hosted deployment
  * and this hosted client needs no changes beyond which factory produced
  * the tools. Requires `@langchain/core` as a peer dependency -- import
- * from "boxkite-client/langchain", not the package root, so consumers who
+ * from "boxxkite-client/langchain", not the package root, so consumers who
  * don't use LangChain never need to install it.
  */
 
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 
-import { BoxkiteClient } from "./client.js";
-import { BoxkiteApiError } from "./errors.js";
+import { BoxxkiteClient } from "./client.js";
+import { BoxxkiteApiError } from "./errors.js";
 
 export function createSandboxTools(
-  client: BoxkiteClient,
+  client: BoxxkiteClient,
   sessionId: string,
   options?: { enableHttpRequestTool?: boolean },
 ) {
@@ -32,7 +32,7 @@ export function createSandboxTools(
         }
         return result.stdout as string;
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error running command: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error running command: ${err.message}`;
         throw err;
       }
     },
@@ -49,7 +49,7 @@ export function createSandboxTools(
         const result = await client.fileCreate(sessionId, path, content);
         return `Wrote ${result.path ?? path} (${result.size ?? content.length} bytes)`;
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error creating file: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error creating file: ${err.message}`;
         throw err;
       }
     },
@@ -66,7 +66,7 @@ export function createSandboxTools(
         const result = await client.view(sessionId, path);
         return (result.content as string | undefined) ?? JSON.stringify(result);
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error viewing ${path}: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error viewing ${path}: ${err.message}`;
         throw err;
       }
     },
@@ -83,7 +83,7 @@ export function createSandboxTools(
         const result = await client.strReplace(sessionId, path, old_str, new_str);
         return `Replaced in ${result.path ?? path} (${result.occurrences ?? 1} replacement(s))`;
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error editing ${path}: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error editing ${path}: ${err.message}`;
         throw err;
       }
     },
@@ -102,7 +102,7 @@ export function createSandboxTools(
         if (entries.length === 0) return `${path ?? "/"} is empty.`;
         return entries.map((e) => JSON.stringify(e)).join("\n");
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error listing ${path ?? "/"}: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error listing ${path ?? "/"}: ${err.message}`;
         throw err;
       }
     },
@@ -121,7 +121,7 @@ export function createSandboxTools(
         if (matches.length === 0) return `No files matched ${pattern} under ${path ?? "/"}.`;
         return matches.map((m) => JSON.stringify(m)).join("\n");
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error matching ${pattern}: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error matching ${pattern}: ${err.message}`;
         throw err;
       }
     },
@@ -142,7 +142,7 @@ export function createSandboxTools(
         const suffix = result.truncated ? " (truncated)" : "";
         return matches.map((m) => JSON.stringify(m)).join("\n") + suffix;
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error searching for ${pattern}: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error searching for ${pattern}: ${err.message}`;
         throw err;
       }
     },
@@ -173,7 +173,7 @@ export function createSandboxTools(
         const result = await client.startProcess(sessionId, command, { description, maxRuntimeSeconds });
         return `Started process ${result.process_id} (status=${result.status}). Use get_process_output("${result.process_id}") to check on it.`;
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error starting process: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error starting process: ${err.message}`;
         throw err;
       }
     },
@@ -201,7 +201,7 @@ export function createSandboxTools(
         lines.push(result.stdout_chunk || "(no new output)");
         return lines.join("\n");
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error getting process output: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error getting process output: ${err.message}`;
         throw err;
       }
     },
@@ -219,7 +219,7 @@ export function createSandboxTools(
         const result = await client.sendProcessInput(sessionId, processId, data);
         return `Wrote ${result.bytes_written} bytes to process ${processId}`;
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error sending input to process: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error sending input to process: ${err.message}`;
         throw err;
       }
     },
@@ -236,7 +236,7 @@ export function createSandboxTools(
         const result = await client.stopProcess(sessionId, processId);
         return `Process ${processId}: ${result.status} (exit_code=${result.exit_code})`;
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error stopping process: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error stopping process: ${err.message}`;
         throw err;
       }
     },
@@ -261,7 +261,7 @@ export function createSandboxTools(
           })
           .join("\n");
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error listing processes: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error listing processes: ${err.message}`;
         throw err;
       }
     },
@@ -273,7 +273,7 @@ export function createSandboxTools(
   );
 
   // Secrets-broker HTTP request tool (docs/SECRETS-DESIGN.md). Opt-in, same
-  // as boxkite.tools.factory.create_sandbox_tools's enable_http_request_tool
+  // as boxxkite.tools.factory.create_sandbox_tools's enable_http_request_tool
   // -- this is a new outbound-request surface gated by the session's own
   // secret_names grants and the sidecar's DNS-rebinding-safe destination
   // check, not something every caller wants by default.
@@ -294,7 +294,7 @@ export function createSandboxTools(
         const truncatedNote = result.truncated ? " (truncated)" : "";
         return `Status: ${result.status_code}\nHeaders: ${JSON.stringify(result.headers)}\nBody${truncatedNote}:\n${result.body}`;
       } catch (err) {
-        if (err instanceof BoxkiteApiError) return `Error making HTTP request: ${err.message}`;
+        if (err instanceof BoxxkiteApiError) return `Error making HTTP request: ${err.message}`;
         throw err;
       }
     },

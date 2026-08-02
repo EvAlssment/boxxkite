@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from boxkite_handoff import cli
-from boxkite_handoff.adapters import ADAPTERS
-from boxkite_handoff.core import Credential, HandoffError, LocatedSession
-from boxkite_client.exceptions import BoxkiteConnectionError
+from boxxkite_handoff import cli
+from boxxkite_handoff.adapters import ADAPTERS
+from boxxkite_handoff.core import Credential, HandoffError, LocatedSession
+from boxxkite_client.exceptions import BoxxkiteConnectionError
 
 
 class FakeAdapter:
@@ -37,22 +37,22 @@ def registered_fake_adapter():
 
 
 def test_main_requires_api_key(monkeypatch, capsys) -> None:
-    monkeypatch.delenv("BOXKITE_API_KEY", raising=False)
-    monkeypatch.delenv("BOXKITE_BASE_URL", raising=False)
+    monkeypatch.delenv("BOXXKITE_API_KEY", raising=False)
+    monkeypatch.delenv("BOXXKITE_BASE_URL", raising=False)
 
     exit_code = cli.main(["fake-tool", "--base-url", "https://example.test"])
 
     assert exit_code == 2
-    assert "BOXKITE_API_KEY" in capsys.readouterr().err
+    assert "BOXXKITE_API_KEY" in capsys.readouterr().err
 
 
 def test_main_requires_base_url(monkeypatch, capsys) -> None:
-    monkeypatch.delenv("BOXKITE_BASE_URL", raising=False)
+    monkeypatch.delenv("BOXXKITE_BASE_URL", raising=False)
 
     exit_code = cli.main(["fake-tool", "--api-key", "key123"])
 
     assert exit_code == 2
-    assert "BOXKITE_BASE_URL" in capsys.readouterr().err
+    assert "BOXXKITE_BASE_URL" in capsys.readouterr().err
 
 
 def test_main_reports_handoff_error_from_adapter_without_crashing(capsys) -> None:
@@ -66,15 +66,15 @@ def test_main_reports_handoff_error_from_adapter_without_crashing(capsys) -> Non
     assert "no local session found" in capsys.readouterr().err
 
 
-def test_main_reports_boxkite_client_errors_without_a_raw_traceback(monkeypatch, capsys) -> None:
-    """create_handoff_sandbox talks to a real BoxkiteClient, which can raise
+def test_main_reports_boxxkite_client_errors_without_a_raw_traceback(monkeypatch, capsys) -> None:
+    """create_handoff_sandbox talks to a real BoxxkiteClient, which can raise
     its own exception hierarchy (bad api key, unreachable base_url, a 4xx/5xx
     from the control plane) -- these must be caught and reported the same
     clean way as an adapter's own HandoffError, not left to propagate as an
     unhandled traceback."""
 
     def _boom(*_args, **_kwargs):
-        raise BoxkiteConnectionError("could not connect")
+        raise BoxxkiteConnectionError("could not connect")
 
     monkeypatch.setattr(cli, "create_handoff_sandbox", _boom)
 

@@ -82,7 +82,7 @@ _MAX_ORGANIZATION_ID_LENGTH = 191
 
 
 def _require_scim_enabled() -> None:
-    if not (settings.BOXKITE_SCIM_PROVISIONING_ENABLED and settings.scim_provisioning_configured):
+    if not (settings.BOXXKITE_SCIM_PROVISIONING_ENABLED and settings.scim_provisioning_configured):
         raise ApiError(404, "not_found", "Not found")
 
 
@@ -287,7 +287,7 @@ async def _handle_user_deleted(db: AsyncSession, data: dict) -> None:
         "Receives WorkOS Directory Sync webhook events and provisions/deprovisions the "
         "corresponding Account. Authenticated via the WorkOS-Signature header (HMAC-SHA256) -- "
         "there is no API key on this route by design, since WorkOS itself is the caller, not "
-        "an SDK/dashboard user. Off by default (BOXKITE_SCIM_PROVISIONING_ENABLED); see "
+        "an SDK/dashboard user. Off by default (BOXXKITE_SCIM_PROVISIONING_ENABLED); see "
         "docs/ENTERPRISE-SSO-DESIGN.md's SCIM section."
     ),
 )
@@ -295,7 +295,7 @@ async def scim_webhook(request: Request, response: Response, db: AsyncSession = 
     await enforce_rate_limit(
         request,
         bucket="scim_webhook",
-        limit=settings.BOXKITE_SCIM_WEBHOOK_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_SCIM_WEBHOOK_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 

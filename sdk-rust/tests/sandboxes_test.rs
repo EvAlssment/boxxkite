@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::{BoxkiteError, CreateSandboxOptions, SandboxSize};
+use boxxkite_client::{BoxxkiteError, CreateSandboxOptions, SandboxSize};
 use serde_json::json;
 use wiremock::matchers::{body_json, header, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
@@ -154,11 +154,11 @@ async fn get_sandbox_maps_404_to_not_found_api_error() {
 
     let err = client.get_sandbox("does-not-exist").await.unwrap_err();
     match err {
-        BoxkiteError::Api { status, code, .. } => {
+        BoxxkiteError::Api { status, code, .. } => {
             assert_eq!(status, 404);
             assert_eq!(code, "not_found");
         }
-        other => panic!("expected BoxkiteError::Api, got {other:?}"),
+        other => panic!("expected BoxxkiteError::Api, got {other:?}"),
     }
 }
 

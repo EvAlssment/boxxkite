@@ -27,9 +27,9 @@ def _render_blueprint() -> dict:
 def _control_plane_service() -> dict:
     doc = _render_blueprint()
     for service in doc["services"]:
-        if service["name"] == "boxkite-control-plane":
+        if service["name"] == "boxxkite-control-plane":
             return service
-    raise AssertionError("No 'boxkite-control-plane' service found in deploy/render.yaml")
+    raise AssertionError("No 'boxxkite-control-plane' service found in deploy/render.yaml")
 
 
 def _env_vars_by_key(service: dict) -> dict[str, dict]:

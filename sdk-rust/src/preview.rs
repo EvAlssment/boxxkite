@@ -7,7 +7,7 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
 /// A signed, time-limited preview URL (`POST /v1/sandboxes/{id}/preview/{port}`'s
 /// response). The URL carries its own authorization -- no API key is needed
@@ -39,7 +39,7 @@ impl Client {
         session_id: &str,
         port: u16,
         ttl_seconds: Option<u32>,
-    ) -> Result<PreviewUrl, BoxkiteError> {
+    ) -> Result<PreviewUrl, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body {
             #[serde(skip_serializing_if = "Option::is_none")]
@@ -66,7 +66,7 @@ impl Client {
         session_id: &str,
         port: u16,
         token_id: &str,
-    ) -> Result<PreviewRevokeResult, BoxkiteError> {
+    ) -> Result<PreviewRevokeResult, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             token_id: &'a str,

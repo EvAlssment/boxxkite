@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -23,7 +23,7 @@ type MCPConnection struct {
 // unique (per-account) name for this connection -- pass it in
 // CreateSandboxRequest.MCPConnectionNames to grant a session network
 // egress to it. catalogID is one of "slack", "notion", "linear", "github"
-// -- restricted to boxkite's own reviewed allowlist, never a
+// -- restricted to boxxkite's own reviewed allowlist, never a
 // caller-supplied hostname.
 //
 // Note: this only widens a granted session's per-pod NetworkPolicy

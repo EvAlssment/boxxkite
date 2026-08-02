@@ -5,7 +5,7 @@ Exercises the full authorization_code+PKCE(S256) and refresh_token grants
 end-to-end against this control-plane's own in-process authorization
 server -- no external dependency, per the design doc's §6 testing
 strategy ("tested end-to-end against a real in-process authorization
-server -- this is boxkite's *own* AS, not GitHub/Google's").
+server -- this is boxxkite's *own* AS, not GitHub/Google's").
 """
 
 from __future__ import annotations
@@ -89,16 +89,16 @@ async def _login_and_get_cookie(client: httpx.AsyncClient, *, authorize_query: s
 
 
 async def test_metadata_endpoints_404_when_oauth_disabled(client: httpx.AsyncClient, monkeypatch):
-    # BOXKITE_MCP_OAUTH_ENABLED now defaults to True (GitHub issue #114's
+    # BOXXKITE_MCP_OAUTH_ENABLED now defaults to True (GitHub issue #114's
     # security review completed) -- explicitly disable to exercise the
     # still-supported opt-out path, rather than relying on a bare default.
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", False)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", False)
     resp = await client.get("/.well-known/oauth-authorization-server")
     assert resp.status_code == 404
 
 
 async def test_metadata_endpoints_shape_when_enabled(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
 
     as_meta = await client.get("/.well-known/oauth-authorization-server")
     assert as_meta.status_code == 200
@@ -115,7 +115,7 @@ async def test_metadata_endpoints_shape_when_enabled(client: httpx.AsyncClient, 
 
 
 async def test_register_client_returns_client_id_no_secret(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
 
     body = await _register_client(client)
     assert body["client_id"].startswith("mcp_client_")
@@ -124,7 +124,7 @@ async def test_register_client_returns_client_id_no_secret(client: httpx.AsyncCl
 
 
 async def test_register_client_rejects_bad_redirect_uri_scheme(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
 
     resp = await client.post(
         "/oauth/register", json={"client_name": "Evil", "redirect_uris": ["ftp://evil.example.com"]}
@@ -133,8 +133,8 @@ async def test_register_client_rejects_bad_redirect_uri_scheme(client: httpx.Asy
 
 
 async def test_dcr_rate_limited(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
-    monkeypatch.setattr(settings, "BOXKITE_OAUTH_DCR_RATE_LIMIT_PER_MINUTE", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_OAUTH_DCR_RATE_LIMIT_PER_MINUTE", 2)
 
     for _ in range(2):
         resp = await client.post(
@@ -147,7 +147,7 @@ async def test_dcr_rate_limited(client: httpx.AsyncClient, monkeypatch):
 
 
 async def test_authorize_unknown_client_id_shows_error(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
 
     resp = await client.get(
         "/oauth/authorize",
@@ -164,7 +164,7 @@ async def test_authorize_unknown_client_id_shows_error(client: httpx.AsyncClient
 
 
 async def test_authorize_redirect_uri_mismatch_shows_error(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     reg = await _register_client(client)
 
     resp = await client.get(
@@ -182,7 +182,7 @@ async def test_authorize_redirect_uri_mismatch_shows_error(client: httpx.AsyncCl
 
 
 async def test_authorize_unsupported_response_type_redirects_with_error(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     reg = await _register_client(client)
 
     resp = await client.get(
@@ -205,7 +205,7 @@ async def test_authorize_unsupported_response_type_redirects_with_error(client: 
 
 
 async def test_authorize_shows_login_form_when_unauthenticated(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     reg = await _register_client(client)
     _, challenge = _pkce_pair()
     resource = await _resource_identifier(client)
@@ -228,7 +228,7 @@ async def test_authorize_shows_login_form_when_unauthenticated(client: httpx.Asy
 
 
 async def test_authorize_missing_resource_redirects_with_invalid_target(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     reg = await _register_client(client)
     _, challenge = _pkce_pair()
 
@@ -250,7 +250,7 @@ async def test_authorize_missing_resource_redirects_with_invalid_target(client: 
 
 
 async def test_authorize_wrong_resource_redirects_with_invalid_target(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     reg = await _register_client(client)
     _, challenge = _pkce_pair()
 
@@ -291,7 +291,7 @@ async def _authorize_and_get_code(client: httpx.AsyncClient, *, email: str, pass
 
     consent_resp = await client.get(f"/oauth/authorize?{authorize_query}")
     assert consent_resp.status_code == 200
-    assert "wants to access your boxkite account" in consent_resp.text
+    assert "wants to access your boxxkite account" in consent_resp.text
 
     decide_resp = await client.post(
         "/oauth/authorize/decide", data={"authorize_query": authorize_query, "decision": "allow"}
@@ -338,12 +338,12 @@ async def _full_authorize_flow(client: httpx.AsyncClient, *, email: str, passwor
 
 
 async def test_full_authorization_code_pkce_flow_succeeds(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     await _full_authorize_flow(client, email="oauth-flow@example.com")
 
 
 async def test_authorization_code_cannot_be_reused(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     result = await _full_authorize_flow(client, email="oauth-reuse@example.com")
 
     resp = await client.post(
@@ -362,7 +362,7 @@ async def test_authorization_code_cannot_be_reused(client: httpx.AsyncClient, mo
 
 
 async def test_wrong_pkce_verifier_rejected(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     await signup(client, "oauth-badpkce@example.com", password="hunter2pass")
     reg = await _register_client(client)
     _verifier, challenge = _pkce_pair()
@@ -393,7 +393,7 @@ async def test_wrong_pkce_verifier_rejected(client: httpx.AsyncClient, monkeypat
 
 
 async def test_token_endpoint_missing_resource_rejected(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     await signup(client, "oauth-noresource@example.com", password="hunter2pass")
     reg = await _register_client(client)
     verifier, challenge = _pkce_pair()
@@ -423,7 +423,7 @@ async def test_token_endpoint_missing_resource_rejected(client: httpx.AsyncClien
 
 
 async def test_token_endpoint_wrong_resource_rejected(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     await signup(client, "oauth-badresource@example.com", password="hunter2pass")
     reg = await _register_client(client)
     verifier, challenge = _pkce_pair()
@@ -454,7 +454,7 @@ async def test_token_endpoint_wrong_resource_rejected(client: httpx.AsyncClient,
 
 
 async def test_deny_decision_redirects_with_access_denied(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     await signup(client, "oauth-deny@example.com", password="hunter2pass")
     reg = await _register_client(client)
     _verifier, challenge = _pkce_pair()
@@ -477,7 +477,7 @@ async def test_authorize_decide_wrong_resource_rejected(client: httpx.AsyncClien
     from the posted-back `authorize_query`, not just the initial `GET
     /oauth/authorize` -- mirrors the existing client_id/redirect_uri
     re-validation already done at this step."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     await signup(client, "oauth-decide-badresource@example.com", password="hunter2pass")
     reg = await _register_client(client)
     _verifier, challenge = _pkce_pair()
@@ -499,7 +499,7 @@ async def test_authorize_decide_wrong_resource_rejected(client: httpx.AsyncClien
 
 
 async def test_login_wrong_password_shows_error_on_login_page(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     await signup(client, "oauth-wrongpw@example.com", password="hunter2pass")
     reg = await _register_client(client)
     _, challenge = _pkce_pair()
@@ -514,7 +514,7 @@ async def test_login_wrong_password_shows_error_on_login_page(client: httpx.Asyn
 
 
 async def test_refresh_token_grant_rotates_and_old_token_then_fails(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     result = await _full_authorize_flow(client, email="oauth-refresh@example.com")
 
     refresh_resp = await client.post(
@@ -550,7 +550,7 @@ async def test_refresh_token_grant_rotates_and_old_token_then_fails(client: http
 
 
 async def test_refresh_token_grant_missing_resource_rejected(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     result = await _full_authorize_flow(client, email="oauth-refresh-noresource@example.com")
 
     resp = await client.post(
@@ -566,7 +566,7 @@ async def test_refresh_token_grant_missing_resource_rejected(client: httpx.Async
 
 
 async def test_refresh_token_grant_wrong_resource_rejected(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     result = await _full_authorize_flow(client, email="oauth-refresh-badresource@example.com")
 
     resp = await client.post(
@@ -583,7 +583,7 @@ async def test_refresh_token_grant_wrong_resource_rejected(client: httpx.AsyncCl
 
 
 async def test_refresh_token_reuse_revokes_whole_chain(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     result = await _full_authorize_flow(client, email="oauth-reuse-chain@example.com")
 
     refresh_resp = await client.post(
@@ -636,7 +636,7 @@ async def test_concurrent_refresh_token_reuse_does_not_mint_two_token_pairs(
     mint an independent valid token pair from a single refresh token.
     `revoke` is now a single atomic `UPDATE ... WHERE revoked_at IS NULL`;
     exactly one of two concurrent presentations may win."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     result = await _full_authorize_flow(client, email="oauth-concurrent-refresh@example.com")
 
     async def _refresh():
@@ -677,7 +677,7 @@ async def test_concurrent_authorization_code_exchange_only_succeeds_once(
     code. mark_consumed is now a single atomic `UPDATE ... WHERE
     consumed_at IS NULL`; exactly one of two concurrent exchanges may
     succeed."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     ctx = await _authorize_and_get_code(client, email="oauth-concurrent-code@example.com")
 
     async def _exchange():
@@ -709,14 +709,14 @@ async def test_oauth_token_endpoint_denies_framing(client: httpx.AsyncClient, mo
     approving that attacker's access. Checked against a plain JSON
     response (not just the consent screen itself) since the fix is applied
     globally -- see main.py's deny_framing middleware docstring for why."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     resp = await client.post("/oauth/token", data={"grant_type": "password"})
     assert resp.headers["x-frame-options"] == "DENY"
     assert "frame-ancestors 'none'" in resp.headers["content-security-policy"]
 
 
 async def test_token_endpoint_unsupported_grant_type(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     resp = await client.post("/oauth/token", data={"grant_type": "password"})
     assert resp.status_code == 400
     assert resp.json()["error"] == "unsupported_grant_type"
@@ -727,13 +727,13 @@ async def test_mcp_endpoint_accepts_oauth_access_token(client: httpx.AsyncClient
     authorization server issues, not just a static API key -- see
     docs/MCP-OAUTH-AND-SOCIAL-LOGIN-DESIGN.md §3.5.
 
-    `BOXKITE_PUBLIC_URL` is pinned so both the authorization server (this
+    `BOXXKITE_PUBLIC_URL` is pinned so both the authorization server (this
     test's main `client`) and the standalone `/mcp` ASGI app spun up below
     (a separate in-process app, on its own arbitrary test host) agree on
     the same canonical resource identifier for the RFC 8707 audience check
     -- in a real deployment both live behind the one public URL already."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
-    monkeypatch.setattr(settings, "BOXKITE_PUBLIC_URL", "http://testserver")
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PUBLIC_URL", "http://testserver")
     result = await _full_authorize_flow(client, email="oauth-mcp@example.com")
 
     from control_plane.hosted_mcp import build_hosted_mcp_asgi_app
@@ -761,7 +761,7 @@ async def test_mcp_endpoint_accepts_oauth_access_token(client: httpx.AsyncClient
                 },
             )
     assert resp.status_code == 200
-    assert "boxkite" in resp.text
+    assert "boxxkite" in resp.text
 
 
 async def test_mcp_endpoint_rejects_token_minted_for_a_different_resource(client: httpx.AsyncClient, monkeypatch):
@@ -770,8 +770,8 @@ async def test_mcp_endpoint_rejects_token_minted_for_a_different_resource(client
     resource identifier must be rejected, not silently accepted just
     because it's a validly-signed JWT of the right `type` -- the exact
     token-confusion gap GitHub issue #115 closes."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
-    monkeypatch.setattr(settings, "BOXKITE_PUBLIC_URL", "http://testserver")
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PUBLIC_URL", "http://testserver")
 
     from control_plane.security import create_mcp_access_token
 
@@ -817,7 +817,7 @@ async def test_authorize_login_rejects_deactivated_account(client: httpx.AsyncCl
     """`POST /oauth/authorize/login` mints a brand new login-session cookie
     -- same credential-issuance-time gate as routers/auth.py's login/
     refresh and routers/social_login.py's _finish_login."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     signup_resp = await signup(client, "oauth-deactivated-login@example.com", password="hunter2pass")
     await _deactivate_account(signup_resp["account"]["id"])
 
@@ -838,7 +838,7 @@ async def test_deactivation_blocks_authorization_code_grant(client: httpx.AsyncC
     BEFORE the code is exchanged at /oauth/token -- this is the real gap:
     a code minted while active must not still mint a fresh MCP access/
     refresh token pair once the account has since been deactivated."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     ctx = await _authorize_and_get_code(client, email="oauth-deactivated-code@example.com")
     await _deactivate_account(ctx["account_id"])
 
@@ -862,7 +862,7 @@ async def test_deactivation_blocks_refresh_token_grant(client: httpx.AsyncClient
     usable to mint a fresh access/refresh token pair once the account has
     since been deactivated -- the refresh-token-grant half of the same
     gap the authorization-code-grant test above covers."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     result = await _full_authorize_flow(client, email="oauth-deactivated-refresh@example.com")
     await _deactivate_account(result["account_id"])
 
@@ -889,8 +889,8 @@ async def test_mcp_endpoint_rejects_already_issued_access_token_after_deactivati
     deactivation check at all on its JWT-decode-success branch, so a
     deactivated account's already-issued access token kept authenticating
     every tool call indefinitely."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
-    monkeypatch.setattr(settings, "BOXKITE_PUBLIC_URL", "http://testserver")
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PUBLIC_URL", "http://testserver")
     result = await _full_authorize_flow(client, email="oauth-mcp-deactivated@example.com")
 
     from control_plane.hosted_mcp import build_hosted_mcp_asgi_app

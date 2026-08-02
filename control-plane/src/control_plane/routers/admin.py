@@ -50,7 +50,7 @@ async def get_admin_cluster_metrics(
     _admin: Account = Depends(get_current_admin_account),
     db: AsyncSession = Depends(get_db),
 ) -> AdminClusterMetrics:
-    effective_limit = min(limit, settings.BOXKITE_ADMIN_METRICS_MAX_ACCOUNTS)
+    effective_limit = min(limit, settings.BOXXKITE_ADMIN_METRICS_MAX_ACCOUNTS)
 
     accounts_repo = AccountRepository(db)
     sessions_repo = SandboxSessionRepository(db)
@@ -78,7 +78,7 @@ async def get_admin_cluster_metrics(
     return AdminClusterMetrics(
         total_accounts=total_accounts,
         global_concurrent_sandboxes=global_concurrent,
-        global_concurrent_sandboxes_limit=settings.BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES,
+        global_concurrent_sandboxes_limit=settings.BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES,
         total_monthly_sandbox_hours_used=round(total_monthly_hours, 4),
         accounts=account_rows,
     )
@@ -105,7 +105,7 @@ async def get_admin_audit_log(
     _admin: Account = Depends(get_current_admin_account),
     db: AsyncSession = Depends(get_db),
 ) -> AdminAuditLogResponse:
-    effective_limit = min(limit, settings.BOXKITE_ADMIN_AUDIT_LOG_MAX_LIMIT)
+    effective_limit = min(limit, settings.BOXXKITE_ADMIN_AUDIT_LOG_MAX_LIMIT)
 
     repo = ExecLogEntryRepository(db)
     entries = await repo.list_across_accounts(

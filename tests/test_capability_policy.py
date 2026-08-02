@@ -1,4 +1,4 @@
-"""Tests for src/boxkite/capability_policy.py -- the phase-1, non-wired
+"""Tests for src/boxxkite/capability_policy.py -- the phase-1, non-wired
 `SessionCapabilityPolicy` stub (docs/UNIFIED-CAPABILITY-POLICY-SCOPING.md,
 GitHub issue #155).
 
@@ -26,7 +26,7 @@ import copy
 
 import pytest
 
-from boxkite.capability_policy import (
+from boxxkite.capability_policy import (
     CommandRule,
     ExecPolicy,
     NetworkGrant,

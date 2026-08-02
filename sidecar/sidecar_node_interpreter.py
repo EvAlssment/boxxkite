@@ -4,7 +4,7 @@
 The Node.js counterpart to ``sidecar_interpreter.py``'s Python interpreter --
 same kept-alive-process shape, same request/response JSON-lines protocol over
 stdin/stdout, same idle-timeout/output-cap accounting. Gated by
-``BOXKITE_NODE_INTERPRETER_ENABLED`` (off by default): new attack surface (a
+``BOXXKITE_NODE_INTERPRETER_ENABLED`` (off by default): new attack surface (a
 second kept-alive-interpreter code path), not a copy-paste of an
 already-reviewed feature. See docs/NODE-INTERPRETER-DESIGN.md.
 
@@ -73,7 +73,7 @@ logger = logging.getLogger("sidecar")
 router = APIRouter()
 
 
-_NODE_INTERPRETER_READY_SENTINEL = "__BOXKITE_NODE_INTERPRETER_READY__"
+_NODE_INTERPRETER_READY_SENTINEL = "__BOXXKITE_NODE_INTERPRETER_READY__"
 
 # The context object explicitly whitelists which Node-specific (non-ECMAScript)
 # globals eval'd code can see -- standard built-ins (Object, Array, JSON,
@@ -105,7 +105,7 @@ const sandboxContext = vm.createContext({
   fetch: typeof fetch !== 'undefined' ? fetch : undefined,
 });
 
-process.stdout.write("BOXKITE_READY_SENTINEL\\n");
+process.stdout.write("BOXXKITE_READY_SENTINEL\\n");
 
 function runOne(code) {
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
@@ -158,10 +158,10 @@ rl.on('line', (rawLine) => {
 });
 """
 
-# BOXKITE_READY_SENTINEL is a literal placeholder token (not real JS -- it's
+# BOXXKITE_READY_SENTINEL is a literal placeholder token (not real JS -- it's
 # substituted below), same convention _INTERPRETER_DRIVER_SOURCE uses.
 _NODE_INTERPRETER_DRIVER_SOURCE = _NODE_INTERPRETER_DRIVER_SOURCE_TEMPLATE.replace(
-    "BOXKITE_READY_SENTINEL", _NODE_INTERPRETER_READY_SENTINEL
+    "BOXXKITE_READY_SENTINEL", _NODE_INTERPRETER_READY_SENTINEL
 )
 
 
@@ -217,7 +217,7 @@ async def _spawn_node_interpreter() -> "_NodeInterpreterHandle":
     V8.
     """
     os.makedirs(main.TMP_DIR, exist_ok=True)
-    script_path = os.path.join(main.TMP_DIR, f".boxkite-node-interpreter-{uuid4().hex}.js")
+    script_path = os.path.join(main.TMP_DIR, f".boxxkite-node-interpreter-{uuid4().hex}.js")
     with open(script_path, "w") as f:
         f.write(_NODE_INTERPRETER_DRIVER_SOURCE)
     os.chmod(script_path, 0o644)
@@ -387,7 +387,7 @@ async def node_interpreter_exec(req: "main.NodeInterpreterExecRequest"):
     interpreter for the current session. See docs/NODE-INTERPRETER-DESIGN.md
     and this module's own docstring above.
 
-    404s unless BOXKITE_NODE_INTERPRETER_ENABLED is set -- new attack
+    404s unless BOXXKITE_NODE_INTERPRETER_ENABLED is set -- new attack
     surface, off by default, same posture as /pty-exec.
 
     Session exec budget (GitHub issue #122): shares the exact same
@@ -396,7 +396,7 @@ async def node_interpreter_exec(req: "main.NodeInterpreterExecRequest"):
     duration recorded (and seconds-checked) after it finishes, same shape
     as sidecar_interpreter.py's Python /interpreter/exec.
     """
-    if not main.BOXKITE_NODE_INTERPRETER_ENABLED:
+    if not main.BOXXKITE_NODE_INTERPRETER_ENABLED:
         raise HTTPException(status_code=404, detail="Node interpreter is not enabled on this deployment.")
 
     if not req.code or not req.code.strip():
@@ -432,10 +432,10 @@ async def node_interpreter_reset():
     """Kill the persistent Node interpreter (if any); the next
     /node-interpreter/exec call starts a fresh one with empty state.
 
-    404s unless BOXKITE_NODE_INTERPRETER_ENABLED is set, same as
+    404s unless BOXXKITE_NODE_INTERPRETER_ENABLED is set, same as
     /node-interpreter/exec.
     """
-    if not main.BOXKITE_NODE_INTERPRETER_ENABLED:
+    if not main.BOXXKITE_NODE_INTERPRETER_ENABLED:
         raise HTTPException(status_code=404, detail="Node interpreter is not enabled on this deployment.")
     await _reset_node_interpreter()
     return main.NodeInterpreterResetResponse(status="reset")
@@ -445,10 +445,10 @@ async def node_interpreter_reset():
 async def node_interpreter_status():
     """Report whether a persistent Node interpreter is currently running.
 
-    404s unless BOXKITE_NODE_INTERPRETER_ENABLED is set, same as
+    404s unless BOXXKITE_NODE_INTERPRETER_ENABLED is set, same as
     /node-interpreter/exec.
     """
-    if not main.BOXKITE_NODE_INTERPRETER_ENABLED:
+    if not main.BOXXKITE_NODE_INTERPRETER_ENABLED:
         raise HTTPException(status_code=404, detail="Node interpreter is not enabled on this deployment.")
     async with _get_node_interpreter_lock():
         handle = main._node_interpreter_handle

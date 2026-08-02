@@ -1,4 +1,4 @@
-"""Tests for the boxkite MCP server's tool registrations. httpx.MockTransport
+"""Tests for the boxxkite MCP server's tool registrations. httpx.MockTransport
 stands in for the real control-plane, same pattern as sdk-python/tests/
 test_client.py and test_langchain_tools.py -- no network, no real deployment
 needed.
@@ -16,12 +16,12 @@ import json
 import httpx
 import pytest
 
-from boxkite_client import BoxkiteClient
-from boxkite_mcp.server import ConfigurationError, _load_config, build_server
+from boxxkite_client import BoxxkiteClient
+from boxxkite_mcp.server import ConfigurationError, _load_config, build_server
 
 
-def _client_with(handler) -> BoxkiteClient:
-    return BoxkiteClient(
+def _client_with(handler) -> BoxxkiteClient:
+    return BoxxkiteClient(
         base_url="https://cp.example.com",
         api_key="bxk_live_test",
         transport=httpx.MockTransport(handler),
@@ -42,45 +42,45 @@ async def _call(server, name, arguments):
 
 
 def test_load_config_raises_when_base_url_missing(monkeypatch):
-    monkeypatch.delenv("BOXKITE_BASE_URL", raising=False)
-    monkeypatch.setenv("BOXKITE_API_KEY", "bxk_live_test")
-    with pytest.raises(ConfigurationError, match="BOXKITE_BASE_URL"):
+    monkeypatch.delenv("BOXXKITE_BASE_URL", raising=False)
+    monkeypatch.setenv("BOXXKITE_API_KEY", "bxk_live_test")
+    with pytest.raises(ConfigurationError, match="BOXXKITE_BASE_URL"):
         _load_config()
 
 
 def test_load_config_raises_when_api_key_missing(monkeypatch):
-    monkeypatch.setenv("BOXKITE_BASE_URL", "https://cp.example.com")
-    monkeypatch.delenv("BOXKITE_API_KEY", raising=False)
-    with pytest.raises(ConfigurationError, match="BOXKITE_API_KEY"):
+    monkeypatch.setenv("BOXXKITE_BASE_URL", "https://cp.example.com")
+    monkeypatch.delenv("BOXXKITE_API_KEY", raising=False)
+    with pytest.raises(ConfigurationError, match="BOXXKITE_API_KEY"):
         _load_config()
 
 
 def test_load_config_raises_when_both_missing(monkeypatch):
-    monkeypatch.delenv("BOXKITE_BASE_URL", raising=False)
-    monkeypatch.delenv("BOXKITE_API_KEY", raising=False)
-    with pytest.raises(ConfigurationError, match="BOXKITE_BASE_URL.*BOXKITE_API_KEY"):
+    monkeypatch.delenv("BOXXKITE_BASE_URL", raising=False)
+    monkeypatch.delenv("BOXXKITE_API_KEY", raising=False)
+    with pytest.raises(ConfigurationError, match="BOXXKITE_BASE_URL.*BOXXKITE_API_KEY"):
         _load_config()
 
 
 def test_load_config_returns_values_when_present(monkeypatch):
-    monkeypatch.setenv("BOXKITE_BASE_URL", "https://cp.example.com")
-    monkeypatch.setenv("BOXKITE_API_KEY", "bxk_live_test")
+    monkeypatch.setenv("BOXXKITE_BASE_URL", "https://cp.example.com")
+    monkeypatch.setenv("BOXXKITE_API_KEY", "bxk_live_test")
     assert _load_config() == ("https://cp.example.com", "bxk_live_test")
 
 
 def test_load_config_rejects_plain_http_to_a_remote_host(monkeypatch):
-    """BOXKITE_API_KEY is a full-privilege, long-lived credential -- an
-    http:// BOXKITE_BASE_URL to anything other than localhost would put it
+    """BOXXKITE_API_KEY is a full-privilege, long-lived credential -- an
+    http:// BOXXKITE_BASE_URL to anything other than localhost would put it
     on the wire in cleartext."""
-    monkeypatch.setenv("BOXKITE_BASE_URL", "http://cp.example.com")
-    monkeypatch.setenv("BOXKITE_API_KEY", "bxk_live_test")
+    monkeypatch.setenv("BOXXKITE_BASE_URL", "http://cp.example.com")
+    monkeypatch.setenv("BOXXKITE_API_KEY", "bxk_live_test")
     with pytest.raises(ConfigurationError, match="cleartext"):
         _load_config()
 
 
 def test_load_config_allows_http_localhost_for_local_dev(monkeypatch):
-    monkeypatch.setenv("BOXKITE_BASE_URL", "http://localhost:8090")
-    monkeypatch.setenv("BOXKITE_API_KEY", "bxk_live_test")
+    monkeypatch.setenv("BOXXKITE_BASE_URL", "http://localhost:8090")
+    monkeypatch.setenv("BOXXKITE_API_KEY", "bxk_live_test")
     assert _load_config() == ("http://localhost:8090", "bxk_live_test")
 
 
@@ -292,7 +292,7 @@ async def test_create_sandbox_image_posts_fields_and_returns_id():
         assert request.url.path == "/v1/images"
         assert json.loads(request.content) == {
             "label": "demo",
-            "base": "boxkite-default",
+            "base": "boxxkite-default",
             "python_packages": ["requests==2.31.0"],
             "apt_packages": ["curl==7.81.0-1ubuntu1.15"],
         }
@@ -318,7 +318,7 @@ async def test_create_sandbox_image_posts_fields_and_returns_id():
 async def test_create_sandbox_image_posts_npm_packages():
     def handler(request: httpx.Request) -> httpx.Response:
         assert json.loads(request.content) == {
-            "base": "boxkite-node",
+            "base": "boxxkite-node",
             "npm_packages": ["typescript==5.6.0"],
         }
         return httpx.Response(202, json={"id": "img-2", "status": "pending"})
@@ -328,7 +328,7 @@ async def test_create_sandbox_image_posts_npm_packages():
         await _call(
             server,
             "create_sandbox_image",
-            {"base": "boxkite-node", "npm_packages": ["typescript==5.6.0"]},
+            {"base": "boxxkite-node", "npm_packages": ["typescript==5.6.0"]},
         )
     )
     assert "img-2" in result
@@ -700,7 +700,7 @@ async def test_lsp_open_posts_path_and_content():
 async def test_lsp_completion_posts_position_and_formats_items():
     # Real pyright/tsserver responses send the numeric LSP CompletionItemKind
     # (2 == "method"), not a human-readable string -- this must be
-    # normalized the same way src/boxkite/tools/lsp_tools.py's sibling tool
+    # normalized the same way src/boxxkite/tools/lsp_tools.py's sibling tool
     # does, not printed verbatim as "(2)".
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/v1/sandboxes/sess-1/lsp/lsp-1/completion"
@@ -794,11 +794,11 @@ async def test_view_posts_path_and_returns_content():
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/v1/sandboxes/sess-1/files/view"
         assert json.loads(request.content) == {"path": "notes.txt"}
-        return httpx.Response(200, json={"content": "hello from boxkite"})
+        return httpx.Response(200, json={"content": "hello from boxxkite"})
 
     server = build_server(_client_with(handler))
     result = _text(await _call(server, "view", {"session_id": "sess-1", "path": "notes.txt"}))
-    assert result == "hello from boxkite"
+    assert result == "hello from boxxkite"
 
 
 async def test_view_passes_view_range_when_provided():

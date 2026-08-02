@@ -9,7 +9,7 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
 /// Builder for `POST /v1/secrets`'s optional fields.
 #[derive(Debug, Clone, Default, Serialize)]
@@ -63,7 +63,7 @@ impl Client {
         value: &str,
         allowed_hosts: &[String],
         options: CreateSecretOptions,
-    ) -> Result<Secret, BoxkiteError> {
+    ) -> Result<Secret, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             name: &'a str,
@@ -84,14 +84,14 @@ impl Client {
 
     /// `GET /v1/secrets` -- secrets registered for this account. Raw values
     /// are never returned here.
-    pub async fn list_secrets(&self) -> Result<Vec<Secret>, BoxkiteError> {
+    pub async fn list_secrets(&self) -> Result<Vec<Secret>, BoxxkiteError> {
         let builder = self.request(Method::GET, "/v1/secrets");
         self.send_or_default(builder).await
     }
 
     /// `DELETE /v1/secrets/{id}` -- delete a secret owned by this account.
     /// 404s if already gone or never owned by this account.
-    pub async fn delete_secret(&self, secret_id: &str) -> Result<(), BoxkiteError> {
+    pub async fn delete_secret(&self, secret_id: &str) -> Result<(), BoxxkiteError> {
         let builder = self.request(Method::DELETE, &format!("/v1/secrets/{secret_id}"));
         self.send_no_content(builder).await
     }

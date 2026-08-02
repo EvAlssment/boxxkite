@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Multi-metric latency benchmark against a real, running boxkite control-plane.
+"""Multi-metric latency benchmark against a real, running boxxkite control-plane.
 
 A superset of scripts/benchmark_warm_pool.py: instead of only session-create
 latency, it measures the operations an agent actually performs end-to-end, so
@@ -10,8 +10,8 @@ warm-pool script documents.
 
 Usage (repo root, after `pip install -e .`):
 
-    BOXKITE_BASE_URL=https://your-control-plane... \\
-    BOXKITE_API_KEY=bxk_live_... \\
+    BOXXKITE_BASE_URL=https://your-control-plane... \\
+    BOXXKITE_API_KEY=bxk_live_... \\
     python scripts/benchmark_suite.py --create-samples 5 --op-samples 10 \\
         --json-out benchmark_result.json
 
@@ -140,7 +140,7 @@ class Bench:
             resp, ms = self._timed(
                 "POST",
                 f"/v1/sandboxes/{sid}/files",
-                json={"path": f"/workspace/bench_{i}.txt", "content": "boxkite benchmark line\n" * 5},
+                json={"path": f"/workspace/bench_{i}.txt", "content": "boxxkite benchmark line\n" * 5},
             )
             resp.raise_for_status()
             out.append(ms)
@@ -162,7 +162,7 @@ class Bench:
             t0 = time.perf_counter()
             resp = self.c.post(
                 f"/v1/sandboxes/{sid}/processes",
-                json={"command": "echo boxkite-proc", "max_runtime_seconds": 60},
+                json={"command": "echo boxxkite-proc", "max_runtime_seconds": 60},
             )
             resp.raise_for_status()
             pid = resp.json()["process_id"]
@@ -210,10 +210,10 @@ def main() -> int:
     p.add_argument("--json-out", default=None)
     args = p.parse_args()
 
-    base_url = os.environ.get("BOXKITE_BASE_URL", "").rstrip("/")
-    api_key = os.environ.get("BOXKITE_API_KEY", "")
+    base_url = os.environ.get("BOXXKITE_BASE_URL", "").rstrip("/")
+    api_key = os.environ.get("BOXXKITE_API_KEY", "")
     if not base_url or not api_key:
-        print("BOXKITE_BASE_URL and BOXKITE_API_KEY must both be set.", file=sys.stderr)
+        print("BOXXKITE_BASE_URL and BOXXKITE_API_KEY must both be set.", file=sys.stderr)
         return 2
 
     results: dict = {"base_url": base_url, "metrics": {}}
@@ -238,7 +238,7 @@ def main() -> int:
             print("== per-op (shared session) ==")
             sid, _ = b.create("bench-ops")
             try:
-                record("exec_echo_ms", b.exec_series(sid, "echo boxkite", args.op_samples))
+                record("exec_echo_ms", b.exec_series(sid, "echo boxxkite", args.op_samples))
                 record("exec_python_ms", b.exec_series(sid, "python3 -c 'print(2+2)'", args.op_samples))
                 record("file_write_ms", b.file_write_series(sid, args.op_samples))
                 record("file_read_ms", b.file_read_series(sid, args.op_samples))

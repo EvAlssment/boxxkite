@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.python_interpreter_tool, in particular its
+Tests for boxxkite.tools.python_interpreter_tool, in particular its
 AuditSink.record_exec integration point.
 
 Mirrors tests/test_bash_tool.py's pattern: mock SandboxManager, assert the
@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.tools.python_interpreter_tool import create_python_interpreter_tool
+from boxxkite.tools.python_interpreter_tool import create_python_interpreter_tool
 
 pytestmark = pytest.mark.pr
 

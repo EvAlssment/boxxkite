@@ -1,4 +1,4 @@
-"""Tests for boxkite_bastion.bridge -- the asyncssh integration layer.
+"""Tests for boxxkite_bastion.bridge -- the asyncssh integration layer.
 Deliberately lighter than test_auth_bridge.py, per this task's scoping: the
 raw SSH protocol handling (asyncssh's own transport/channel machinery)
 leans on asyncssh's own test coverage. What's tested here is this module's
@@ -12,8 +12,8 @@ import asyncio
 
 import pytest
 
-from boxkite_bastion.bridge import BastionSSHServer, TakeoverSSHServerSession
-from boxkite_bastion.rate_limit import PerHostConnectionLimiter
+from boxxkite_bastion.bridge import BastionSSHServer, TakeoverSSHServerSession
+from boxxkite_bastion.rate_limit import PerHostConnectionLimiter
 
 
 class _FakeConnection:
@@ -117,7 +117,7 @@ async def test_validate_password_aborts_connection_after_max_failed_attempts():
     """Security review follow-up (issue #134): asyncssh itself imposes no
     cap on userauth attempts per connection, so this method must enforce
     its own after _MAX_PASSWORD_AUTH_ATTEMPTS consecutive failures."""
-    from boxkite_bastion.bridge import _MAX_PASSWORD_AUTH_ATTEMPTS
+    from boxxkite_bastion.bridge import _MAX_PASSWORD_AUTH_ATTEMPTS
 
     async def fake_ws_connect(url: str):
         raise RuntimeError("rejected")
@@ -412,7 +412,7 @@ def test_connection_lost_without_ever_acquiring_is_a_no_op():
 
 
 async def test_close_quietly_swallows_close_errors():
-    from boxkite_bastion.bridge import _close_quietly
+    from boxxkite_bastion.bridge import _close_quietly
 
     class _RaisingWS:
         async def close(self) -> None:

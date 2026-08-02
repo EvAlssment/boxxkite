@@ -18,9 +18,9 @@ from pathlib import Path
 
 import yaml
 
-from boxkite import resource_config
-from boxkite.sidecar_auth import SIDECAR_AUTH_SECRET_KEY
-from boxkite.tls import (
+from boxxkite import resource_config
+from boxxkite.sidecar_auth import SIDECAR_AUTH_SECRET_KEY
+from boxxkite.tls import (
     SIDECAR_TLS_CERT_FILENAME,
     SIDECAR_TLS_KEY_FILENAME,
     SIDECAR_TLS_MOUNT_PATH,
@@ -28,10 +28,10 @@ from boxkite.tls import (
 
 POD_TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "deploy" / "pod-template.yaml"
 MANAGER_SOURCE_PATH = (
-    Path(__file__).resolve().parent.parent / "src" / "boxkite" / "manager.py"
+    Path(__file__).resolve().parent.parent / "src" / "boxxkite" / "manager.py"
 )
 WARM_POOL_SOURCE_PATH = (
-    Path(__file__).resolve().parent.parent / "src" / "boxkite" / "warm_pool.py"
+    Path(__file__).resolve().parent.parent / "src" / "boxxkite" / "warm_pool.py"
 )
 
 
@@ -331,11 +331,11 @@ def test_pod_template_sidecar_tls_volume_sources_the_same_secret_as_auth_token()
 
 
 # =============================================================================
-# Helm chart (deploy/helm/boxkite/values.yaml) resource-default parity
+# Helm chart (deploy/helm/boxxkite/values.yaml) resource-default parity
 # =============================================================================
 
 HELM_VALUES_PATH = (
-    Path(__file__).resolve().parent.parent / "deploy" / "helm" / "boxkite" / "values.yaml"
+    Path(__file__).resolve().parent.parent / "deploy" / "helm" / "boxxkite" / "values.yaml"
 )
 
 
@@ -345,7 +345,7 @@ def _helm_values() -> dict:
 
 def test_helm_values_defaults_match_resource_config_defaults():
     """
-    deploy/helm/boxkite/values.yaml's `resources`/`volumeSizeLimits` are
+    deploy/helm/boxxkite/values.yaml's `resources`/`volumeSizeLimits` are
     literal copies of resource_config.py's DEFAULT_SANDBOX_CONTAINER_*/
     DEFAULT_SANDBOX_SIDECAR_*/DEFAULT_SANDBOX_*_VOLUME_SIZE_LIMIT constants
     (Helm can't import the Python module) -- this is the third parity-drift

@@ -22,7 +22,7 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.manager import SandboxManager, _validate_volume_mounts
+from boxxkite.manager import SandboxManager, _validate_volume_mounts
 from test_manager import _FakeCoreApi, _container_by_name
 
 
@@ -31,7 +31,7 @@ def test_validate_volume_mounts_accepts_none():
 
 
 def test_validate_volume_mounts_accepts_a_valid_entry():
-    entries = [{"pvc_name": "boxkite-vol-abc123", "mount_path": "/data"}]
+    entries = [{"pvc_name": "boxxkite-vol-abc123", "mount_path": "/data"}]
     assert _validate_volume_mounts(entries) == entries
 
 
@@ -46,7 +46,7 @@ def test_validate_volume_mounts_rejects_missing_pvc_name():
 )
 def test_validate_volume_mounts_rejects_reserved_or_invalid_paths(bad_path):
     with pytest.raises(ValueError):
-        _validate_volume_mounts([{"pvc_name": "boxkite-vol-abc123", "mount_path": bad_path}])
+        _validate_volume_mounts([{"pvc_name": "boxxkite-vol-abc123", "mount_path": bad_path}])
 
 
 @pytest.mark.asyncio
@@ -64,7 +64,7 @@ async def test_volume_mounts_add_a_pvc_volume_and_mount_to_the_sandbox_container
         session_id="session-with-volume",
         organization_id=uuid4(),
         work_item_id=uuid4(),
-        volume_mounts=[{"pvc_name": "boxkite-vol-real-pvc", "mount_path": "/data"}],
+        volume_mounts=[{"pvc_name": "boxxkite-vol-real-pvc", "mount_path": "/data"}],
     )
 
     manager_default = SandboxManager()
@@ -91,7 +91,7 @@ async def test_volume_mounts_add_a_pvc_volume_and_mount_to_the_sandbox_container
     # The matching pod-level volume references the real PVC name.
     matching_volumes = [v for v in with_volume_pod.spec.volumes if v.name == extra_mount.name]
     assert len(matching_volumes) == 1
-    assert matching_volumes[0].persistent_volume_claim.claim_name == "boxkite-vol-real-pvc"
+    assert matching_volumes[0].persistent_volume_claim.claim_name == "boxxkite-vol-real-pvc"
 
     # Nothing else about the sandbox container changed.
     assert with_volume_sandbox.security_context == default_sandbox.security_context
@@ -137,7 +137,7 @@ async def test_volume_mounts_forces_cold_create_bypassing_warm_pool():
         "session-with-volume",
         None,
         None,
-        volume_mounts=[{"pvc_name": "boxkite-vol-x", "mount_path": "/data"}],
+        volume_mounts=[{"pvc_name": "boxxkite-vol-x", "mount_path": "/data"}],
     )
 
     assert claim_called is False

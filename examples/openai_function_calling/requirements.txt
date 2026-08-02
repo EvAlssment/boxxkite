@@ -1,5 +1,5 @@
-# Install boxkite itself from the repo root first (no extra needed -- unlike
-# the LangChain examples, this one uses boxkite.tools.adapters.to_openai_functions,
+# Install boxxkite itself from the repo root first (no extra needed -- unlike
+# the LangChain examples, this one uses boxxkite.tools.adapters.to_openai_functions,
 # which is pure stdlib):
 #   pip install -e ../..
 #

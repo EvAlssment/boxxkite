@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from boxkite.manager import RESTORED_FROM_SNAPSHOT_ANNOTATION, SandboxManager
+from boxxkite.manager import RESTORED_FROM_SNAPSHOT_ANNOTATION, SandboxManager
 
 
 @pytest.mark.asyncio

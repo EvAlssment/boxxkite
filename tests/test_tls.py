@@ -1,4 +1,4 @@
-"""Unit tests for src/boxkite/tls.py's per-pod self-signed cert generation.
+"""Unit tests for src/boxxkite/tls.py's per-pod self-signed cert generation.
 
 Isolated from manager.py/warm_pool.py wiring (phase 1 of the design doc's
 suggested phasing) -- these tests only exercise cert generation and the
@@ -13,7 +13,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
-from boxkite.tls import (
+from boxxkite.tls import (
     CERT_VALIDITY_DAYS,
     SIDECAR_TLS_CERT_SECRET_KEY,
     SIDECAR_TLS_DISABLED_ENV,
@@ -119,7 +119,7 @@ def test_sidecar_tls_disabled_false_values(monkeypatch, value):
 
 
 def test_secret_key_constants_are_distinct_from_the_auth_token_key():
-    from boxkite.sidecar_auth import SIDECAR_AUTH_SECRET_KEY
+    from boxxkite.sidecar_auth import SIDECAR_AUTH_SECRET_KEY
 
     assert SIDECAR_TLS_CERT_SECRET_KEY != SIDECAR_AUTH_SECRET_KEY
     assert SIDECAR_TLS_KEY_SECRET_KEY != SIDECAR_AUTH_SECRET_KEY

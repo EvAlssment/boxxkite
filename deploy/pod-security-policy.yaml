@@ -2,7 +2,7 @@
 # hostIPC, privileged containers) for pods created in this namespace --
 # without using PSA "baseline"/"restricted" labels, since those would ALSO
 # block the sidecar container's documented CAP_SYS_ADMIN/CAP_SYS_PTRACE +
-# root requirement (see boxkite's SECURITY.md: "near-root capability...
+# root requirement (see boxxkite's SECURITY.md: "near-root capability...
 # inherent to the current design, not a misconfiguration").
 #
 # Threat model this closes: deploy/rbac.yaml's own comments already
@@ -17,7 +17,7 @@
 # escape. Apply this policy for the same reason on any deployment where the
 # control-plane's ServiceAccount credential is a plausible leak target --
 # the underlying RBAC exposure is the same regardless of where or how you've
-# deployed it. None of these fields are used by boxkite's real
+# deployed it. None of these fields are used by boxxkite's real
 # pod-template.yaml (verified: grep
 # for hostNetwork/hostPID/hostIPC/hostPath/privileged there returns
 # nothing), so blocking them costs nothing functionally.
@@ -27,7 +27,7 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
-  name: boxkite-sandbox-pod-hardening
+  name: boxxkite-sandbox-pod-hardening
 spec:
   failurePolicy: Fail
   matchConstraints:
@@ -55,9 +55,9 @@ spec:
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
 metadata:
-  name: boxkite-sandbox-pod-hardening-binding
+  name: boxxkite-sandbox-pod-hardening-binding
 spec:
-  policyName: boxkite-sandbox-pod-hardening
+  policyName: boxxkite-sandbox-pod-hardening
   validationActions: [Deny]
   matchResources:
     namespaceSelector:

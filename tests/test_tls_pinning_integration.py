@@ -18,7 +18,7 @@ import threading
 
 import pytest
 
-from boxkite.tls import build_pinned_ssl_context, generate_pod_self_signed_cert
+from boxxkite.tls import build_pinned_ssl_context, generate_pod_self_signed_cert
 
 
 def _serve_once_tls(server_sock: socket.socket, cert_path: str, key_path: str) -> None:

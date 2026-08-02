@@ -1,37 +1,37 @@
-# boxkite cookbook
+# boxxkite cookbook
 
-Runnable examples of using boxkite from different angles: a full LangGraph
+Runnable examples of using boxxkite from different angles: a full LangGraph
 agent, a minimal LangChain agent, raw HTTP calls with no framework at all,
 and the hosted multi-tenant control-plane API. Every example targets
-boxkite's actual, current APIs (`SandboxManager`, `create_sandbox_tools`,
-the sidecar's HTTP routes, the `boxkite` CLI, and the `control-plane/`
+boxxkite's actual, current APIs (`SandboxManager`, `create_sandbox_tools`,
+the sidecar's HTTP routes, the `boxxkite` CLI, and the `control-plane/`
 router contracts) -- not illustrative pseudocode.
 
 ## Which example should I run?
 
 | I want to... | Start here |
 |---|---|
-| See boxkite's full 5-tool surface handed to a real agent, doing a concrete multi-step task | [`langgraph_agent/`](langgraph_agent/) |
+| See boxxkite's full 5-tool surface handed to a real agent, doing a concrete multi-step task | [`langgraph_agent/`](langgraph_agent/) |
 | See the fastest possible "it works" with the smallest amount of code | [`langchain_tool_calling/`](langchain_tool_calling/) |
-| Wire boxkite directly into the OpenAI SDK's native function-calling, no agent framework at all | [`openai_function_calling/`](openai_function_calling/) |
-| Use boxkite from a LlamaIndex `ReActAgent` | [`llamaindex_agent/`](llamaindex_agent/) |
-| Use boxkite tools from the OpenAI Agents SDK's `Agent`/`Runner` | [`openai_agents_sdk/`](openai_agents_sdk/) |
+| Wire boxxkite directly into the OpenAI SDK's native function-calling, no agent framework at all | [`openai_function_calling/`](openai_function_calling/) |
+| Use boxxkite from a LlamaIndex `ReActAgent` | [`llamaindex_agent/`](llamaindex_agent/) |
+| Use boxxkite tools from the OpenAI Agents SDK's `Agent`/`Runner` | [`openai_agents_sdk/`](openai_agents_sdk/) |
 | Run Claude Code itself, headlessly, inside a sandbox | [`claude_code_sandbox/`](claude_code_sandbox/) |
 | Build a Claude-Code-capable image via the declarative builder API instead of a hand-maintained Dockerfile | [`claude_code_declarative_builder/`](claude_code_declarative_builder/) |
 | Build a quant-research image (vectorbt, backtrader, TA-Lib, QuantLib, quantstats) via the declarative builder | [`quant_research_declarative_builder/`](quant_research_declarative_builder/) |
 | Run a smart-contract-audit agent (Foundry/Anvil) against a deterministic, network-dark local chain | [`foundry_audit_sandbox/`](foundry_audit_sandbox/) |
-| Wire boxkite into Gemini's native function-calling | [`gemini_function_calling/`](gemini_function_calling/) |
-| Wire boxkite into Mistral's native function-calling | [`mistral_function_calling/`](mistral_function_calling/) |
-| Wire boxkite into Groq's (OpenAI-compatible) function-calling | [`groq_function_calling/`](groq_function_calling/) |
+| Wire boxxkite into Gemini's native function-calling | [`gemini_function_calling/`](gemini_function_calling/) |
+| Wire boxxkite into Mistral's native function-calling | [`mistral_function_calling/`](mistral_function_calling/) |
+| Wire boxxkite into Groq's (OpenAI-compatible) function-calling | [`groq_function_calling/`](groq_function_calling/) |
 | Integrate with a framework that isn't LangChain/LlamaIndex, or write my own tool-calling layer | [`raw_api/`](raw_api/) |
 | Understand the hosted, multi-tenant control-plane API (accounts, API keys, sessions) | [`hosted_control_plane/`](hosted_control_plane/) |
 | See `python_interpreter`/`node_interpreter`'s persistent, kept-alive statefulness across calls (vs. `bash_tool`'s fresh-subprocess-per-call) | [`stateful_interpreters/`](stateful_interpreters/) |
 
 ## Prerequisites (all examples)
 
-Every example needs a running boxkite **sandbox runtime** -- either:
+Every example needs a running boxxkite **sandbox runtime** -- either:
 
-- **Local docker-compose** (`boxkite up`, or `docker compose -f
+- **Local docker-compose** (`boxxkite up`, or `docker compose -f
   ../deploy/docker-compose.yml up -d --build` from the repo root) -- the
   fastest path, no Kubernetes required. This is what all four examples'
   own READMEs assume by default.
@@ -135,7 +135,7 @@ Being blunt about this, because it matters more than looking finished:
   is the LLM reasoning loop itself (`create_react_agent`/`create_agent`
   actually calling a model) -- no `ANTHROPIC_API_KEY`/other provider key
   was available in this environment. Imports and tool wiring were verified
-  against the actual installed `boxkite`/`langgraph`/`langchain`/
+  against the actual installed `boxxkite`/`langgraph`/`langchain`/
   `langchain-anthropic` package versions (no import errors, no signature
   mismatches). If you have a key, treat your first run as the final
   verification step; please file an issue with the exact traceback if
@@ -177,7 +177,7 @@ Being blunt about this, because it matters more than looking finished:
   available in this environment).
 - **`claude_code_declarative_builder/`**: verified for real, not just
   syntax-checked -- a local control-plane instance (SQLite,
-  `BOXKITE_IMAGE_BUILDER_ENABLED=true`) was actually run, and the full
+  `BOXXKITE_IMAGE_BUILDER_ENABLED=true`) was actually run, and the full
   signup -> API key -> `POST /v1/images` -> poll -> `status: "completed"`
   flow was exercised against it end to end via real HTTP calls (through
   the non-mocked `FakeImageBuildRunner` code path). The final step --
@@ -190,10 +190,10 @@ Being blunt about this, because it matters more than looking finished:
   `docker run`, not guessed.
 
 - **`quant_research_declarative_builder/`**: the exact `POST /v1/images`
-  request (`base="boxkite-default"` + the five pinned `python_packages`)
+  request (`base="boxxkite-default"` + the five pinned `python_packages`)
   was submitted through the real `SandboxImageBuildRequest`/`SandboxImageOut`
   schemas via the control-plane's FastAPI app in-process
-  (`BOXKITE_IMAGE_BUILDER_ENABLED=true`) and reached `status: "completed"`
+  (`BOXXKITE_IMAGE_BUILDER_ENABLED=true`) and reached `status: "completed"`
   through the real (non-mocked) `FakeImageBuildRunner` path. Separately,
   the smoke-test script this example writes into the sandbox
   (`quant_smoke_test.py`) was actually run end to end in a throwaway
@@ -219,8 +219,8 @@ Being blunt about this, because it matters more than looking finished:
   covered by real tests elsewhere (`tests/test_sidecar_node_interpreter.py`,
   `tests/test_node_interpreter_tool.py`, `tests/test_python_interpreter_tool.py`)
   including a real local `node` binary. This script itself was **not** run
-  against a live `boxkite up` docker-compose stack with
-  `BOXKITE_NODE_INTERPRETER_ENABLED=true` set -- same scope boundary already
+  against a live `boxxkite up` docker-compose stack with
+  `BOXXKITE_NODE_INTERPRETER_ENABLED=true` set -- same scope boundary already
   disclosed in `docs/NODE-INTERPRETER-DESIGN.md`'s status header (tested
   against a real local `node` binary; not yet exercised inside an actual
   Kubernetes pod or the `deploy/sandbox.Dockerfile` image).
@@ -251,7 +251,7 @@ Being blunt about this, because it matters more than looking finished:
   verified: `run_audit_sandbox.py`'s use of a real `SandboxManager` against
   a live compose stack (its `bash_tool` wiring was checked against a fake
   `SandboxManager` only, same tier as `openai_function_calling/`) -- no
-  full local boxkite stack (sidecar + Vault/MinIO) was stood up in this
+  full local boxxkite stack (sidecar + Vault/MinIO) was stood up in this
   pass. See the example's own README for the full disclosure, including
   why K8s-mode reachability between a backgrounded Anvil process and later
   `bash_tool` calls needs an explicit, disclosed operator tradeoff that

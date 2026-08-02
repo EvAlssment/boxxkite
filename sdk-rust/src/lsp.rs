@@ -7,7 +7,7 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
 /// `POST /v1/sandboxes/{id}/lsp/start`'s response. `lsp_id` is an opaque
 /// handle to pass to the other LSP calls.
@@ -47,7 +47,7 @@ impl Client {
         &self,
         session_id: &str,
         language: &str,
-    ) -> Result<LspStartResult, BoxkiteError> {
+    ) -> Result<LspStartResult, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             language: &'a str,
@@ -69,7 +69,7 @@ impl Client {
         lsp_id: &str,
         path: &str,
         content: &str,
-    ) -> Result<LspOpenResult, BoxkiteError> {
+    ) -> Result<LspOpenResult, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             path: &'a str,
@@ -94,7 +94,7 @@ impl Client {
         path: &str,
         line: u32,
         character: u32,
-    ) -> Result<LspCompletionResult, BoxkiteError> {
+    ) -> Result<LspCompletionResult, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             path: &'a str,
@@ -120,7 +120,7 @@ impl Client {
         &self,
         session_id: &str,
         lsp_id: &str,
-    ) -> Result<LspStopResult, BoxkiteError> {
+    ) -> Result<LspStopResult, BoxxkiteError> {
         let builder = self.request(
             Method::POST,
             &format!("/v1/sandboxes/{session_id}/lsp/{lsp_id}/stop"),

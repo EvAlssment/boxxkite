@@ -1,5 +1,5 @@
 """Unit tests for rate_limit.py's PostgresRateLimiter -- the shared,
-cross-replica backend (`BOXKITE_RATE_LIMIT_BACKEND=postgres`) that closes
+cross-replica backend (`BOXXKITE_RATE_LIMIT_BACKEND=postgres`) that closes
 the gap the in-memory limiter's own docstring flags: a multi-replica
 deployment silently multiplying the effective limit by replica count.
 
@@ -101,7 +101,7 @@ async def test_enforce_rate_limit_uses_postgres_backend_when_configured(monkeypa
     from control_plane import rate_limit as rate_limit_module
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_RATE_LIMIT_BACKEND", "postgres")
+    monkeypatch.setattr(settings, "BOXXKITE_RATE_LIMIT_BACKEND", "postgres")
     monkeypatch.setattr(
         rate_limit_module, "_postgres_limiter", PostgresRateLimiter(session_factory)
     )

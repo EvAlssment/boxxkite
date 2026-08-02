@@ -18,8 +18,8 @@ mkdir -p "$OUT_DIR"
 # there is no automated drift check for this (unlike the pod-template.yaml
 # parity test CLAUDE.md describes for K8s manifests); if you add a service
 # to that compose file, add its image here too.
-SANDBOX_TAG="boxkite-sandbox-minimal:bundle"
-SIDECAR_TAG="boxkite-sidecar:bundle"
+SANDBOX_TAG="boxxkite-sandbox-minimal:bundle"
+SIDECAR_TAG="boxxkite-sidecar:bundle"
 MINIO_TAG="minio/minio:latest"
 MC_TAG="minio/mc:latest"
 VAULT_TAG="hashicorp/vault:1.16"
@@ -37,7 +37,7 @@ time docker pull "$MINIO_TAG"
 time docker pull "$MC_TAG"
 time docker pull "$VAULT_TAG"
 
-TARBALL="$OUT_DIR/boxkite-airgapped-bundle.tar"
+TARBALL="$OUT_DIR/boxxkite-airgapped-bundle.tar"
 echo "== [4/5] Saving all 5 images to $TARBALL =="
 time docker save -o "$TARBALL" "$SANDBOX_TAG" "$SIDECAR_TAG" "$MINIO_TAG" "$MC_TAG" "$VAULT_TAG"
 

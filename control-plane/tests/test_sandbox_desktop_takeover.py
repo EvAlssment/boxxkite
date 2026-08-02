@@ -51,7 +51,7 @@ class _FakeDesktopWebSocket:
 async def test_mint_desktop_token_404s_when_feature_disabled(
     client: httpx.AsyncClient, fake_manager: FakeSandboxManager
 ):
-    """settings.BOXKITE_DESKTOP_ENABLED defaults to False -- the route must
+    """settings.BOXXKITE_DESKTOP_ENABLED defaults to False -- the route must
     404 unconditionally, even for a valid admin key and an owned session."""
     key = await signup_and_get_api_key(client, "desktop-token-disabled@example.com", role="admin")
     session_id = await _create_session(client, key)
@@ -68,7 +68,7 @@ async def test_mint_desktop_token_requires_authentication(
 ):
     import control_plane.routers.sandboxes as sandboxes_module
 
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_DESKTOP_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_DESKTOP_ENABLED", True)
 
     resp = await client.post("/v1/sandboxes/some-session/desktop-token")
     assert resp.status_code == 401
@@ -80,7 +80,7 @@ async def test_mint_desktop_token_403s_for_member_role_key(
 ):
     import control_plane.routers.sandboxes as sandboxes_module
 
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_DESKTOP_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_DESKTOP_ENABLED", True)
 
     admin_key = await signup_and_get_api_key(client, "desktop-rbac@example.com", role="admin")
     session_id = await _create_session(client, admin_key)
@@ -108,7 +108,7 @@ async def test_mint_desktop_token_404s_for_another_accounts_session(
 ):
     import control_plane.routers.sandboxes as sandboxes_module
 
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_DESKTOP_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_DESKTOP_ENABLED", True)
 
     key_a = await signup_and_get_api_key(client, "desktop-victim@example.com", role="admin")
     key_b = await signup_and_get_api_key(client, "desktop-attacker@example.com", role="admin")
@@ -128,7 +128,7 @@ async def test_mint_desktop_token_succeeds_for_admin_role_key_and_is_redeemable(
     import control_plane.routers.sandboxes as sandboxes_module
     from control_plane.routers.sandboxes import _authenticate_desktop_or_close
 
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_DESKTOP_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_DESKTOP_ENABLED", True)
 
     key = await signup_and_get_api_key(client, "desktop-mint-ok@example.com", role="admin")
     session_id = await _create_session(client, key)
@@ -157,7 +157,7 @@ async def test_desktop_token_is_single_use(
     import control_plane.routers.sandboxes as sandboxes_module
     from control_plane.routers.sandboxes import _authenticate_desktop_or_close
 
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_DESKTOP_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_DESKTOP_ENABLED", True)
 
     key = await signup_and_get_api_key(client, "desktop-replay@example.com", role="admin")
     session_id = await _create_session(client, key)
@@ -397,7 +397,7 @@ async def test_desktop_sandbox_route_relays_bytes_and_logs_start_end(
     from control_plane.repository import ExecLogEntryRepository
     from control_plane import db as db_module
 
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_DESKTOP_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_DESKTOP_ENABLED", True)
 
     key = await signup_and_get_api_key(client, "desktop-route-ok@example.com", role="admin")
     session_id = await _create_session(client, key)

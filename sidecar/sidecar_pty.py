@@ -65,17 +65,17 @@ PTY_SHELL = "/bin/bash"
 # THE FIX: invert the wrapping order. tmux now runs as the SIDECAR's own
 # process (never nsentered into the sandbox), on an explicit socket path
 # outside every volume shared with the sandbox container (neither container
-# mounts /run/boxkite -- see deploy/pod-template.yaml's and
+# mounts /run/boxxkite -- see deploy/pod-template.yaml's and
 # deploy/docker-compose.yml's volume lists). The nsenter invocation that
 # actually enters the sandbox becomes tmux's OWN pane
 # command instead of the other way around -- see build_pty_command below.
 # This relies on the sidecar container having its own private, writable
 # container-layer filesystem: it does NOT set readOnlyRootFilesystem (see
-# deploy/pod-template.yaml's sidecar securityContext), so /run/boxkite is
+# deploy/pod-template.yaml's sidecar securityContext), so /run/boxxkite is
 # genuinely unreachable from the sandbox container/namespace, not merely
 # permission-gated.
 TAKEOVER_TMUX_SESSION = "takeover"
-TAKEOVER_TMUX_SOCKET_DIR = "/run/boxkite"
+TAKEOVER_TMUX_SOCKET_DIR = "/run/boxxkite"
 TAKEOVER_TMUX_SOCKET = f"{TAKEOVER_TMUX_SOCKET_DIR}/takeover.sock"
 
 
@@ -222,7 +222,7 @@ async def kill_takeover_tmux_session() -> None:
 
     `tmux kill-session` exits non-zero when no server/session exists at
     all -- the common case (a pod recycled without takeover ever having
-    been used, or before /run/boxkite has ever been created) -- so a
+    been used, or before /run/boxxkite has ever been created) -- so a
     non-zero exit (including "no such file or directory" for the socket
     itself) is expected here, not logged as an error.
     """
@@ -423,8 +423,8 @@ async def pty_takeover(websocket: WebSocket) -> None:
 # caller's own argv directly (never an interactive shell an agent could
 # chain further commands into) and returns captured output once the
 # process exits or `timeout_seconds` elapses, fitting the same
-# request/response tool-calling contract every other boxkite tool has.
-# Gated by BOXKITE_AGENT_PTY_ENABLED (off by default) -- this is new
+# request/response tool-calling contract every other boxxkite tool has.
+# Gated by BOXXKITE_AGENT_PTY_ENABLED (off by default) -- this is new
 # attack surface (a second PTY-allocation path, agent-reachable, not just
 # an operator's own WS session), not a copy-paste of an already-reviewed
 # feature.
@@ -519,7 +519,7 @@ async def pty_exec(req: main.PtyExecRequest):
     command runs, duration recorded (and seconds-checked) after it
     finishes.
     """
-    if not main.BOXKITE_AGENT_PTY_ENABLED:
+    if not main.BOXXKITE_AGENT_PTY_ENABLED:
         raise HTTPException(status_code=404, detail="Agent-callable PTY is not enabled on this deployment.")
 
     if not req.command or not req.command.strip():

@@ -4,7 +4,7 @@ Tests exercise the FastAPI app in-process via httpx's ASGI transport (no
 real network, no real Postgres, no real Kubernetes) — each test gets a
 fresh SQLite file-backed database and a fake SandboxManager, so the fair-use
 and cross-tenant logic under test is fully isolated from the real
-`boxkite.SandboxManager` (which would otherwise try to reach the Kubernetes
+`boxxkite.SandboxManager` (which would otherwise try to reach the Kubernetes
 API). The app's own lifespan (which starts the background reaper against the
 *real* SandboxManager singleton) is deliberately NOT triggered here — schema
 setup is done directly via `Base.metadata.create_all()`, and the reaper's
@@ -45,7 +45,7 @@ from control_plane.usage_policy import reset_create_session_lock_for_tests
 
 
 class FakeSandboxManager:
-    """Stands in for boxkite.SandboxManager in tests — no K8s, no HTTP.
+    """Stands in for boxxkite.SandboxManager in tests — no K8s, no HTTP.
 
     `_files` is an in-memory dict per session_id so `/exec`, `/files`,
     `/files/view`, and `/files/str-replace` tests can assert real

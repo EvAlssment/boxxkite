@@ -1,7 +1,7 @@
 # Declarative builder: a quant-research image (vectorbt, backtrader, TA-Lib, QuantLib, quantstats)
 
-Builds on [GitHub issue #135](https://github.com/EvAlssment/boxkite/issues/135):
-boxkite's default sandbox image already ships `pandas`/`numpy`/`polars`/
+Builds on [GitHub issue #135](https://github.com/EvAlssment/boxxkite/issues/135):
+boxxkite's default sandbox image already ships `pandas`/`numpy`/`polars`/
 `scikit-learn` (see the blog post this follows on from,
 [`site/app/blog/self-hosted-quant-research-agent-for-banks/page.tsx`](../../site/app/blog/self-hosted-quant-research-agent-for-banks/page.tsx)),
 but a real quant research desk leans on more specialized libraries the
@@ -20,7 +20,7 @@ default image doesn't carry:
   (Sharpe, drawdown, etc.) from a strategy's return stream.
 
 None of these need a new base image or a hand-maintained Dockerfile: they're
-exact-version-pinned `python_packages` layered on top of `"boxkite-default"`
+exact-version-pinned `python_packages` layered on top of `"boxxkite-default"`
 through the existing declarative builder (`POST /v1/images`, see
 [`docs/DECLARATIVE-BUILDER-DESIGN.md`](../../docs/DECLARATIVE-BUILDER-DESIGN.md)),
 the same mechanism [`../claude_code_declarative_builder`](../claude_code_declarative_builder)
@@ -55,7 +55,7 @@ concrete rather than asserted.
 // POST /v1/images
 {
   "label": "quant-research",
-  "base": "boxkite-default",
+  "base": "boxxkite-default",
   "python_packages": [
     "vectorbt==0.28.5",
     "backtrader==1.9.78.123",
@@ -66,7 +66,7 @@ concrete rather than asserted.
 }
 ```
 
-`base` is `"boxkite-default"`, not `"boxkite-minimal"` — a quant workload
+`base` is `"boxxkite-default"`, not `"boxxkite-minimal"` — a quant workload
 wants the existing pandas/numpy/scikit-learn stack the default image
 already ships (see the blog post) *plus* these five, not a leaner base with
 that stack re-declared. Every entry must satisfy `schemas.py`'s
@@ -76,8 +76,8 @@ that stack re-declared. Every entry must satisfy `schemas.py`'s
 ## Prerequisites
 
 - A control-plane instance (self-deployed; there is no public hosted
-  boxkite service — see the main README) with
-  **`BOXKITE_IMAGE_BUILDER_ENABLED=true`**. This route family 404s on every
+  boxxkite service — see the main README) with
+  **`BOXXKITE_IMAGE_BUILDER_ENABLED=true`**. This route family 404s on every
   deployment that hasn't explicitly opted in.
 - `pip install httpx`
 
@@ -92,7 +92,7 @@ The script (`build_quant_research_image.py`):
 
 1. `POST /v1/auth/signup` + `POST /v1/api-keys` — same pattern as
    [`../hosted_control_plane/hosted_flow.py`](../hosted_control_plane/hosted_flow.py).
-2. `POST /v1/images` with `base="boxkite-default"` and the five pinned
+2. `POST /v1/images` with `base="boxxkite-default"` and the five pinned
    `python_packages` above. Always async — returns `202` with
    `status="queued"` immediately.
 3. Polls `GET /v1/images/{id}` until `status` reaches a terminal value
@@ -114,7 +114,7 @@ This example's `exec` step runs the smoke-test script as one subprocess —
 simplest to demonstrate over the *hosted control-plane's* HTTP API, which
 only exposes one-shot `/exec`, not the kept-alive
 `python_interpreter`/`node_interpreter` tools (those are wired at the
-agent-framework layer via `boxkite.tools.create_sandbox_tool_specs`, see
+agent-framework layer via `boxxkite.tools.create_sandbox_tool_specs`, see
 [`../stateful_interpreters`](../stateful_interpreters)). The real payoff
 issue #135 calls out — "load once, tweak, rerun" iteration without
 re-loading a dataset every call — is `python_interpreter`'s statefulness,
@@ -158,18 +158,18 @@ not musl, so the `manylinux` wheel variant is what actually resolves.
 
 **Verified for real in this environment:**
 
-- The exact request above (`base="boxkite-default"` + these five pins) was
+- The exact request above (`base="boxxkite-default"` + these five pins) was
   submitted through the real `SandboxImageBuildRequest`/`SandboxImageOut`
   Pydantic schemas via the control-plane's FastAPI app (in-process, real
   HTTP request/response cycle through `httpx`'s ASGI transport — the same
-  harness `control-plane/tests/` uses), with `BOXKITE_IMAGE_BUILDER_ENABLED`
+  harness `control-plane/tests/` uses), with `BOXXKITE_IMAGE_BUILDER_ENABLED`
   turned on. The build was accepted as `queued` and polling
   `GET /v1/images/{id}` showed it reach `status: "completed"` with a real
   (`FakeImageBuildRunner`-fabricated) digest and `registry_ref`, e.g.:
 
   ```
   digest=sha256:d410abb95e9381f630a00e7d7726b58625f52eef88c0c1e8948a212725cdef58
-  registry_ref=registry.internal/boxkite-images/<account_id>/<image_id>@sha256:d410a...
+  registry_ref=registry.internal/boxxkite-images/<account_id>/<image_id>@sha256:d410a...
   scan_result={'critical': 0, 'high': 0, 'policy': 'trivy-equivalent'}
   ```
 
@@ -211,15 +211,15 @@ README already documents:**
   against a live/kind/k3d Kubernetes cluster (see
   `docs/DECLARATIVE-BUILDER-DESIGN.md`'s own status note).
 - Creating a sandbox session from the built `image_id` and running
-  `quant_smoke_test.py` **inside an actual boxkite sandbox pod**. Two
+  `quant_smoke_test.py` **inside an actual boxxkite sandbox pod**. Two
   independent reasons this step specifically can't be exercised in a local
   dev setup, not just "wasn't tried":
   - In `RUNTIME_MODE=compose` (the fast local-dev path), `image_ref` is a
-    no-op — `src/boxkite/manager.py`'s compose branch always execs into
+    no-op — `src/boxxkite/manager.py`'s compose branch always execs into
     the one already-running, statically-built `sandbox` container; it
     never reads the caller-supplied `image_ref` at all (that parameter is
     only consulted in `_create_pod`, the `RUNTIME_MODE=k8s` path). Running
-    this script against a local `boxkite up` stack would create the
+    this script against a local `boxxkite up` stack would create the
     sandbox session fine, but silently execute
     `quant_smoke_test.py` against the *default* image (no vectorbt/
     backtrader/TA-Lib/QuantLib/quantstats installed) rather than the

@@ -1,9 +1,9 @@
 # Foundry/Anvil smart-contract-audit sandbox
 
-Closes [GitHub issue #137](https://github.com/EvAlssment/boxkite/issues/137):
-boxkite had no crypto/web3 vertical use case and no Solidity/EVM toolchain in
+Closes [GitHub issue #137](https://github.com/EvAlssment/boxxkite/issues/137):
+boxxkite had no crypto/web3 vertical use case and no Solidity/EVM toolchain in
 its preset packages. This example packages Foundry (`forge`/`anvil`/`cast`)
-into a boxkite sandbox image, wires up a deterministic local Anvil chain, and
+into a boxxkite sandbox image, wires up a deterministic local Anvil chain, and
 demonstrates a toy "detect / patch / exploit" workflow against it -- while
 staying **network-dark by default**: this example deliberately does not
 grant the sandbox any live mainnet/testnet RPC egress, and never handles a
@@ -21,7 +21,7 @@ accounts, plus a "veto proxy" that blocks admin/sensitive RPC calls so an
 agent can't accidentally (or intentionally) do something irreversible to a
 real chain. Reported results show the best models going from under 20% to
 over 70% exploit success on real Code4rena bugs in under two years -- a
-natural sibling to boxkite's existing quant-research use case
+natural sibling to boxxkite's existing quant-research use case
 (kept-alive `python_interpreter` state fits the same "iterate against a live
 environment across many tool calls" shape).
 
@@ -43,7 +43,7 @@ keeps its state across them).
 
 ```
 foundry_audit_sandbox/
-├── Dockerfile                    # boxkite-minimal + git + Foundry v1.0.0, network-dark at runtime
+├── Dockerfile                    # boxxkite-minimal + git + Foundry v1.0.0, network-dark at runtime
 ├── docker-compose.override.yml   # points deploy/docker-compose.yml's sandbox service at this Dockerfile
 ├── contracts/
 │   ├── foundry.toml
@@ -52,7 +52,7 @@ foundry_audit_sandbox/
 │   ├── src/Attacker.sol           # exploit contract
 │   └── test/Exploit.t.sol         # forge test: exploit succeeds vs. Vault, fails vs. VaultFixed
 ├── scripts/deploy_and_exploit.sh  # same attack, replayed against a live local Anvil chain
-└── run_audit_sandbox.py           # scripted boxkite walkthrough (no LLM) tying it together
+└── run_audit_sandbox.py           # scripted boxxkite walkthrough (no LLM) tying it together
 ```
 
 ## Foundry's install method, verified before writing the Dockerfile
@@ -138,7 +138,7 @@ itself** -- no live mainnet/testnet RPC access, by design, not by omission:
   never makes an outbound RPC call to anything -- it is a fully local,
   from-genesis chain. There is no code path in this example that could reach
   a real network even if egress were allowed.
-- Egress is denied anyway, as a second, independent layer: boxkite's default
+- Egress is denied anyway, as a second, independent layer: boxxkite's default
   `deploy/network-policy.yaml` is default-deny egress (DNS only, plus
   whatever an operator has explicitly allowlisted -- see that file), and
   local docker-compose (`deploy/docker-compose.yml`) puts the sandbox
@@ -166,7 +166,7 @@ own public, deterministic test keys against Anvil's own local chain --
 nothing here ever needs a live wallet at all.
 
 That's a deliberate scope boundary, not an oversight:
-[GitHub issue #138](https://github.com/EvAlssment/boxkite/issues/138)
+[GitHub issue #138](https://github.com/EvAlssment/boxxkite/issues/138)
 tracks the real, harder problem this example does **not** attempt to
 solve -- how a sandbox would safely hand out or use a *real* private key
 (mainnet or real testnet) for an agent to sign live transactions with.
@@ -197,7 +197,7 @@ over that:
   (`start_process`) runs inside a **fresh, empty network namespace** in K8s
   mode by default (`SANDBOX_EXEC_NETWORK_ISOLATION_ENABLED=true`, `unshare
   -n` before `nsenter` -- see `sidecar/sidecar_execution.py`'s
-  `build_k8s_exec_command`). `src/boxkite/tools/process_tools.py`'s own
+  `build_k8s_exec_command`). `src/boxxkite/tools/process_tools.py`'s own
   module docstring states this as an explicit non-goal: *"a backgrounded
   process's listening sockets are not reachable from any other tool call."*
   A `start_process`-launched Anvil would be exactly as unreachable from a
@@ -220,7 +220,7 @@ over that:
   that session (not just Anvil-related ones), falling back to the pod's own
   shared network namespace + `deploy/network-policy.yaml`'s NetworkPolicy as
   the only backstop. This is the same class of explicit, disclosed tradeoff
-  `src/boxkite/tools/git_tools.py`'s own module docstring already makes for
+  `src/boxxkite/tools/git_tools.py`'s own module docstring already makes for
   enabling `git push`/`git pull`, and the same reasoning applies here:
   "no live RPC egress" still holds either way (it's enforced by
   NetworkPolicy's default-deny egress and by Anvil never being passed
@@ -247,7 +247,7 @@ over that:
 ### 1. Build the image and point a local stack at it
 
 Compose mode reuses one already-running `sandbox` container for every
-session (verified directly against `src/boxkite/manager.py`: in
+session (verified directly against `src/boxxkite/manager.py`: in
 `RUNTIME_MODE=compose`, `SandboxManager` never creates a per-session
 container at all) -- so there is no per-session `SANDBOX_IMAGE`/`image_id`
 swap the way real K8s mode has. Swapping the image compose-mode uses means
@@ -255,8 +255,8 @@ changing what `docker compose up --build` builds for the `sandbox` service,
 which is exactly what `docker-compose.override.yml` does (see that file's
 own comments for why an override file, not an env var):
 
-`boxkite up` itself can't be used directly here -- verified directly against
-`src/boxkite/cli/cmd_up.py`: it only accepts a single compose file (no
+`boxxkite up` itself can't be used directly here -- verified directly against
+`src/boxxkite/cli/cmd_up.py`: it only accepts a single compose file (no
 support for a second `-f` override) and generates+injects
 `SIDECAR_AUTH_TOKEN` into the `docker compose up` subprocess's own
 environment itself, not via a `.env` file docker compose would pick up on
@@ -280,7 +280,7 @@ other `${...}` in it has a default.)
 
 For a real Kubernetes deployment instead, push the built image to your
 cluster's registry and set `SANDBOX_IMAGE` on the manager/operator
-deployment (`src/boxkite/manager.py`'s `_create_pod` reads it directly) --
+deployment (`src/boxxkite/manager.py`'s `_create_pod` reads it directly) --
 see `docs/CONFIGURATION.md`.
 
 ### 2. Run the scripted walkthrough
@@ -333,20 +333,20 @@ step) -- printing each step's real output.
 - **Not verified in this pass:** `run_audit_sandbox.py`'s `SandboxManager`
   wiring was checked against a fake manager only (syntax + tool-spec
   construction + a mocked `bash_tool` call), not against a live local
-  `boxkite up` stack -- no full compose stack (sidecar + MinIO/Vault) was
+  `boxxkite up` stack -- no full compose stack (sidecar + MinIO/Vault) was
   stood up in this environment. If you hit an issue running it against a
   real stack, please file it with the exact traceback.
 
 ## References
 
-- [GitHub issue #137](https://github.com/EvAlssment/boxkite/issues/137) --
+- [GitHub issue #137](https://github.com/EvAlssment/boxxkite/issues/137) --
   this example's own tracking issue.
-- [GitHub issue #138](https://github.com/EvAlssment/boxkite/issues/138) --
+- [GitHub issue #138](https://github.com/EvAlssment/boxxkite/issues/138) --
   wallet/private-key secrets design; the explicit reason real-key handling
   is out of scope here.
 - `docs/DECLARATIVE-BUILDER-DESIGN.md` -- why this is a hand-maintained
   Dockerfile, not a `POST /v1/images` image.
-- `docs/PROCESS-SESSIONS-DESIGN.md` / `src/boxkite/tools/process_tools.py`
+- `docs/PROCESS-SESSIONS-DESIGN.md` / `src/boxxkite/tools/process_tools.py`
   -- `start_process`'s documented network-isolation non-goal.
 - `docs/NETWORK-INGRESS-DESIGN.md` -- why `expose_port` doesn't solve
   cross-`/exec`-call reachability either.

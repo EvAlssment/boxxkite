@@ -5,7 +5,7 @@
 # who only need a JS/TS toolchain: no Python interpreter, no pip, at all --
 # not just "python_packages left empty" but the runtime itself absent.
 # Closes part of docs/E2B-COMPARISON.md's "template gallery" gap: a base
-# other than boxkite-default/boxkite-minimal, for callers whose workload is
+# other than boxxkite-default/boxxkite-minimal, for callers whose workload is
 # purely Node/TypeScript (a frontend build, a Next.js/Vite dev server driven
 # via bash_tool + the network-ingress preview-URL feature, a JS test suite)
 # and who'd rather not carry a Python runtime they'll never use.

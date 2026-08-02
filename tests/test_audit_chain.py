@@ -18,7 +18,7 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.audit import (
+from boxxkite.audit import (
     GENESIS_HASH,
     ChainVerificationResult,
     HashChainedSQLiteAuditSink,

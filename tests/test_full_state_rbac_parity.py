@@ -23,12 +23,12 @@ from pathlib import Path
 
 import yaml
 
-from boxkite import k8s_auth
+from boxxkite import k8s_auth
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OPTIN_MANIFEST_PATH = REPO_ROOT / "deploy" / "full-state-snapshot-rbac-optin.yaml"
 DEFAULT_RBAC_PATH = REPO_ROOT / "deploy" / "rbac.yaml"
-CHECKPOINT_BACKEND_PATH = REPO_ROOT / "src" / "boxkite" / "checkpoint_backend.py"
+CHECKPOINT_BACKEND_PATH = REPO_ROOT / "src" / "boxxkite" / "checkpoint_backend.py"
 
 
 def _load_docs(path: Path) -> list[dict]:
@@ -67,7 +67,7 @@ def test_optin_binding_subject_matches_default_rbac_service_account():
     grants nodes/proxy to an identity that never actually runs the
     control-plane, or (worse) silently fails to grant it to the one that
     does."""
-    optin_binding = _find(_optin_docs(), "ClusterRoleBinding", "boxkite-full-state-checkpoint-optin-binding")
+    optin_binding = _find(_optin_docs(), "ClusterRoleBinding", "boxxkite-full-state-checkpoint-optin-binding")
     default_binding = _find(_default_rbac_docs(), "RoleBinding", "sandbox-manager-binding")
 
     optin_subject = optin_binding["subjects"][0]
@@ -84,15 +84,15 @@ def test_optin_binding_subject_matches_k8s_auth_default_service_account_name():
     another manifest -- this is the "real control-plane deployment" side
     of the parity check, since a manifest-to-manifest match alone can't
     catch both drifting together away from the code."""
-    optin_binding = _find(_optin_docs(), "ClusterRoleBinding", "boxkite-full-state-checkpoint-optin-binding")
+    optin_binding = _find(_optin_docs(), "ClusterRoleBinding", "boxxkite-full-state-checkpoint-optin-binding")
     optin_subject = optin_binding["subjects"][0]
     assert optin_subject["name"] == k8s_auth.DEFAULT_CONTROL_PLANE_SERVICE_ACCOUNT_NAME
 
 
 def test_optin_binding_role_ref_matches_the_clusterrole_defined_in_same_file():
     docs = _optin_docs()
-    cluster_role = _find(docs, "ClusterRole", "boxkite-full-state-checkpoint-optin")
-    binding = _find(docs, "ClusterRoleBinding", "boxkite-full-state-checkpoint-optin-binding")
+    cluster_role = _find(docs, "ClusterRole", "boxxkite-full-state-checkpoint-optin")
+    binding = _find(docs, "ClusterRoleBinding", "boxxkite-full-state-checkpoint-optin-binding")
     assert binding["roleRef"]["kind"] == "ClusterRole"
     assert binding["roleRef"]["name"] == cluster_role["metadata"]["name"]
 
@@ -101,11 +101,11 @@ def test_optin_binding_role_ref_matches_the_clusterrole_defined_in_same_file():
 
 
 def _nodes_proxy_rule() -> dict:
-    cluster_role = _find(_optin_docs(), "ClusterRole", "boxkite-full-state-checkpoint-optin")
+    cluster_role = _find(_optin_docs(), "ClusterRole", "boxxkite-full-state-checkpoint-optin")
     for rule in cluster_role["rules"]:
         if rule.get("apiGroups") == [""] and rule.get("resources") == ["nodes/proxy"]:
             return rule
-    raise AssertionError("No nodes/proxy rule found in boxkite-full-state-checkpoint-optin ClusterRole")
+    raise AssertionError("No nodes/proxy rule found in boxxkite-full-state-checkpoint-optin ClusterRole")
 
 
 def test_nodes_proxy_rule_grants_exactly_create_and_get():
@@ -171,7 +171,7 @@ def test_optin_manifest_also_grants_pods_get_for_node_resolution():
     includes that rule for completeness (per its own comment) in case it
     is ever applied to a ServiceAccount that doesn't already have
     deploy/rbac.yaml's grants."""
-    cluster_role = _find(_optin_docs(), "ClusterRole", "boxkite-full-state-checkpoint-optin")
+    cluster_role = _find(_optin_docs(), "ClusterRole", "boxxkite-full-state-checkpoint-optin")
     pods_rules = [
         rule for rule in cluster_role["rules"]
         if rule.get("apiGroups") == [""] and rule.get("resources") == ["pods"]

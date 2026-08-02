@@ -41,7 +41,7 @@ jobs:
             pyproject.toml
             sidecar/requirements.txt
 
-      - name: Install boxkite (with dev extras)
+      - name: Install boxxkite (with dev extras)
         run: pip install -e ".[dev]"
 
       # Several tests (test_sidecar_auth*.py, test_sidecar_exec_no_env_injection.py,
@@ -58,7 +58,7 @@ jobs:
       - name: Run root test suite
         run: >
           pytest tests/ -q
-          --cov=src/boxkite --cov-report=term-missing --cov-report=xml --cov-report=html
+          --cov=src/boxxkite --cov-report=term-missing --cov-report=xml --cov-report=html
 
       - name: Coverage summary
         if: always()
@@ -98,7 +98,7 @@ jobs:
             pyproject.toml
             control-plane/pyproject.toml
 
-      - name: Install boxkite (with dev extras)
+      - name: Install boxxkite (with dev extras)
         run: pip install -e ".[dev]"
 
       - name: Install control-plane (with dev extras)
@@ -131,10 +131,10 @@ jobs:
             pyproject.toml
             control-plane/pyproject.toml
 
-      # control-plane depends on the root `boxkite` package as an unpublished
+      # control-plane depends on the root `boxxkite` package as an unpublished
       # local sibling (see control-plane/pyproject.toml's dependency comment)
       # — install it first, from the repo root, before control-plane itself.
-      - name: Install boxkite (root package)
+      - name: Install boxxkite (root package)
         run: pip install -e .
 
       - name: Install control-plane (with dev extras)
@@ -270,7 +270,7 @@ jobs:
             mcp-server/pyproject.toml
 
       # mcp-server depends on sdk-python as an unpublished local sibling,
-      # same relationship control-plane has to the root boxkite package.
+      # same relationship control-plane has to the root boxxkite package.
       - name: Install sdk-python (local sibling dependency)
         run: pip install -e ./sdk-python
 

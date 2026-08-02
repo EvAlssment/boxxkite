@@ -1,4 +1,4 @@
-"""LangChain tool factory over the hosted API -- mirrors boxkite.tools'
+"""LangChain tool factory over the hosted API -- mirrors boxxkite.tools'
 tool names/shapes (bash_tool, file_create, view, str_replace, ls, glob,
 grep) but calls the hosted control-plane instead of an embedded
 SandboxManager."""
@@ -10,12 +10,12 @@ import pytest
 
 pytest.importorskip("langchain_core")
 
-from boxkite_client import BoxkiteClient  # noqa: E402
-from boxkite_client.langchain_tools import create_sandbox_tools  # noqa: E402
+from boxxkite_client import BoxxkiteClient  # noqa: E402
+from boxxkite_client.langchain_tools import create_sandbox_tools  # noqa: E402
 
 
-def _client_with(handler) -> BoxkiteClient:
-    return BoxkiteClient(
+def _client_with(handler) -> BoxxkiteClient:
+    return BoxxkiteClient(
         base_url="https://cp.example.com",
         api_key="bxk_live_test",
         transport=httpx.MockTransport(handler),

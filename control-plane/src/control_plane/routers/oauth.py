@@ -7,11 +7,11 @@ clients (Claude Code/Desktop, etc.) -- Dynamic Client Registration (RFC
 and the `authorize`/`token` endpoints (authorization_code + PKCE(S256) and
 refresh_token grants, with refresh-token rotation and reuse detection).
 
-Every route here is gated behind `BOXKITE_MCP_OAUTH_ENABLED` (off by
+Every route here is gated behind `BOXXKITE_MCP_OAUTH_ENABLED` (off by
 default, see config.py) -- this stands up an entire authorization server,
 new attack surface that warrants its own security review before a
-deployment turns it on, same posture `BOXKITE_IMAGE_BUILDER_ENABLED`/
-`BOXKITE_AGENT_PTY_ENABLED` already established.
+deployment turns it on, same posture `BOXXKITE_IMAGE_BUILDER_ENABLED`/
+`BOXXKITE_AGENT_PTY_ENABLED` already established.
 
 `/mcp/`'s own bearer-token check (hosted_mcp.py) is untouched by this
 module -- it independently learns to accept the JWTs minted below (see
@@ -52,13 +52,13 @@ router = APIRouter(tags=["oauth"])
 
 
 def _require_oauth_enabled() -> None:
-    if not settings.BOXKITE_MCP_OAUTH_ENABLED:
+    if not settings.BOXXKITE_MCP_OAUTH_ENABLED:
         raise ApiError(404, "not_found", "Not found")
 
 
 def _base_url(request: Request) -> str:
-    if settings.BOXKITE_PUBLIC_URL:
-        return settings.BOXKITE_PUBLIC_URL.rstrip("/")
+    if settings.BOXXKITE_PUBLIC_URL:
+        return settings.BOXXKITE_PUBLIC_URL.rstrip("/")
     return str(request.base_url).rstrip("/")
 
 
@@ -98,7 +98,7 @@ async def _account_deactivated(db: AsyncSession, account_id: str) -> bool:
 
 def _oauth_error_json(status_code: int, error: str, description: str | None = None) -> JSONResponse:
     """RFC 6749 §5.2 token-endpoint error shape -- `{"error": "...",
-    "error_description": "..."}`, distinct from boxkite's usual
+    "error_description": "..."}`, distinct from boxxkite's usual
     `{"error": {"code", "message"}}` ApiError envelope, since MCP client
     SDKs parse this exact top-level `error` string to decide whether to
     retry/re-authenticate."""
@@ -167,7 +167,7 @@ async def register_client(
     await enforce_rate_limit(
         request,
         bucket="oauth_dcr",
-        limit=settings.BOXKITE_OAUTH_DCR_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_OAUTH_DCR_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
     client_id = generate_oauth_client_id()
@@ -221,8 +221,8 @@ async def authorize(request: Request, db: AsyncSession = Depends(get_db)) -> HTM
             render_login_page(
                 client_name=client.client_name,
                 authorize_query=authorize_query,
-                github_enabled=settings.BOXKITE_SOCIAL_LOGIN_ENABLED and settings.github_oauth_configured,
-                google_enabled=settings.BOXKITE_SOCIAL_LOGIN_ENABLED and settings.google_oauth_configured,
+                github_enabled=settings.BOXXKITE_SOCIAL_LOGIN_ENABLED and settings.github_oauth_configured,
+                google_enabled=settings.BOXXKITE_SOCIAL_LOGIN_ENABLED and settings.google_oauth_configured,
             )
         )
     return HTMLResponse(
@@ -254,8 +254,8 @@ async def authorize_login(request: Request, response: Response, db: AsyncSession
             render_login_page(
                 client_name=client_name,
                 authorize_query=authorize_query,
-                github_enabled=settings.BOXKITE_SOCIAL_LOGIN_ENABLED and settings.github_oauth_configured,
-                google_enabled=settings.BOXKITE_SOCIAL_LOGIN_ENABLED and settings.google_oauth_configured,
+                github_enabled=settings.BOXXKITE_SOCIAL_LOGIN_ENABLED and settings.github_oauth_configured,
+                google_enabled=settings.BOXXKITE_SOCIAL_LOGIN_ENABLED and settings.google_oauth_configured,
                 error="Incorrect email or password.",
             ),
             status_code=401,
@@ -323,7 +323,7 @@ async def authorize_decide(request: Request, db: AsyncSession = Depends(get_db))
         return _redirect_with_oauth_error(redirect_uri, error="access_denied", state=state)
 
     code = generate_authorization_code()
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=settings.BOXKITE_MCP_AUTH_CODE_TTL_SECONDS)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=settings.BOXXKITE_MCP_AUTH_CODE_TTL_SECONDS)
     await OAuthAuthorizationCodeRepository(db).create(
         code=code,
         client_id=client.client_id,

@@ -1,4 +1,4 @@
-"""AsyncBoxkiteClient tests -- mirrors test_client.py's coverage for the
+"""AsyncBoxxkiteClient tests -- mirrors test_client.py's coverage for the
 async variant. Wrapped in asyncio.run() from plain sync test functions so
 no pytest-asyncio/anyio plugin dependency is needed."""
 
@@ -9,11 +9,11 @@ import asyncio
 import httpx
 import pytest
 
-from boxkite_client import AsyncBoxkiteClient, BoxkiteApiError
+from boxxkite_client import AsyncBoxxkiteClient, BoxxkiteApiError
 
 
-def _client_with(handler) -> AsyncBoxkiteClient:
-    return AsyncBoxkiteClient(
+def _client_with(handler) -> AsyncBoxxkiteClient:
+    return AsyncBoxxkiteClient(
         base_url="https://cp.example.com",
         api_key="bxk_live_test",
         transport=httpx.MockTransport(handler),
@@ -22,11 +22,11 @@ def _client_with(handler) -> AsyncBoxkiteClient:
 
 def test_rejects_plain_http_to_a_remote_host():
     with pytest.raises(ValueError, match="cleartext"):
-        AsyncBoxkiteClient(base_url="http://cp.example.com", api_key="bxk_live_test")
+        AsyncBoxxkiteClient(base_url="http://cp.example.com", api_key="bxk_live_test")
 
 
 def test_allows_http_localhost_for_local_dev():
-    client = AsyncBoxkiteClient(base_url="http://localhost:8090", api_key="bxk_live_test")
+    client = AsyncBoxxkiteClient(base_url="http://localhost:8090", api_key="bxk_live_test")
     assert client is not None
 
 
@@ -98,7 +98,7 @@ def test_async_confirm_password_reset_raises_on_invalid_token():
         finally:
             await client.aclose()
 
-    with pytest.raises(BoxkiteApiError) as exc_info:
+    with pytest.raises(BoxxkiteApiError) as exc_info:
         asyncio.run(run())
     assert exc_info.value.code == "invalid_or_expired_token"
 
@@ -370,7 +370,7 @@ def test_async_create_image_sends_pinned_packages():
         assert request.url.path == "/v1/images"
         assert json.loads(request.content) == {
             "label": "demo",
-            "base": "boxkite-minimal",
+            "base": "boxxkite-minimal",
             "python_packages": ["requests==2.32.3"],
             "apt_packages": ["curl==8.5.0-2ubuntu10.1"],
         }
@@ -380,7 +380,7 @@ def test_async_create_image_sends_pinned_packages():
         client = _client_with(handler)
         result = await client.create_image(
             label="demo",
-            base="boxkite-minimal",
+            base="boxxkite-minimal",
             python_packages=["requests==2.32.3"],
             apt_packages=["curl==8.5.0-2ubuntu10.1"],
         )
@@ -396,7 +396,7 @@ def test_async_create_image_defaults_base_when_omitted():
     def handler(request: httpx.Request) -> httpx.Response:
         import json
 
-        assert json.loads(request.content) == {"base": "boxkite-default"}
+        assert json.loads(request.content) == {"base": "boxxkite-default"}
         return httpx.Response(202, json={"id": "img-2", "label": None, "status": "queued", "created_at": "now"})
 
     async def run():
@@ -474,14 +474,14 @@ def test_async_create_image_sends_npm_packages():
         import json
 
         assert json.loads(request.content) == {
-            "base": "boxkite-node",
+            "base": "boxxkite-node",
             "npm_packages": ["typescript==5.6.0"],
         }
         return httpx.Response(202, json={"id": "img-3", "label": None, "status": "queued", "created_at": "now"})
 
     async def run():
         client = _client_with(handler)
-        result = await client.create_image(base="boxkite-node", npm_packages=["typescript==5.6.0"])
+        result = await client.create_image(base="boxxkite-node", npm_packages=["typescript==5.6.0"])
         await client.aclose()
         return result
 
@@ -1011,7 +1011,7 @@ def test_async_api_error_parses_envelope():
     async def run():
         client = _client_with(handler)
         try:
-            with pytest.raises(BoxkiteApiError) as exc_info:
+            with pytest.raises(BoxxkiteApiError) as exc_info:
                 await client.account()
             return exc_info.value.status_code
         finally:
@@ -1104,7 +1104,7 @@ def test_async_watch_raises_on_error_status():
     async def run():
         client = _client_with(handler)
         try:
-            with pytest.raises(BoxkiteApiError) as exc_info:
+            with pytest.raises(BoxxkiteApiError) as exc_info:
                 async for _entry in client.watch("sess-1"):
                     pass
             return exc_info.value.status_code
@@ -1288,7 +1288,7 @@ def test_async_takeover_connects_to_wss_url_with_authorization_header():
         return "fake-connection"
 
     async def run():
-        client = AsyncBoxkiteClient(
+        client = AsyncBoxxkiteClient(
             base_url="https://cp.example.com", api_key="bxk_live_test", ws_connect=fake_connect
         )
         result = await client.takeover("sess-1")
@@ -1317,7 +1317,7 @@ def test_async_takeover_sends_and_receives_raw_bytes():
     async def run():
         async with serve(handler, "localhost", 0) as server:
             port = server.sockets[0].getsockname()[1]
-            client = AsyncBoxkiteClient(base_url=f"http://localhost:{port}", api_key="bxk_live_test")
+            client = AsyncBoxxkiteClient(base_url=f"http://localhost:{port}", api_key="bxk_live_test")
             ws = await client.takeover("sess-1")
             try:
                 await ws.send(b"hello pty")
@@ -1344,7 +1344,7 @@ def test_async_sandbox_session_takeover_delegates_to_client():
         raise AssertionError("unexpected call")
 
     async def run():
-        client = AsyncBoxkiteClient(
+        client = AsyncBoxxkiteClient(
             base_url="https://cp.example.com",
             api_key="bxk_live_test",
             transport=httpx.MockTransport(handler),
@@ -1370,7 +1370,7 @@ def test_async_desktop_takeover_connects_to_wss_url_with_authorization_header():
         return "fake-connection"
 
     async def run():
-        client = AsyncBoxkiteClient(
+        client = AsyncBoxxkiteClient(
             base_url="https://cp.example.com", api_key="bxk_live_test", ws_connect=fake_connect
         )
         result = await client.desktop_takeover("sess-1")
@@ -1399,7 +1399,7 @@ def test_async_desktop_takeover_sends_and_receives_raw_bytes():
     async def run():
         async with serve(handler, "localhost", 0) as server:
             port = server.sockets[0].getsockname()[1]
-            client = AsyncBoxkiteClient(base_url=f"http://localhost:{port}", api_key="bxk_live_test")
+            client = AsyncBoxxkiteClient(base_url=f"http://localhost:{port}", api_key="bxk_live_test")
             ws = await client.desktop_takeover("sess-1")
             try:
                 await ws.send(b"hello desktop")
@@ -1426,7 +1426,7 @@ def test_async_sandbox_session_desktop_takeover_delegates_to_client():
         raise AssertionError("unexpected call")
 
     async def run():
-        client = AsyncBoxkiteClient(
+        client = AsyncBoxxkiteClient(
             base_url="https://cp.example.com",
             api_key="bxk_live_test",
             transport=httpx.MockTransport(handler),

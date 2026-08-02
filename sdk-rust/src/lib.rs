@@ -1,18 +1,18 @@
-//! Rust client for a **hosted** boxkite control-plane -- create sandboxes,
+//! Rust client for a **hosted** boxxkite control-plane -- create sandboxes,
 //! run commands, edit files, stream the audit log, take over a session's
-//! shell, over HTTP/WebSocket. Not the `boxkite` package itself (the
+//! shell, over HTTP/WebSocket. Not the `boxxkite` package itself (the
 //! self-hosted Python core that embeds `SandboxManager` against your own
 //! Kubernetes cluster) -- use this to talk to *someone else's* running
 //! control-plane, hosted or self-hosted, over its `/v1/*` REST API. See
-//! `docs/API.md` in the [boxkite repository](https://github.com/EvAlssment/boxkite)
+//! `docs/API.md` in the [boxxkite repository](https://github.com/EvAlssment/boxxkite)
 //! for the full route/schema reference this crate wraps.
 //!
 //! # Quickstart
 //!
 //! ```no_run
-//! use boxkite_client::{Client, CreateSandboxOptions, ExecOptions};
+//! use boxxkite_client::{Client, CreateSandboxOptions, ExecOptions};
 //!
-//! # async fn example() -> Result<(), boxkite_client::BoxkiteError> {
+//! # async fn example() -> Result<(), boxxkite_client::BoxxkiteError> {
 //! let client = Client::new("https://your-control-plane.example.com", "bxk_live_...")?;
 //!
 //! let sandbox = client
@@ -29,10 +29,10 @@
 //!
 //! # Error handling
 //!
-//! Every fallible call returns `Result<T, BoxkiteError>`. A non-2xx
-//! response becomes [`BoxkiteError::Api`] (`.status()`/`.code()`); a
-//! transport-level failure becomes [`BoxkiteError::Connection`]. See
-//! [`BoxkiteError`] for the full set of variants.
+//! Every fallible call returns `Result<T, BoxxkiteError>`. A non-2xx
+//! response becomes [`BoxxkiteError::Api`] (`.status()`/`.code()`); a
+//! transport-level failure becomes [`BoxxkiteError::Connection`]. See
+//! [`BoxxkiteError`] for the full set of variants.
 //!
 //! # Scope
 //!
@@ -89,7 +89,7 @@ pub use account::{
 pub use audit::{AuditLogEntry, AuditLogResponse, GetLogOptions};
 pub use client::{Client, ClientBuilder, RetryConfig};
 pub use desktop::DesktopStream;
-pub use error::BoxkiteError;
+pub use error::BoxxkiteError;
 pub use files::{
     ExecOptions, ExecResult, FileCreateResult, FileOptions, GlobOptions, GlobResult, GrepOptions,
     GrepResult, HttpRequestOptions, HttpRequestResult, LsOptions, LsResult, StrReplaceOptions,

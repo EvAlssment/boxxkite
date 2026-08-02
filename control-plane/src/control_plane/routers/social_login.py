@@ -4,7 +4,7 @@ control-plane acting as an OAuth *client* to GitHub/Google, reused by the
 `/oauth/authorize` consent screen's login step (`next` query param) but
 equally usable standalone.
 
-Each provider is gated on `BOXKITE_SOCIAL_LOGIN_ENABLED` AND that
+Each provider is gated on `BOXXKITE_SOCIAL_LOGIN_ENABLED` AND that
 provider's own client id/secret being configured (`settings.
 github_oauth_configured`/`google_oauth_configured`) -- until then its
 routes 404, per config.py's own docstring for these settings.
@@ -16,9 +16,9 @@ whether login succeeded:
   same short-lived `/oauth/*`-scoped session cookie `routers/oauth.py`'s
   login form sets, then redirects to `next`.
 - **From the dashboard's own login page, success** (`next` exactly equal
-  to `{BOXKITE_DASHBOARD_URL}/dashboard/oauth-callback`, an exact-match
+  to `{BOXXKITE_DASHBOARD_URL}/dashboard/oauth-callback`, an exact-match
   allowlisted absolute URL, only reachable when an operator has
-  configured `BOXKITE_DASHBOARD_URL`): redirects there with the minted
+  configured `BOXXKITE_DASHBOARD_URL`): redirects there with the minted
   access token in the URL **fragment**
   (`#access_token=...&expires_in=...&token_type=bearer`), never a query
   param -- a fragment is never sent to the server in the HTTP request
@@ -95,7 +95,7 @@ _SAFE_NEXT_PREFIX = "/oauth/authorize"
 # fixation this closes) -- set at /{provider}/start, checked and cleared at
 # /{provider}/callback. Scoped to /v1/auth so it isn't sent on unrelated
 # requests, same rationale as OAUTH_LOGIN_SESSION_COOKIE's own `path`.
-_STATE_NONCE_COOKIE = "boxkite_oauth_state_nonce"
+_STATE_NONCE_COOKIE = "boxxkite_oauth_state_nonce"
 
 
 def _set_state_nonce_cookie(response: Response, *, nonce: str) -> None:
@@ -133,15 +133,15 @@ def _safe_next(next_path: str | None) -> str | None:
 def _dashboard_oauth_callback_url() -> str | None:
     """The one, exact, operator-configured dashboard URL this route is ever
     allowed to redirect a standalone login to -- `None` (never matches)
-    unless `BOXKITE_DASHBOARD_URL` is explicitly set. Deliberately an EXACT
+    unless `BOXXKITE_DASHBOARD_URL` is explicitly set. Deliberately an EXACT
     string match against this single computed value in `_dashboard_safe_next`
     below, not a prefix/domain check, since the dashboard is a different
     origin than this control-plane and a prefix match against a caller-
     supplied `next` would reopen the exact open-redirect `_safe_next` above
     exists to prevent."""
-    if not settings.BOXKITE_DASHBOARD_URL:
+    if not settings.BOXXKITE_DASHBOARD_URL:
         return None
-    return f"{settings.BOXKITE_DASHBOARD_URL.rstrip('/')}/dashboard/oauth-callback"
+    return f"{settings.BOXXKITE_DASHBOARD_URL.rstrip('/')}/dashboard/oauth-callback"
 
 
 def _dashboard_safe_next(next_path: str | None) -> str | None:
@@ -161,18 +161,18 @@ def _any_safe_next(next_path: str | None) -> str | None:
 
 
 def _require_github_enabled() -> None:
-    if not (settings.BOXKITE_SOCIAL_LOGIN_ENABLED and settings.github_oauth_configured):
+    if not (settings.BOXXKITE_SOCIAL_LOGIN_ENABLED and settings.github_oauth_configured):
         raise ApiError(404, "not_found", "Not found")
 
 
 def _require_google_enabled() -> None:
-    if not (settings.BOXKITE_SOCIAL_LOGIN_ENABLED and settings.google_oauth_configured):
+    if not (settings.BOXXKITE_SOCIAL_LOGIN_ENABLED and settings.google_oauth_configured):
         raise ApiError(404, "not_found", "Not found")
 
 
 def _base_url(request: Request) -> str:
-    if settings.BOXKITE_PUBLIC_URL:
-        return settings.BOXKITE_PUBLIC_URL.rstrip("/")
+    if settings.BOXXKITE_PUBLIC_URL:
+        return settings.BOXXKITE_PUBLIC_URL.rstrip("/")
     return str(request.base_url).rstrip("/")
 
 
@@ -283,7 +283,7 @@ async def _link_provider_to_account(
         raise ApiError(
             409,
             "provider_identity_in_use",
-            f"This {provider.capitalize()} account is already linked to a different boxkite account.",
+            f"This {provider.capitalize()} account is already linked to a different boxxkite account.",
         )
 
     account = await accounts.get_by_id(account_id)
@@ -345,7 +345,7 @@ async def _finish_login(request: Request, response_next: str | None, account, db
     # ACCESS_TOKEN_TTL_MINUTES regardless of the flag, while a
     # password-authenticated one silently renews.
     refresh_token_raw: str | None = None
-    if settings.BOXKITE_REFRESH_TOKENS_ENABLED:
+    if settings.BOXXKITE_REFRESH_TOKENS_ENABLED:
         refresh_token_raw = await issue_refresh_token(db, account.id)
 
     dashboard_next = _dashboard_safe_next(response_next)

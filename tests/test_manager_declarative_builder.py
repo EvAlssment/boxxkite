@@ -22,12 +22,12 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.manager import SANDBOX_IMAGE, SandboxManager, _validate_image_ref
+from boxxkite.manager import SANDBOX_IMAGE, SandboxManager, _validate_image_ref
 from test_manager import _FakeCoreApi, _container_by_name
 
 
 def test_validate_image_ref_accepts_pinned_digest():
-    ref = "registry.internal/boxkite-images/acct-1/img-1@sha256:" + "a" * 64
+    ref = "registry.internal/boxxkite-images/acct-1/img-1@sha256:" + "a" * 64
     assert _validate_image_ref(ref) == ref
 
 
@@ -38,10 +38,10 @@ def test_validate_image_ref_accepts_none():
 @pytest.mark.parametrize(
     "bad_ref",
     [
-        "boxkite-sandbox:latest",  # mutable tag, no digest at all
-        "registry.internal/boxkite-images/acct-1/img-1:latest",  # tag, not digest
-        "registry.internal/boxkite-images/acct-1/img-1@sha256:short",  # too-short digest
-        "registry.internal/boxkite-images/acct-1/img-1@md5:" + "a" * 32,  # wrong algo
+        "boxxkite-sandbox:latest",  # mutable tag, no digest at all
+        "registry.internal/boxxkite-images/acct-1/img-1:latest",  # tag, not digest
+        "registry.internal/boxxkite-images/acct-1/img-1@sha256:short",  # too-short digest
+        "registry.internal/boxxkite-images/acct-1/img-1@md5:" + "a" * 32,  # wrong algo
         "",
     ],
 )
@@ -77,7 +77,7 @@ async def test_create_pod_uses_image_ref_when_given_and_sandbox_image_otherwise(
         # logic to assert the invariant without needing the full K8s client
         # plumbing (client.V1Pod etc. require the `kubernetes` package's
         # object model, which this unit test intentionally avoids).
-        from boxkite.manager import SANDBOX_IMAGE
+        from boxxkite.manager import SANDBOX_IMAGE
 
         image_ref = kwargs.get("image_ref")
         captured_images.append(image_ref or SANDBOX_IMAGE)
@@ -96,13 +96,13 @@ async def test_create_pod_uses_image_ref_when_given_and_sandbox_image_otherwise(
     manager._get_http_client = lambda *_args, **_kwargs: fake_client
     manager._k8s_core_api = SimpleNamespace(patch_namespaced_pod=AsyncMock())
 
-    pinned = "registry.internal/boxkite-images/acct-1/img-1@sha256:" + "b" * 64
+    pinned = "registry.internal/boxxkite-images/acct-1/img-1@sha256:" + "b" * 64
     await manager._create_k8s_session(uuid4(), "session-custom-image", None, None, image_ref=pinned)
     await manager._create_k8s_session(uuid4(), "session-default-image", None, None, image_ref=None)
 
     assert captured_images[0] == pinned
 
-    from boxkite.manager import SANDBOX_IMAGE
+    from boxxkite.manager import SANDBOX_IMAGE
 
     assert captured_images[1] == SANDBOX_IMAGE
 
@@ -124,7 +124,7 @@ async def test_custom_image_ref_does_not_change_pod_security_context_or_resource
 
     monkeypatch.setattr(manager_custom, "_wait_for_pod_ready", fake_wait_for_pod_ready)
 
-    pinned = "registry.internal/boxkite-images/acct-1/img-1@sha256:" + "d" * 64
+    pinned = "registry.internal/boxxkite-images/acct-1/img-1@sha256:" + "d" * 64
     await manager_custom._create_pod(
         pod_name="sandbox-custom-image",
         session_id="session-custom-image",
@@ -199,7 +199,7 @@ async def test_custom_image_forces_cold_create_bypassing_warm_pool(monkeypatch):
 
     from uuid import uuid4
 
-    pinned = "registry.internal/boxkite-images/acct-1/img-1@sha256:" + "c" * 64
+    pinned = "registry.internal/boxxkite-images/acct-1/img-1@sha256:" + "c" * 64
     await manager._create_k8s_session(uuid4(), "session-forces-cold", None, None, image_ref=pinned)
 
     assert claim_called is False, "a custom image_ref must never claim a warm pod"

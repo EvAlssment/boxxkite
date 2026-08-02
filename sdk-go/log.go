@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"bufio"
@@ -131,7 +131,7 @@ func (w *LogWatcher) Next() bool {
 			joined := strings.Join(dataLines, "\n")
 			var entry LogEntry
 			if err := json.Unmarshal([]byte(joined), &entry); err != nil {
-				w.err = fmt.Errorf("boxkite: decoding SSE event: %w", err)
+				w.err = fmt.Errorf("boxxkite: decoding SSE event: %w", err)
 				return false
 			}
 			w.current = entry

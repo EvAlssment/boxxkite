@@ -1,8 +1,8 @@
 """Shared pytest fixtures.
 
 `sidecar/main.py` is a standalone FastAPI service (its own Dockerfile and
-requirements, deployed separately from the `boxkite` package) rather than a
-module inside `src/boxkite`. To exercise it directly in-process with
+requirements, deployed separately from the `boxxkite` package) rather than a
+module inside `src/boxxkite`. To exercise it directly in-process with
 FastAPI's TestClient, its containing directory needs to be on `sys.path` so
 `import main` resolves to `sidecar/main.py` and not something else.
 """

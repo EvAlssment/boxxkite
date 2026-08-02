@@ -2,7 +2,7 @@
 
 See docs/LSP-SUPPORT-SCOPING.md for the full scoping writeup (what this
 closes from issue #81, what remains explicitly deferred). Summary: opt-in,
-off by default (BOXKITE_LSP_ENABLED), two language servers (pyright for
+off by default (BOXXKITE_LSP_ENABLED), two language servers (pyright for
 Python, typescript-language-server for TypeScript/JavaScript),
 `textDocument/completion` only, full-document sync only (every open/edit
 resends the whole file -- no incremental didChange deltas).
@@ -500,7 +500,7 @@ async def _lsp_completion(
 @router.post("/lsp/start", response_model=main.LspStartResponse, status_code=201)
 async def lsp_start(req: "main.LspStartRequest"):
     """Start a persistent language server for one session and run its
-    initialize handshake. 404s unless BOXKITE_LSP_ENABLED is set -- new
+    initialize handshake. 404s unless BOXXKITE_LSP_ENABLED is set -- new
     attack surface, off by default, same posture as /pty-exec and
     /node-interpreter/exec.
 
@@ -512,7 +512,7 @@ async def lsp_start(req: "main.LspStartRequest"):
     this reintroduces the exact CRITICAL bug class SECURITY.md's "Known
     follow-ups" section documents for the original /exec-only pass.
     """
-    if not main.BOXKITE_LSP_ENABLED:
+    if not main.BOXXKITE_LSP_ENABLED:
         raise HTTPException(status_code=404, detail="LSP support is not enabled on this deployment.")
     if req.language not in _LSP_SERVER_COMMANDS:
         raise HTTPException(
@@ -572,7 +572,7 @@ async def lsp_open(lsp_id: str, req: "main.LspOpenRequest"):
     a document-sync notification with no RPC response awaited, the same
     "not exec-like" classification /process/input and /interpreter/reset
     already have."""
-    if not main.BOXKITE_LSP_ENABLED:
+    if not main.BOXXKITE_LSP_ENABLED:
         raise HTTPException(status_code=404, detail="LSP support is not enabled on this deployment.")
     handle = _get_lsp_handle_or_404(lsp_id)
     try:
@@ -592,7 +592,7 @@ async def lsp_completion(lsp_id: str, req: "main.LspCompletionRequest"):
     gets the same treatment /exec/interpreter calls do, not the
     not-budget-checked treatment /lsp/open gets.
     """
-    if not main.BOXKITE_LSP_ENABLED:
+    if not main.BOXXKITE_LSP_ENABLED:
         raise HTTPException(status_code=404, detail="LSP support is not enabled on this deployment.")
     handle = _get_lsp_handle_or_404(lsp_id)
 
@@ -620,7 +620,7 @@ async def lsp_stop(lsp_id: str):
     """Gracefully shut down a running language server and remove it from
     the registry. Not budget-checked, same as /interpreter/reset and
     /process/stop."""
-    if not main.BOXKITE_LSP_ENABLED:
+    if not main.BOXXKITE_LSP_ENABLED:
         raise HTTPException(status_code=404, detail="LSP support is not enabled on this deployment.")
 
     lock = _get_lsp_registry_lock()

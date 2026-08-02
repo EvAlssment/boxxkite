@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Raw HTTP calls against the boxkite sidecar -- no LangChain, no boxkite
+# Raw HTTP calls against the boxxkite sidecar -- no LangChain, no boxxkite
 # Python package at all. Useful if you're integrating from a different
 # language/agent framework and just want the wire contract.
 #
-# Talks directly to the sidecar started by `boxkite up` (or
+# Talks directly to the sidecar started by `boxxkite up` (or
 # `docker compose -f deploy/docker-compose.yml up`), NOT the hosted
 # control-plane -- see ../hosted_control_plane for that flow, which wraps
 # these same operations behind session-scoped, authenticated routes.
@@ -13,7 +13,7 @@
 # ViewRequest/ViewResponse) as of this writing.
 #
 # Prerequisites:
-#   boxkite up   (from the repo root)
+#   boxxkite up   (from the repo root)
 #
 # Usage:
 #   ./curl_examples.sh
@@ -23,14 +23,14 @@ set -euo pipefail
 SIDECAR_URL="${SIDECAR_URL:-http://localhost:8080}"
 
 if [ -z "${SIDECAR_AUTH_TOKEN:-}" ]; then
-  LOCAL_ENV="$HOME/.boxkite/local.env"
+  LOCAL_ENV="$HOME/.boxxkite/local.env"
   if [ -f "$LOCAL_ENV" ]; then
     SIDECAR_AUTH_TOKEN="$(grep '^SIDECAR_AUTH_TOKEN=' "$LOCAL_ENV" | cut -d= -f2)"
   fi
 fi
 
 if [ -z "${SIDECAR_AUTH_TOKEN:-}" ]; then
-  echo "Set SIDECAR_AUTH_TOKEN, or run 'boxkite up' first so ~/.boxkite/local.env has one." >&2
+  echo "Set SIDECAR_AUTH_TOKEN, or run 'boxxkite up' first so ~/.boxxkite/local.env has one." >&2
   exit 1
 fi
 

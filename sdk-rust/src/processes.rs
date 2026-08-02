@@ -19,7 +19,7 @@ use reqwest_eventsource::{Event, EventSource};
 use serde::{Deserialize, Serialize};
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
 /// `max_runtime_seconds` is required by the server
 /// (`SandboxProcessStartRequest`) with a 4h ceiling
@@ -162,7 +162,7 @@ impl Client {
         session_id: &str,
         command: &str,
         options: StartProcessOptions,
-    ) -> Result<ProcessStartResult, BoxkiteError> {
+    ) -> Result<ProcessStartResult, BoxxkiteError> {
         let body = StartProcessBody {
             command,
             description: options.description.as_deref(),
@@ -184,7 +184,7 @@ impl Client {
     pub async fn list_processes(
         &self,
         session_id: &str,
-    ) -> Result<ProcessListResult, BoxkiteError> {
+    ) -> Result<ProcessListResult, BoxxkiteError> {
         let builder = self.request(
             Method::GET,
             &format!("/v1/sandboxes/{session_id}/processes"),
@@ -202,7 +202,7 @@ impl Client {
         session_id: &str,
         process_id: &str,
         since_offset: i64,
-    ) -> Result<ProcessOutputResult, BoxkiteError> {
+    ) -> Result<ProcessOutputResult, BoxxkiteError> {
         let builder = self
             .request(
                 Method::GET,
@@ -224,7 +224,7 @@ impl Client {
         session_id: &str,
         process_id: &str,
         since_offset: i64,
-    ) -> Pin<Box<dyn Stream<Item = Result<ProcessStreamEvent, BoxkiteError>> + Send + 'static>> {
+    ) -> Pin<Box<dyn Stream<Item = Result<ProcessStreamEvent, BoxxkiteError>> + Send + 'static>> {
         let request_builder = self
             .request(
                 Method::GET,
@@ -236,7 +236,7 @@ impl Client {
             let mut event_source = match EventSource::new(request_builder) {
                 Ok(event_source) => event_source,
                 Err(err) => {
-                    yield Err(BoxkiteError::Config(format!("failed to build stream request: {err}")));
+                    yield Err(BoxxkiteError::Config(format!("failed to build stream request: {err}")));
                     return;
                 }
             };
@@ -245,7 +245,7 @@ impl Client {
                 match event {
                     Ok(Event::Open) => continue,
                     Ok(Event::Message(message)) => {
-                        yield serde_json::from_str::<ProcessStreamEvent>(&message.data).map_err(BoxkiteError::from);
+                        yield serde_json::from_str::<ProcessStreamEvent>(&message.data).map_err(BoxxkiteError::from);
                     }
                     Err(reqwest_eventsource::Error::StreamEnded) => break,
                     Err(reqwest_eventsource::Error::InvalidStatusCode(status, response)) => {
@@ -254,7 +254,7 @@ impl Client {
                         break;
                     }
                     Err(err) => {
-                        yield Err(BoxkiteError::from(err));
+                        yield Err(BoxxkiteError::from(err));
                         break;
                     }
                 }
@@ -271,7 +271,7 @@ impl Client {
         session_id: &str,
         process_id: &str,
         data: &str,
-    ) -> Result<ProcessInputResult, BoxkiteError> {
+    ) -> Result<ProcessInputResult, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             data: &'a str,
@@ -292,7 +292,7 @@ impl Client {
         &self,
         session_id: &str,
         process_id: &str,
-    ) -> Result<ProcessStopResult, BoxkiteError> {
+    ) -> Result<ProcessStopResult, BoxxkiteError> {
         let builder = self.request(
             Method::POST,
             &format!("/v1/sandboxes/{session_id}/processes/{process_id}/stop"),

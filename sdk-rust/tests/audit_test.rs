@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::GetLogOptions;
+use boxxkite_client::GetLogOptions;
 use futures_util::StreamExt;
 use serde_json::json;
 use wiremock::matchers::{method, path, query_param};

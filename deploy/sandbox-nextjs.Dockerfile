@@ -16,8 +16,8 @@
 # getting-started/installation's "System requirements" section, checked
 # directly rather than assumed from training data -- this image's
 # nodejs-22 clears that with room to spare). So "just Node, npm removed,
-# same as boxkite-node" would be the same file under a new name, adding
-# nothing a caller couldn't already get from boxkite-node -- not worth a
+# same as boxxkite-node" would be the same file under a new name, adding
+# nothing a caller couldn't already get from boxxkite-node -- not worth a
 # separate base. The obvious alternative -- have the agent invoke
 # `npx create-next-app` itself at session runtime -- is deliberately NOT
 # what this image does: create-next-app needs a live npm to write and then
@@ -102,8 +102,8 @@ RUN printf '%s\n' \
 
 RUN printf '%s\n' \
     "export const metadata = {" \
-    "  title: \"boxkite-nextjs\"," \
-    "  description: \"Next.js-ready boxkite sandbox\"," \
+    "  title: \"boxxkite-nextjs\"," \
+    "  description: \"Next.js-ready boxxkite sandbox\"," \
     "};" \
     "" \
     "export default function RootLayout({ children }) {" \
@@ -117,7 +117,7 @@ RUN printf '%s\n' \
 
 RUN printf '%s\n' \
     "export default function Page() {" \
-    "  return <h1>Hello from boxkite-nextjs</h1>;" \
+    "  return <h1>Hello from boxxkite-nextjs</h1>;" \
     "}" \
     > /opt/nextjs-template/app/page.js
 

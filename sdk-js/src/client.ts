@@ -1,6 +1,6 @@
 /**
- * Client for a hosted boxkite control-plane. Thin wrapper over the same v1
- * HTTP API the `boxkite` CLI and Python SDK call -- no behavior lives here
+ * Client for a hosted boxxkite control-plane. Thin wrapper over the same v1
+ * HTTP API the `boxxkite` CLI and Python SDK call -- no behavior lives here
  * beyond request/response plumbing and the withSandbox() convenience.
  *
  * Works in Node (18+, global fetch) and the browser identically -- pass a
@@ -12,7 +12,7 @@
  * README "Never put a real apiKey in code that ships to a browser" section.
  */
 
-import { BoxkiteApiError, BoxkiteConnectionError } from "./errors.js";
+import { BoxxkiteApiError, BoxxkiteConnectionError } from "./errors.js";
 import {
   computeBackoffMs,
   isIdempotentMethod,
@@ -89,10 +89,10 @@ function httpUrlToWs(baseUrl: string): string {
   throw new Error(`Unsupported baseUrl scheme: ${JSON.stringify(baseUrl)}`);
 }
 
-export interface BoxkiteClientOptions {
+export interface BoxxkiteClientOptions {
   baseUrl: string;
   /**
-   * A boxkite account API key (`bxk_live_...`). SECURITY: never hardcode or
+   * A boxxkite account API key (`bxk_live_...`). SECURITY: never hardcode or
    * bundle a real value into browser-shipped code -- see the module
    * docstring above and sdk-js's README.
    */
@@ -168,14 +168,14 @@ export interface GetProcessOutputOptions {
 export interface CreateImageOptions {
   /** Optional human-readable label for the image. */
   label?: string;
-  /** Base image to build from. Defaults to "boxkite-default". */
+  /** Base image to build from. Defaults to "boxxkite-default". */
   base?:
-    | "boxkite-default"
-    | "boxkite-minimal"
-    | "boxkite-node"
-    | "boxkite-go"
-    | "boxkite-nextjs"
-    | "boxkite-rust";
+    | "boxxkite-default"
+    | "boxxkite-minimal"
+    | "boxxkite-node"
+    | "boxxkite-go"
+    | "boxxkite-nextjs"
+    | "boxxkite-rust";
   /** Exact-version-pinned Python packages (`name==version`, no ranges). */
   pythonPackages?: string[];
   /** Exact-version-pinned apt packages (`name==version`, no ranges). */
@@ -227,7 +227,7 @@ export interface ListWebhookDeliveriesOptions {
 }
 
 /** Curated outbound-MCP catalog entry ids (GitHub issues #116/#117,
- * docs/OUTBOUND-MCP-DESIGN.md) -- restricted to boxkite's own reviewed
+ * docs/OUTBOUND-MCP-DESIGN.md) -- restricted to boxxkite's own reviewed
  * allowlist, never a caller-supplied hostname. */
 export type McpCatalogId = "slack" | "notion" | "linear" | "github";
 
@@ -338,7 +338,7 @@ async function parseErrorBody(resp: Response): Promise<{ code: string; message: 
   return { code, message };
 }
 
-export class BoxkiteClient {
+export class BoxxkiteClient {
   private readonly baseUrl: string;
   private readonly apiKey: string;
   private readonly fetchImpl: typeof fetch;
@@ -346,7 +346,7 @@ export class BoxkiteClient {
   private readonly wsImpl: typeof WebSocket;
   private readonly retry: ResolvedRetryOptions;
 
-  constructor(options: BoxkiteClientOptions) {
+  constructor(options: BoxxkiteClientOptions) {
     validateBaseUrlScheme(options.baseUrl);
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.apiKey = options.apiKey;
@@ -391,7 +391,7 @@ export class BoxkiteClient {
           attempt++;
           continue;
         }
-        throw new BoxkiteConnectionError(err instanceof Error ? err.message : String(err));
+        throw new BoxxkiteConnectionError(err instanceof Error ? err.message : String(err));
       }
 
       if (!resp.ok) {
@@ -401,7 +401,7 @@ export class BoxkiteClient {
           continue;
         }
         const { code, message } = await parseErrorBody(resp);
-        throw new BoxkiteApiError(resp.status, code, message);
+        throw new BoxxkiteApiError(resp.status, code, message);
       }
 
       const text = await resp.text();
@@ -436,7 +436,7 @@ export class BoxkiteClient {
 
   /**
    * POST /v1/auth/password-reset/request -- opt-in on the control-plane
-   * (BOXKITE_PASSWORD_RESET_ENABLED); throws BoxkiteApiError(404,
+   * (BOXXKITE_PASSWORD_RESET_ENABLED); throws BoxxkiteApiError(404,
    * "feature_disabled") if the deployment hasn't enabled it. Always
    * returns the same message whether or not the email is registered, so
    * this call can never be used to enumerate accounts. Email delivery is
@@ -451,7 +451,7 @@ export class BoxkiteClient {
    * POST /v1/auth/password-reset/confirm -- consumes a single-use token
    * minted by requestPasswordReset() and sets a new password. Also revokes
    * every outstanding refresh token for the account, if refresh tokens are
-   * enabled server-side. Throws BoxkiteApiError(400,
+   * enabled server-side. Throws BoxxkiteApiError(400,
    * "invalid_or_expired_token") for an unknown, already-used, or expired
    * token.
    */
@@ -464,9 +464,9 @@ export class BoxkiteClient {
 
   /**
    * POST /v1/auth/verify-email -- opt-in
-   * (BOXKITE_EMAIL_VERIFICATION_ENABLED). Consumes a single-use token
+   * (BOXXKITE_EMAIL_VERIFICATION_ENABLED). Consumes a single-use token
    * (minted automatically at signup, or by resendVerification()) and marks
-   * the account's email verified. Throws BoxkiteApiError(400,
+   * the account's email verified. Throws BoxxkiteApiError(400,
    * "invalid_or_expired_token") for an unknown, already-used, or expired
    * token.
    */
@@ -476,7 +476,7 @@ export class BoxkiteClient {
 
   /**
    * POST /v1/auth/resend-verification -- opt-in
-   * (BOXKITE_EMAIL_VERIFICATION_ENABLED). Requires a dashboard session
+   * (BOXXKITE_EMAIL_VERIFICATION_ENABLED). Requires a dashboard session
    * token (the JWT returned by /v1/auth/login or /v1/auth/signup), not
    * this client's apiKey -- apiKey and a dashboard JWT are two different,
    * non-interchangeable credential types on this control-plane (see
@@ -491,11 +491,11 @@ export class BoxkiteClient {
   }
 
   /**
-   * POST /v1/auth/refresh -- opt-in (BOXKITE_REFRESH_TOKENS_ENABLED).
+   * POST /v1/auth/refresh -- opt-in (BOXXKITE_REFRESH_TOKENS_ENABLED).
    * Exchanges a still-valid refresh token for a brand new accessToken +
    * refreshToken pair, revoking the presented one in the same request
    * (rotation, not reuse) -- store the new refresh_token from the response
-   * and discard the one you presented. Throws BoxkiteApiError(401,
+   * and discard the one you presented. Throws BoxxkiteApiError(401,
    * "invalid_refresh_token") if the token is unknown/expired, or (401,
    * "refresh_token_reused") if it was already rotated out or revoked
    * (which also revokes every other refresh token on the account as a
@@ -506,7 +506,7 @@ export class BoxkiteClient {
   }
 
   /**
-   * POST /v1/auth/logout -- opt-in (BOXKITE_REFRESH_TOKENS_ENABLED).
+   * POST /v1/auth/logout -- opt-in (BOXXKITE_REFRESH_TOKENS_ENABLED).
    * Revokes one refresh token immediately. Always succeeds (204) whether
    * or not the token was valid -- never leaks which.
    */
@@ -549,7 +549,7 @@ export class BoxkiteClient {
    * @param options.gpuCount Opt-in, experimental (docs/GPU-SUPPORT-SCOPING.md)
    *   -- requests this many GPUs as a Kubernetes extended-resource limit.
    *   422s (gpu_support_disabled) unless the deployment has
-   *   BOXKITE_GPU_ENABLED set and a GPU-equipped node pool with a device
+   *   BOXXKITE_GPU_ENABLED set and a GPU-equipped node pool with a device
    *   plugin provisioned; not verified against real GPU hardware in this
    *   codebase.
    */
@@ -762,14 +762,14 @@ export class BoxkiteClient {
         headers: { Authorization: `Bearer ${this.apiKey}` },
       });
     } catch (err) {
-      throw new BoxkiteConnectionError(err instanceof Error ? err.message : String(err));
+      throw new BoxxkiteConnectionError(err instanceof Error ? err.message : String(err));
     }
     if (!resp.ok) {
       const { code, message } = await parseErrorBody(resp);
-      throw new BoxkiteApiError(resp.status, code, message);
+      throw new BoxxkiteApiError(resp.status, code, message);
     }
     if (!resp.body) {
-      throw new BoxkiteConnectionError("stream response had no body to stream");
+      throw new BoxxkiteConnectionError("stream response had no body to stream");
     }
     yield* parseSseEvents(readBodyAsText(resp.body)) as AsyncGenerator<ProcessStreamEvent>;
   }
@@ -806,15 +806,15 @@ export class BoxkiteClient {
         headers: { Authorization: `Bearer ${this.apiKey}` },
       });
     } catch (err) {
-      throw new BoxkiteConnectionError(err instanceof Error ? err.message : String(err));
+      throw new BoxxkiteConnectionError(err instanceof Error ? err.message : String(err));
     }
 
     if (!resp.ok) {
       const { code, message } = await parseErrorBody(resp);
-      throw new BoxkiteApiError(resp.status, code, message);
+      throw new BoxxkiteApiError(resp.status, code, message);
     }
     if (!resp.body) {
-      throw new BoxkiteConnectionError("watch response had no body to stream");
+      throw new BoxxkiteConnectionError("watch response had no body to stream");
     }
     yield* parseSseEvents(readBodyAsText(resp.body));
   }
@@ -840,7 +840,7 @@ export class BoxkiteClient {
    *
    * A `member`-role apiKey (`POST /v1/api-keys`'s `role` field -- minted
    * via the dashboard JWT-authenticated API-keys endpoint, not this SDK)
-   * rejects the mint call with a 403 `BoxkiteApiError` before any
+   * rejects the mint call with a 403 `BoxxkiteApiError` before any
    * WebSocket is even attempted. A missing/invalid/expired takeover token
    * closes the
    * WebSocket with close code 4401; an unowned or already-destroyed
@@ -849,8 +849,8 @@ export class BoxkiteClient {
    * handshake completes.
    *
    * Resolves once the connection is open; rejects with
-   * BoxkiteConnectionError if the socket errors before ever opening, or
-   * with BoxkiteApiError if the takeover-token mint call itself fails.
+   * BoxxkiteConnectionError if the socket errors before ever opening, or
+   * with BoxxkiteApiError if the takeover-token mint call itself fails.
    */
   async takeover(sessionId: string): Promise<WebSocket> {
     const { token } = (await this.request("POST", `/v1/sandboxes/${sessionId}/takeover-token`)) as {
@@ -864,7 +864,7 @@ export class BoxkiteClient {
       try {
         socket = new this.wsImpl(wsUrl);
       } catch (err) {
-        reject(new BoxkiteConnectionError(err instanceof Error ? err.message : String(err)));
+        reject(new BoxxkiteConnectionError(err instanceof Error ? err.message : String(err)));
         return;
       }
       socket.binaryType = "arraybuffer";
@@ -877,7 +877,7 @@ export class BoxkiteClient {
       const onError = () => {
         socket.removeEventListener("open", onOpen);
         socket.removeEventListener("error", onError);
-        reject(new BoxkiteConnectionError(`Failed to open takeover WebSocket to ${wsUrl}`));
+        reject(new BoxxkiteConnectionError(`Failed to open takeover WebSocket to ${wsUrl}`));
       };
       socket.addEventListener("open", onOpen);
       socket.addEventListener("error", onError);
@@ -902,18 +902,18 @@ export class BoxkiteClient {
    * Reuses `takeover()`'s `can_initiate_takeover` RBAC gate as-is (an
    * "admin"-role apiKey only) -- there is no dedicated `can_initiate_desktop`
    * permission yet, and no `read_only` variant of this connection. A
-   * `member`-role apiKey rejects the mint call with a 403 `BoxkiteApiError`
+   * `member`-role apiKey rejects the mint call with a 403 `BoxxkiteApiError`
    * (`desktop_not_permitted`) before any WebSocket is even attempted. A
    * missing/invalid/expired desktop token closes the WebSocket with close
    * code 4401; an unowned or already-destroyed sessionId closes it with
    * 4404 -- both surface as the socket's `close` event, since the close
    * happens after the opening handshake completes. 404s (as a normal
-   * BoxkiteApiError from the mint call) when this deployment has not set
-   * `BOXKITE_DESKTOP_ENABLED`.
+   * BoxxkiteApiError from the mint call) when this deployment has not set
+   * `BOXXKITE_DESKTOP_ENABLED`.
    *
    * Resolves once the connection is open; rejects with
-   * BoxkiteConnectionError if the socket errors before ever opening, or
-   * with BoxkiteApiError if the desktop-token mint call itself fails.
+   * BoxxkiteConnectionError if the socket errors before ever opening, or
+   * with BoxxkiteApiError if the desktop-token mint call itself fails.
    */
   async desktopTakeover(sessionId: string): Promise<WebSocket> {
     const { token } = (await this.request("POST", `/v1/sandboxes/${sessionId}/desktop-token`)) as {
@@ -927,7 +927,7 @@ export class BoxkiteClient {
       try {
         socket = new this.wsImpl(wsUrl);
       } catch (err) {
-        reject(new BoxkiteConnectionError(err instanceof Error ? err.message : String(err)));
+        reject(new BoxxkiteConnectionError(err instanceof Error ? err.message : String(err)));
         return;
       }
       socket.binaryType = "arraybuffer";
@@ -940,7 +940,7 @@ export class BoxkiteClient {
       const onError = () => {
         socket.removeEventListener("open", onOpen);
         socket.removeEventListener("error", onError);
-        reject(new BoxkiteConnectionError(`Failed to open desktop WebSocket to ${wsUrl}`));
+        reject(new BoxxkiteConnectionError(`Failed to open desktop WebSocket to ${wsUrl}`));
       };
       socket.addEventListener("open", onOpen);
       socket.addEventListener("error", onError);
@@ -1034,13 +1034,13 @@ export class BoxkiteClient {
    *
    * @param options.label Optional human-readable label for the image.
    * @param options.base Base image to build from, one of
-   *   "boxkite-default" | "boxkite-minimal" | "boxkite-node" | "boxkite-go" |
-   *   "boxkite-nextjs" | "boxkite-rust". Defaults to "boxkite-default".
-   *   "boxkite-node" drops Python entirely (no pythonPackages), "boxkite-go"
-   *   and "boxkite-rust" both drop Python and Node entirely (no
-   *   pythonPackages or npmPackages), and "boxkite-nextjs" is the same
-   *   Node-only runtime as "boxkite-node" plus a pre-installed Next.js App
-   *   Router starter (same pythonPackages restriction as "boxkite-node").
+   *   "boxxkite-default" | "boxxkite-minimal" | "boxxkite-node" | "boxxkite-go" |
+   *   "boxxkite-nextjs" | "boxxkite-rust". Defaults to "boxxkite-default".
+   *   "boxxkite-node" drops Python entirely (no pythonPackages), "boxxkite-go"
+   *   and "boxxkite-rust" both drop Python and Node entirely (no
+   *   pythonPackages or npmPackages), and "boxxkite-nextjs" is the same
+   *   Node-only runtime as "boxxkite-node" plus a pre-installed Next.js App
+   *   Router starter (same pythonPackages restriction as "boxxkite-node").
    * @param options.pythonPackages Exact-version-pinned Python packages
    *   (`name==version`, no ranges).
    * @param options.aptPackages Exact-version-pinned apt packages
@@ -1113,7 +1113,7 @@ export class BoxkiteClient {
    * POST /v1/webhooks -- register a webhook subscription
    * (docs/WEBHOOKS-DESIGN.md). Returns the subscription plus a `secret`
    * field -- the raw signing secret, shown exactly once. Use it to verify
-   * the `X-Boxkite-Webhook-Signature` header on every delivery; it cannot
+   * the `X-Boxxkite-Webhook-Signature` header on every delivery; it cannot
    * be retrieved again after this response.
    */
   createWebhook(options: CreateWebhookOptions): Promise<Webhook> {
@@ -1245,9 +1245,9 @@ export class BoxkiteClient {
 
 export class SandboxSession {
   readonly id: string;
-  private readonly client: BoxkiteClient;
+  private readonly client: BoxxkiteClient;
 
-  constructor(client: BoxkiteClient, id: string) {
+  constructor(client: BoxxkiteClient, id: string) {
     this.client = client;
     this.id = id;
   }

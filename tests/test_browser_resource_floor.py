@@ -2,7 +2,7 @@
 mismatched-config warning added for GitHub issue #119's security-review
 follow-up (docs/BROWSER-EXEC-DESIGN.md §4/§5): a headless Chromium process
 requires size='medium' or 'large', and browser_enabled=True with
-BOXKITE_BROWSER_NETWORK_POLICY_ENABLED off must warn rather than silently
+BOXXKITE_BROWSER_NETWORK_POLICY_ENABLED off must warn rather than silently
 fail closed with no trail to follow.
 """
 
@@ -10,11 +10,11 @@ import logging
 
 import pytest
 
-from boxkite._manager_config import (
+from boxxkite._manager_config import (
     _validate_browser_resource_floor,
     _warn_if_browser_enabled_without_network_policy,
 )
-from boxkite.resource_config import size_at_least
+from boxxkite.resource_config import size_at_least
 
 
 def test_size_at_least_orders_small_medium_large():
@@ -46,7 +46,7 @@ def test_validate_browser_resource_floor_rejects_small_with_browser_enabled():
 def test_warn_if_browser_enabled_without_network_policy_warns(caplog):
     with caplog.at_level(logging.WARNING):
         _warn_if_browser_enabled_without_network_policy("sess-1", True, False)
-    assert any("BOXKITE_BROWSER_NETWORK_POLICY_ENABLED is not set" in r.message for r in caplog.records)
+    assert any("BOXXKITE_BROWSER_NETWORK_POLICY_ENABLED is not set" in r.message for r in caplog.records)
     assert any("sess-1" in r.message for r in caplog.records)
 
 

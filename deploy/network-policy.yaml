@@ -56,7 +56,7 @@
 #
 # 3. Because of both of the above, the sidecar's HTTP API also requires a
 #    per-pod shared-secret header on every request except /health (see
-#    src/boxkite/sidecar_auth.py and SECURITY.md) — a THIRD independent
+#    src/boxxkite/sidecar_auth.py and SECURITY.md) — a THIRD independent
 #    layer that does not depend on network topology at all. Do not treat
 #    this file as sufficient on its own.
 #
@@ -76,8 +76,8 @@ metadata:
   namespace: default  # Change to your namespace
 spec:
   # IMPORTANT: this selector must match the labels SandboxManager/
-  # WarmPoolManager actually set on live pods (src/boxkite/manager.py,
-  # src/boxkite/warm_pool.py both set `app: sandbox` — they do NOT set a
+  # WarmPoolManager actually set on live pods (src/boxxkite/manager.py,
+  # src/boxxkite/warm_pool.py both set `app: sandbox` — they do NOT set a
   # `component` label). A selector requiring `component: execution` (as an
   # earlier version of this file had) silently matches ZERO real pods and
   # provides no protection at all.
@@ -93,7 +93,7 @@ spec:
   # Ingress rules
   ingress:
   # Allow traffic from API gateway/worker to sidecar :8080. This is
-  # necessary-but-not-sufficient: see src/boxkite/sidecar_auth.py for the
+  # necessary-but-not-sufficient: see src/boxxkite/sidecar_auth.py for the
   # per-pod shared-secret layer that also gates every route.
   - from:
     - podSelector:
@@ -162,7 +162,7 @@ spec:
   #     port: 443
 
   # --------------------------------------------------------------------
-  # OPTIONAL — git host egress, for src/boxkite/tools/git_tools.py's
+  # OPTIONAL — git host egress, for src/boxxkite/tools/git_tools.py's
   # git_clone/git_push/git_pull. Commented out and NOT applied by default,
   # same "don't ship this pre-enabled" discipline as the storage-egress
   # block above. See docs/GIT-OPERATIONS-DESIGN.md §2.4 before enabling
@@ -215,8 +215,8 @@ spec:
 # something this static, operator-authored manifest can express. Earlier
 # versions of this file's own guidance said to widen the egress rule above
 # to `0.0.0.0/0:443` for this — DO NOT do that anymore. Set
-# BOXKITE_SECRETS_NETWORK_POLICY_ENABLED=true instead (see
-# src/boxkite/secrets_network_policy.py): the manager then provisions one
+# BOXXKITE_SECRETS_NETWORK_POLICY_ENABLED=true instead (see
+# src/boxxkite/secrets_network_policy.py): the manager then provisions one
 # dynamically-scoped NetworkPolicy per session, granting egress to exactly
 # that session's granted secrets' resolved destination IPs, and tears it
 # down at session end.
@@ -238,7 +238,7 @@ spec:
 # above applies here too: standard NetworkPolicy has no FQDN egress
 # primitive, so each secret's allowed host is resolved via DNS once, at
 # session-provisioning time, and pinned by IP — see
-# src/boxkite/secrets_network_policy.py's module docstring for the full
+# src/boxxkite/secrets_network_policy.py's module docstring for the full
 # disclosure of what that does and doesn't protect against.
 # ============================================================================
 # Fully-open egress mode (opt-in, air-gapped self-host use case only) lives in

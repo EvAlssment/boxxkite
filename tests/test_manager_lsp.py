@@ -7,7 +7,7 @@ sidecar, return the parsed JSON body.
 
 import pytest
 
-from boxkite.manager import SandboxManager
+from boxxkite.manager import SandboxManager
 
 pytestmark = pytest.mark.pr
 

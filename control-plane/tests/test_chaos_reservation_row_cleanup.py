@@ -73,13 +73,13 @@ async def test_reservation_row_is_deleted_when_sandbox_manager_create_fails(
 async def test_reservation_row_cleanup_frees_the_concurrency_slot_even_at_the_cap(
     client: httpx.AsyncClient, fake_manager: FakeSandboxManager, monkeypatch
 ):
-    """Sharper version of the above: with BOXKITE_MAX_CONCURRENT_SANDBOXES=1,
+    """Sharper version of the above: with BOXXKITE_MAX_CONCURRENT_SANDBOXES=1,
     a failed create must not permanently occupy that one slot -- if the
     reservation row cleanup in `usage_policy.py` regressed, this account
     would be locked out of ever creating a sandbox again after a single
     transient SandboxManager failure.
     """
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 1)
     key = await signup_and_get_api_key(client, "reservation-cleanup-at-cap@example.com")
     fake_manager.fail_next_create = True
 

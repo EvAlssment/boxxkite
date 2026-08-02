@@ -19,7 +19,7 @@ from conftest import FakeSandboxManager, signup_and_get_api_key
 async def test_concurrent_sandbox_limit_returns_429_with_no_pricing_language(
     client: httpx.AsyncClient, monkeypatch
 ):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 1)
     key = await signup_and_get_api_key(client, "concurrency-limit@example.com")
 
     first = await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {key}"})
@@ -36,7 +36,7 @@ async def test_concurrent_sandbox_limit_returns_429_with_no_pricing_language(
 async def test_destroying_a_session_frees_a_concurrency_slot(
     client: httpx.AsyncClient, monkeypatch
 ):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 1)
     key = await signup_and_get_api_key(client, "concurrency-free@example.com")
 
     first = await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {key}"})
@@ -59,7 +59,7 @@ async def test_monthly_usage_limit_returns_429_with_no_pricing_language(
 ):
     """Fast-forward usage by seeding an already-destroyed session that alone
     consumes the entire monthly cap, rather than sleeping in real time."""
-    monkeypatch.setattr(settings, "BOXKITE_FREE_MONTHLY_SANDBOX_HOURS", 0.01)  # 36 seconds
+    monkeypatch.setattr(settings, "BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS", 0.01)  # 36 seconds
     key = await signup_and_get_api_key(client, "monthly-limit@example.com")
 
     # Consume the whole monthly cap with one long-since-destroyed session.
@@ -84,7 +84,7 @@ async def test_monthly_usage_limit_returns_429_with_no_pricing_language(
 async def test_reaper_destroys_sessions_past_max_session_minutes(
     client: httpx.AsyncClient, fake_manager: FakeSandboxManager, monkeypatch
 ):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_SESSION_MINUTES", 30)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_SESSION_MINUTES", 30)
     key = await signup_and_get_api_key(client, "reaper-user@example.com")
 
     create_resp = await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {key}"})

@@ -1,6 +1,6 @@
-"""Native Groq function-calling loop against a boxkite sandbox.
+"""Native Groq function-calling loop against a boxxkite sandbox.
 
-No LangChain/LangGraph anywhere in this file -- boxkite.tools.adapters.
+No LangChain/LangGraph anywhere in this file -- boxxkite.tools.adapters.
 to_openai_functions() is pure stdlib (it only builds the
 {"type": "function", "function": {...}} schema OpenAI's API expects), and
 Groq's own SDK is intentionally OpenAI-compatible (a drop-in
@@ -16,8 +16,8 @@ Task: same as ../openai_function_calling -- write a short Python script to
 a file and run it, using only bash_tool and file_create.
 
 Prerequisites:
-  - `boxkite up` running.
-  - `pip install -e ../..` (boxkite) and `pip install -r requirements.txt`.
+  - `boxxkite up` running.
+  - `pip install -e ../..` (boxxkite) and `pip install -r requirements.txt`.
   - GROQ_API_KEY set.
 
 Run:
@@ -26,7 +26,7 @@ Run:
     python agent.py
 
   (SandboxManager auto-loads the sidecar token + URL from
-  ~/.boxkite/local.env, written by `boxkite up` — no manual export needed.)
+  ~/.boxxkite/local.env, written by `boxxkite up` — no manual export needed.)
 """
 
 from __future__ import annotations
@@ -38,14 +38,14 @@ from uuid import uuid4
 
 from groq import AsyncGroq
 
-from boxkite import SandboxManager
-from boxkite.tools.adapters import to_openai_functions
-from boxkite.tools.bash_tool import create_bash_tool_spec
-from boxkite.tools.file_tools import create_file_create_tool_spec
+from boxxkite import SandboxManager
+from boxxkite.tools.adapters import to_openai_functions
+from boxxkite.tools.bash_tool import create_bash_tool_spec
+from boxxkite.tools.file_tools import create_file_create_tool_spec
 
 TASK = (
     "Write a file at /workspace/greet.py containing a Python script that "
-    "prints 'hello from boxkite' and then prints the current UTC date using "
+    "prints 'hello from boxxkite' and then prints the current UTC date using "
     "the datetime module. Then run it. Tell me exactly what it printed."
 )
 
@@ -53,7 +53,7 @@ MAX_TURNS = 8
 
 
 async def main() -> None:
-    model_name = os.environ.get("BOXKITE_EXAMPLE_MODEL", "llama-3.3-70b-versatile")
+    model_name = os.environ.get("BOXXKITE_EXAMPLE_MODEL", "llama-3.3-70b-versatile")
     client = AsyncGroq()
 
     manager = SandboxManager()

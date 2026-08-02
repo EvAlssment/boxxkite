@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { WebSocketServer } from "ws";
 
-import { BoxkiteApiError, BoxkiteClient, BoxkiteConnectionError, SandboxSession } from "../src/index.js";
+import { BoxxkiteApiError, BoxxkiteClient, BoxxkiteConnectionError, SandboxSession } from "../src/index.js";
 
 type Handler = (req: {
   method: string;
@@ -19,8 +19,8 @@ function fakeFetch(handler: Handler): typeof fetch {
   }) as typeof fetch;
 }
 
-function clientWith(handler: Handler): BoxkiteClient {
-  return new BoxkiteClient({
+function clientWith(handler: Handler): BoxxkiteClient {
+  return new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     fetchImpl: fakeFetch(handler),
@@ -32,13 +32,13 @@ test("rejects a plain http baseUrl to a remote host", () => {
   // `Authorization: Bearer` on every request -- an http:// URL to anything
   // other than localhost would put it on the wire in cleartext.
   assert.throws(
-    () => new BoxkiteClient({ baseUrl: "http://cp.example.com", apiKey: "bxk_live_test" }),
+    () => new BoxxkiteClient({ baseUrl: "http://cp.example.com", apiKey: "bxk_live_test" }),
     /cleartext/,
   );
 });
 
 test("allows http localhost for local dev", () => {
-  const client = new BoxkiteClient({ baseUrl: "http://localhost:8090", apiKey: "bxk_live_test" });
+  const client = new BoxxkiteClient({ baseUrl: "http://localhost:8090", apiKey: "bxk_live_test" });
   assert.ok(client);
 });
 
@@ -80,7 +80,7 @@ test("confirmPasswordReset posts token and newPassword", async () => {
   assert.ok(result.message.startsWith("Password has been reset"));
 });
 
-test("confirmPasswordReset throws BoxkiteApiError on invalid token", async () => {
+test("confirmPasswordReset throws BoxxkiteApiError on invalid token", async () => {
   const client = clientWith(() =>
     new Response(
       JSON.stringify({
@@ -92,7 +92,7 @@ test("confirmPasswordReset throws BoxkiteApiError on invalid token", async () =>
 
   await assert.rejects(
     () => client.confirmPasswordReset("bad-tok", "new-hunter2"),
-    (err: unknown) => err instanceof BoxkiteApiError && err.code === "invalid_or_expired_token",
+    (err: unknown) => err instanceof BoxxkiteApiError && err.code === "invalid_or_expired_token",
   );
 });
 
@@ -142,7 +142,7 @@ test("refreshToken posts refreshToken and returns a new pair", async () => {
   assert.equal(result.refresh_token, "new-refresh");
 });
 
-test("refreshToken throws BoxkiteApiError on a reused token", async () => {
+test("refreshToken throws BoxxkiteApiError on a reused token", async () => {
   const client = clientWith(() =>
     new Response(
       JSON.stringify({
@@ -154,7 +154,7 @@ test("refreshToken throws BoxkiteApiError on a reused token", async () => {
 
   await assert.rejects(
     () => client.refreshToken("already-used"),
-    (err: unknown) => err instanceof BoxkiteApiError && err.code === "refresh_token_reused" && err.statusCode === 401,
+    (err: unknown) => err instanceof BoxxkiteApiError && err.code === "refresh_token_reused" && err.statusCode === 401,
   );
 });
 
@@ -248,7 +248,7 @@ test("createImage sends label, base, pythonPackages, and aptPackages", async () 
     assert.equal(new URL(url).pathname, "/v1/images");
     assert.deepEqual(body, {
       label: "my-image",
-      base: "boxkite-minimal",
+      base: "boxxkite-minimal",
       python_packages: ["requests==2.31.0"],
       apt_packages: ["curl==7.81.0-1"],
     });
@@ -257,48 +257,48 @@ test("createImage sends label, base, pythonPackages, and aptPackages", async () 
 
   const result = await client.createImage({
     label: "my-image",
-    base: "boxkite-minimal",
+    base: "boxxkite-minimal",
     pythonPackages: ["requests==2.31.0"],
     aptPackages: ["curl==7.81.0-1"],
   });
   assert.equal(result.id, "img-1");
 });
 
-test("createImage sends npmPackages and a boxkite-node base", async () => {
+test("createImage sends npmPackages and a boxxkite-node base", async () => {
   const client = clientWith(({ method, url, body }) => {
     assert.equal(method, "POST");
     assert.equal(new URL(url).pathname, "/v1/images");
     assert.deepEqual(body, {
-      base: "boxkite-node",
+      base: "boxxkite-node",
       npm_packages: ["@anthropic-ai/claude-code==2.0.1"],
     });
     return new Response(JSON.stringify({ id: "img-2", status: "pending" }), { status: 202 });
   });
 
   const result = await client.createImage({
-    base: "boxkite-node",
+    base: "boxxkite-node",
     npmPackages: ["@anthropic-ai/claude-code==2.0.1"],
   });
   assert.equal(result.id, "img-2");
 });
 
-test("createImage accepts a boxkite-go base", async () => {
+test("createImage accepts a boxxkite-go base", async () => {
   const client = clientWith(({ body }) => {
-    assert.deepEqual(body, { base: "boxkite-go" });
+    assert.deepEqual(body, { base: "boxxkite-go" });
     return new Response(JSON.stringify({ id: "img-3", status: "pending" }), { status: 202 });
   });
 
-  const result = await client.createImage({ base: "boxkite-go" });
+  const result = await client.createImage({ base: "boxxkite-go" });
   assert.equal(result.id, "img-3");
 });
 
 test("createImage omits npmPackages when not given", async () => {
   const client = clientWith(({ body }) => {
-    assert.deepEqual(body, { base: "boxkite-minimal" });
+    assert.deepEqual(body, { base: "boxxkite-minimal" });
     return new Response(JSON.stringify({ id: "img-4", status: "pending" }), { status: 202 });
   });
 
-  await client.createImage({ base: "boxkite-minimal" });
+  await client.createImage({ base: "boxxkite-minimal" });
 });
 
 test("createImage omits fields that are not given", async () => {
@@ -315,7 +315,7 @@ test("getImage gets the image route", async () => {
     assert.equal(method, "GET");
     assert.equal(new URL(url).pathname, "/v1/images/img-1");
     return new Response(
-      JSON.stringify({ id: "img-1", label: "my-image", base: "boxkite-default", status: "ready" }),
+      JSON.stringify({ id: "img-1", label: "my-image", base: "boxxkite-default", status: "ready" }),
       { status: 200 },
     );
   });
@@ -798,8 +798,8 @@ test("api error parses envelope", async () => {
   await assert.rejects(
     client.getSandbox("missing"),
     (err: unknown) => {
-      assert.ok(err instanceof BoxkiteApiError);
-      if (err instanceof BoxkiteApiError) {
+      assert.ok(err instanceof BoxxkiteApiError);
+      if (err instanceof BoxxkiteApiError) {
         assert.equal(err.statusCode, 404);
         assert.equal(err.code, "not_found");
       }
@@ -809,7 +809,7 @@ test("api error parses envelope", async () => {
 });
 
 test("connection error wrapped", async () => {
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     fetchImpl: (async () => {
@@ -817,7 +817,7 @@ test("connection error wrapped", async () => {
     }) as unknown as typeof fetch,
   });
 
-  await assert.rejects(client.account(), BoxkiteConnectionError);
+  await assert.rejects(client.account(), BoxxkiteConnectionError);
 });
 
 test("withSandbox creates and destroys", async () => {
@@ -1029,7 +1029,7 @@ function sseFetch(body: string, status = 200): typeof fetch {
 }
 
 test("watch yields parsed SSE entries", async () => {
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     fetchImpl: sseFetch(
@@ -1049,8 +1049,8 @@ test("watch yields parsed SSE entries", async () => {
   ]);
 });
 
-test("watch raises BoxkiteApiError on an error status", async () => {
-  const client = new BoxkiteClient({
+test("watch raises BoxxkiteApiError on an error status", async () => {
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     fetchImpl: (async () =>
@@ -1065,12 +1065,12 @@ test("watch raises BoxkiteApiError on an error status", async () => {
         // draining is enough to trigger the rejection
       }
     },
-    (err: unknown) => err instanceof BoxkiteApiError && err.statusCode === 404,
+    (err: unknown) => err instanceof BoxxkiteApiError && err.statusCode === 404,
   );
 });
 
 test("streamProcessOutput yields output then exit events", async () => {
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     fetchImpl: sseFetch(
@@ -1090,8 +1090,8 @@ test("streamProcessOutput yields output then exit events", async () => {
   ]);
 });
 
-test("streamProcessOutput raises BoxkiteApiError on an error status", async () => {
-  const client = new BoxkiteClient({
+test("streamProcessOutput raises BoxxkiteApiError on an error status", async () => {
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     fetchImpl: (async () =>
@@ -1106,7 +1106,7 @@ test("streamProcessOutput raises BoxkiteApiError on an error status", async () =
         // draining triggers the rejection
       }
     },
-    (err: unknown) => err instanceof BoxkiteApiError && err.statusCode === 404,
+    (err: unknown) => err instanceof BoxxkiteApiError && err.statusCode === 404,
   );
 });
 
@@ -1274,7 +1274,7 @@ test("SandboxSession wraps createPreviewUrl and revokePreviewUrl", async () => {
 
 test("takeover mints a takeover-token via POST, then connects to a wss:// url with ?token=", async () => {
   FakeWebSocket.instances = [];
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1292,7 +1292,7 @@ test("takeover mints a takeover-token via POST, then connects to a wss:// url wi
 
 test("takeover never puts the long-lived apiKey on the WS URL", async () => {
   FakeWebSocket.instances = [];
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_super_secret",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1306,8 +1306,8 @@ test("takeover never puts the long-lived apiKey on the WS URL", async () => {
   await pending;
 });
 
-test("takeover rejects with BoxkiteApiError when the takeover-token mint call itself fails (e.g. a member-role key)", async () => {
-  const client = new BoxkiteClient({
+test("takeover rejects with BoxxkiteApiError when the takeover-token mint call itself fails (e.g. a member-role key)", async () => {
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_member",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1320,12 +1320,12 @@ test("takeover rejects with BoxkiteApiError when the takeover-token mint call it
     ),
   });
 
-  await assert.rejects(client.takeover("sess-1"), (err: unknown) => err instanceof BoxkiteApiError);
+  await assert.rejects(client.takeover("sess-1"), (err: unknown) => err instanceof BoxxkiteApiError);
 });
 
-test("takeover rejects with BoxkiteConnectionError when the socket errors before opening", async () => {
+test("takeover rejects with BoxxkiteConnectionError when the socket errors before opening", async () => {
   FakeWebSocket.instances = [];
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1336,12 +1336,12 @@ test("takeover rejects with BoxkiteConnectionError when the socket errors before
   const socket = await waitForWebSocketInstance();
   socket.simulateError();
 
-  await assert.rejects(pending, (err: unknown) => err instanceof BoxkiteConnectionError);
+  await assert.rejects(pending, (err: unknown) => err instanceof BoxxkiteConnectionError);
 });
 
 test("SandboxSession.takeover delegates to the client", async () => {
   FakeWebSocket.instances = [];
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1367,7 +1367,7 @@ function fakeDesktopTokenFetch(token = "desktop-tok-abc"): typeof fetch {
 
 test("desktopTakeover mints a desktop-token via POST, then connects to a wss:// url with ?token=", async () => {
   FakeWebSocket.instances = [];
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1385,7 +1385,7 @@ test("desktopTakeover mints a desktop-token via POST, then connects to a wss:// 
 
 test("desktopTakeover never puts the long-lived apiKey on the WS URL", async () => {
   FakeWebSocket.instances = [];
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_super_secret",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1399,8 +1399,8 @@ test("desktopTakeover never puts the long-lived apiKey on the WS URL", async () 
   await pending;
 });
 
-test("desktopTakeover rejects with BoxkiteApiError when the desktop-token mint call itself fails (e.g. a member-role key)", async () => {
-  const client = new BoxkiteClient({
+test("desktopTakeover rejects with BoxxkiteApiError when the desktop-token mint call itself fails (e.g. a member-role key)", async () => {
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_member",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1413,12 +1413,12 @@ test("desktopTakeover rejects with BoxkiteApiError when the desktop-token mint c
     ),
   });
 
-  await assert.rejects(client.desktopTakeover("sess-1"), (err: unknown) => err instanceof BoxkiteApiError);
+  await assert.rejects(client.desktopTakeover("sess-1"), (err: unknown) => err instanceof BoxxkiteApiError);
 });
 
-test("desktopTakeover rejects with BoxkiteConnectionError when the socket errors before opening", async () => {
+test("desktopTakeover rejects with BoxxkiteConnectionError when the socket errors before opening", async () => {
   FakeWebSocket.instances = [];
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1429,12 +1429,12 @@ test("desktopTakeover rejects with BoxkiteConnectionError when the socket errors
   const socket = await waitForWebSocketInstance();
   socket.simulateError();
 
-  await assert.rejects(pending, (err: unknown) => err instanceof BoxkiteConnectionError);
+  await assert.rejects(pending, (err: unknown) => err instanceof BoxxkiteConnectionError);
 });
 
 test("SandboxSession.desktopTakeover delegates to the client", async () => {
   FakeWebSocket.instances = [];
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
@@ -1467,7 +1467,7 @@ test("desktopTakeover sends and receives raw bytes against a real local WebSocke
   const port = (wss.address() as { port: number }).port;
 
   try {
-    const client = new BoxkiteClient({
+    const client = new BoxxkiteClient({
       baseUrl: `http://localhost:${port}`,
       apiKey: "bxk_live_test",
       fetchImpl: fakeDesktopTokenFetch("real-ws-token"),
@@ -1510,7 +1510,7 @@ test("takeover sends and receives raw bytes against a real local WebSocket serve
   const port = (wss.address() as { port: number }).port;
 
   try {
-    const client = new BoxkiteClient({
+    const client = new BoxxkiteClient({
       baseUrl: `http://localhost:${port}`,
       apiKey: "bxk_live_test",
       fetchImpl: fakeTakeoverTokenFetch("real-ws-token"),
@@ -1552,8 +1552,8 @@ function sequencedFetch(steps: Array<Response | Error>): { fetch: typeof fetch; 
   return { fetch: fetchImpl, calls: () => i };
 }
 
-function retryClient(fetchImpl: typeof fetch, maxRetries = 2): BoxkiteClient {
-  return new BoxkiteClient({
+function retryClient(fetchImpl: typeof fetch, maxRetries = 2): BoxxkiteClient {
+  return new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     fetchImpl,
@@ -1593,7 +1593,7 @@ test("gives up after maxRetries and throws the last error", async () => {
 
   await assert.rejects(
     () => client.account(),
-    (err: unknown) => err instanceof BoxkiteApiError && err.statusCode === 503,
+    (err: unknown) => err instanceof BoxxkiteApiError && err.statusCode === 503,
   );
   // initial attempt + 2 retries
   assert.equal(seq.calls(), 3);
@@ -1605,7 +1605,7 @@ test("does not retry a non-idempotent POST", async () => {
   ]);
   const client = retryClient(seq.fetch);
 
-  await assert.rejects(() => client.createSandbox({ label: "x" }), BoxkiteApiError);
+  await assert.rejects(() => client.createSandbox({ label: "x" }), BoxxkiteApiError);
   assert.equal(seq.calls(), 1);
 });
 
@@ -1615,7 +1615,7 @@ test("does not retry a 4xx that is not 429", async () => {
   ]);
   const client = retryClient(seq.fetch);
 
-  await assert.rejects(() => client.getSandbox("missing"), BoxkiteApiError);
+  await assert.rejects(() => client.getSandbox("missing"), BoxxkiteApiError);
   assert.equal(seq.calls(), 1);
 });
 
@@ -1638,12 +1638,12 @@ test("does not retry when the retry option is omitted (default off)", async () =
   const seq = sequencedFetch([
     new Response(JSON.stringify({ error: { code: "unavailable", message: "busy" } }), { status: 503 }),
   ]);
-  const client = new BoxkiteClient({
+  const client = new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     fetchImpl: seq.fetch,
   });
 
-  await assert.rejects(() => client.account(), BoxkiteApiError);
+  await assert.rejects(() => client.account(), BoxxkiteApiError);
   assert.equal(seq.calls(), 1);
 });

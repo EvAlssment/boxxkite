@@ -1,10 +1,10 @@
-"""Tests for src/boxkite/secrets_network_policy.py -- the per-session
+"""Tests for src/boxxkite/secrets_network_policy.py -- the per-session
 NetworkPolicy scoping mechanism for the secrets broker (issue #74).
 """
 
 import pytest
 
-from boxkite import secrets_network_policy as snp
+from boxxkite import secrets_network_policy as snp
 
 pytestmark = pytest.mark.pr
 

@@ -1,4 +1,4 @@
-"""Tests for src/boxkite/browser_network_policy.py -- the per-session
+"""Tests for src/boxxkite/browser_network_policy.py -- the per-session
 NetworkPolicy scoping mechanism for browser-enabled sessions
 (docs/BROWSER-EXEC-DESIGN.md §3, GitHub issue #119).
 
@@ -21,7 +21,7 @@ import ipaddress
 import pytest
 from kubernetes_asyncio import client
 
-from boxkite import browser_network_policy as bnp
+from boxxkite import browser_network_policy as bnp
 
 pytestmark = pytest.mark.pr
 

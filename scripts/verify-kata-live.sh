@@ -5,7 +5,7 @@
 #
 # WHY THIS EXISTS (GitHub issue #179, a follow-up to #118)
 # --------------------------------------------------------
-# The Kata scaffolding (BOXKITE_KATA_RUNTIME_CLASS_ENABLED,
+# The Kata scaffolding (BOXXKITE_KATA_RUNTIME_CLASS_ENABLED,
 # deploy/pod-template-kata.yaml, tests/test_kata_template_parity.py) is
 # "implemented against the real Kubernetes API shape, never exercised against
 # a live Kata-enabled cluster" -- the same honesty this repo already applies
@@ -14,7 +14,7 @@
 # of code inspection or plain-runc/kind testing can settle (kind/runc cannot
 # reproduce Kata's per-pod VM boundary):
 #
-#   1. Does a boxkite-shaped pod actually schedule and RUN under
+#   1. Does a boxxkite-shaped pod actually schedule and RUN under
 #      runtimeClassName -> kata (and is it genuinely a separate-kernel VM)?
 #   2. Does Kata's DEFAULT (non-block, virtio-fs-backed) emptyDir backend
 #      honor Kubernetes' emptyDir.sizeLimit? Every DEFAULT_SANDBOX_*_VOLUME_
@@ -42,8 +42,8 @@
 #
 # WHAT IT DELIBERATELY DOES NOT DO
 # --------------------------------
-# It does NOT build or pull boxkite's own images. The three questions above
-# are properties of the Kata *runtime* + Kubernetes, not of boxkite's
+# It does NOT build or pull boxxkite's own images. The three questions above
+# are properties of the Kata *runtime* + Kubernetes, not of boxxkite's
 # application code, so this reproduces the security-relevant *pod shape* of
 # deploy/pod-template-kata.yaml (runtimeClassName, shareProcessNamespace, the
 # sandbox securityContext, the sidecar capability grant, an emptyDir with a
@@ -147,7 +147,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: ${name}
-  labels: { app: kata-verify, boxkite-issue: "179" }
+  labels: { app: kata-verify, boxxkite-issue: "179" }
 spec:
 ${rc_line}
   restartPolicy: Never
@@ -327,7 +327,7 @@ check_sizelimit() {
 check_nsenter() {
   local pod="$1" rc="$2"
   section "check 2/3: nsenter/setns exec under '${rc}' (build_k8s_exec_command shape)"
-  # Run boxkite's exact exec chain from the sidecar:
+  # Run boxxkite's exact exec chain from the sidecar:
   #   unshare -n nsenter -t <sandbox_pid> -m -p --setuid 1001 --setgid 1001 -- sh -c ...
   # Find the sandbox PID the way get_sandbox_pid() does (the tail marker), but
   # with a pure-shell, anchored match so the search process can't self-match.

@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.bash_tool, in particular its AuditSink.record_exec
+Tests for boxxkite.tools.bash_tool, in particular its AuditSink.record_exec
 integration point.
 
 Mirrors tests/test_tool_factory.py's and tests/test_search_tools.py's pattern:
@@ -11,8 +11,8 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.audit import NoOpAuditSink, safe_call
-from boxkite.tools.bash_tool import create_bash_tool
+from boxxkite.audit import NoOpAuditSink, safe_call
+from boxxkite.tools.bash_tool import create_bash_tool
 
 pytestmark = pytest.mark.pr
 
@@ -211,7 +211,7 @@ async def test_bash_tool_allows_whitelisted_command():
 
 
 def test_bash_tool_spec_omits_secret_env_from_schema_by_default():
-    from boxkite.tools.bash_tool import create_bash_tool_spec
+    from boxxkite.tools.bash_tool import create_bash_tool_spec
 
     spec = create_bash_tool_spec(session_id="s1", sandbox_manager=_FakeSandboxManager())
 
@@ -219,7 +219,7 @@ def test_bash_tool_spec_omits_secret_env_from_schema_by_default():
 
 
 def test_bash_tool_spec_exposes_secret_env_when_enabled():
-    from boxkite.tools.bash_tool import create_bash_tool_spec
+    from boxxkite.tools.bash_tool import create_bash_tool_spec
 
     spec = create_bash_tool_spec(
         session_id="s1", sandbox_manager=_FakeSandboxManager(), enable_secret_env=True
@@ -230,7 +230,7 @@ def test_bash_tool_spec_exposes_secret_env_when_enabled():
 
 @pytest.mark.asyncio
 async def test_bash_tool_spec_forwards_secret_env_when_enabled():
-    from boxkite.tools.bash_tool import create_bash_tool_spec
+    from boxxkite.tools.bash_tool import create_bash_tool_spec
 
     manager = _FakeSandboxManager()
     spec = create_bash_tool_spec(
@@ -244,7 +244,7 @@ async def test_bash_tool_spec_forwards_secret_env_when_enabled():
 
 @pytest.mark.asyncio
 async def test_bash_tool_spec_ignores_secret_env_when_not_enabled():
-    from boxkite.tools.bash_tool import create_bash_tool_spec
+    from boxxkite.tools.bash_tool import create_bash_tool_spec
 
     manager = _FakeSandboxManager()
     spec = create_bash_tool_spec(session_id="s1", sandbox_manager=manager)

@@ -40,7 +40,7 @@ _exec_log_chain_locks: "OrderedDict[str, asyncio.Lock]" = OrderedDict()
 def get_exec_log_chain_lock(session_id: str) -> asyncio.Lock:
     """One lock per session_id, shared by every caller -- the cache/eviction
     shape mirrors
-    `boxkite._manager_recovery.CreateSessionMixin._get_session_create_lock`,
+    `boxxkite._manager_recovery.CreateSessionMixin._get_session_create_lock`,
     with the eviction guard's `_waiters` check specifically borrowed from
     that module's `_release_recovery_lock_if_idle` (stricter than
     `_get_session_create_lock`'s own trim, which checks only `.locked()`)."""

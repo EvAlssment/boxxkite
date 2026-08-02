@@ -22,7 +22,7 @@ from control_plane.config import settings
 def _enable_volumes(monkeypatch):
     # Off by default (opt-in feature) -- every test in this file explicitly
     # turns it on, same rationale as test_sandbox_images.py's own fixture.
-    monkeypatch.setattr(settings, "BOXKITE_VOLUMES_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_VOLUMES_ENABLED", True)
 
 
 async def _create_volume(client: httpx.AsyncClient, key: str, *, label: str = "data-vol", size_gb: float = 10) -> dict:
@@ -49,7 +49,7 @@ async def _wait_for_status(client: httpx.AsyncClient, key: str, volume_id: str, 
 
 
 async def test_volumes_disabled_by_default(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_VOLUMES_ENABLED", False)
+    monkeypatch.setattr(settings, "BOXXKITE_VOLUMES_ENABLED", False)
     key = await signup_and_get_api_key(client, "volumes-disabled@example.com")
     resp = await client.post(
         "/v1/volumes", json={"size_gb": 10}, headers={"Authorization": f"Bearer {key}"}
@@ -66,7 +66,7 @@ async def test_create_volume_is_queued_then_ready(client: httpx.AsyncClient):
     final = await _wait_for_status(client, key, accepted["id"])
     assert final["status"] == "ready"
     assert final["pvc_name"] is not None
-    assert final["pvc_name"].startswith("boxkite-vol-")
+    assert final["pvc_name"].startswith("boxxkite-vol-")
 
 
 async def test_oversized_volume_fails_provisioning(client: httpx.AsyncClient):
@@ -79,7 +79,7 @@ async def test_oversized_volume_fails_provisioning(client: httpx.AsyncClient):
 
 
 async def test_volume_limit_returns_429(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_VOLUMES_PER_ACCOUNT", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_VOLUMES_PER_ACCOUNT", 1)
     key = await signup_and_get_api_key(client, "volumes-limit@example.com")
     await _create_volume(client, key, label="one")
     resp = await client.post(

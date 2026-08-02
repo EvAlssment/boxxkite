@@ -1,6 +1,6 @@
-export { BoxkiteClient, SandboxSession } from "./client.js";
+export { BoxxkiteClient, SandboxSession } from "./client.js";
 export type {
-  BoxkiteClientOptions,
+  BoxxkiteClientOptions,
   ExecOptions,
   FileOptions,
   ViewOptions,
@@ -59,4 +59,4 @@ export type {
   Secret,
   AllowedCommandsResponse,
 } from "./types.js";
-export { BoxkiteError, BoxkiteApiError, BoxkiteConnectionError } from "./errors.js";
+export { BoxxkiteError, BoxxkiteApiError, BoxxkiteConnectionError } from "./errors.js";

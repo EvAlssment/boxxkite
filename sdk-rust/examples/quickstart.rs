@@ -1,28 +1,28 @@
 //! Runnable end-to-end example against a real hosted control-plane.
 //!
 //! ```bash
-//! BOXKITE_BASE_URL=https://your-control-plane BOXKITE_API_KEY=bxk_live_... \
+//! BOXXKITE_BASE_URL=https://your-control-plane BOXXKITE_API_KEY=bxk_live_... \
 //!     cargo run --example quickstart
 //! ```
 
 use std::process::ExitCode;
 
-use boxkite_client::{BoxkiteError, Client, CreateSandboxOptions, ExecOptions};
+use boxxkite_client::{BoxxkiteError, Client, CreateSandboxOptions, ExecOptions};
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let Ok(base_url) = std::env::var("BOXKITE_BASE_URL") else {
-        eprintln!("Set BOXKITE_BASE_URL and BOXKITE_API_KEY first.");
+    let Ok(base_url) = std::env::var("BOXXKITE_BASE_URL") else {
+        eprintln!("Set BOXXKITE_BASE_URL and BOXXKITE_API_KEY first.");
         return ExitCode::FAILURE;
     };
-    let Ok(api_key) = std::env::var("BOXKITE_API_KEY") else {
-        eprintln!("Set BOXKITE_BASE_URL and BOXKITE_API_KEY first.");
+    let Ok(api_key) = std::env::var("BOXXKITE_API_KEY") else {
+        eprintln!("Set BOXXKITE_BASE_URL and BOXXKITE_API_KEY first.");
         return ExitCode::FAILURE;
     };
 
     match run(base_url, api_key).await {
         Ok(()) => ExitCode::SUCCESS,
-        Err(BoxkiteError::Api { code, message, .. }) => {
+        Err(BoxxkiteError::Api { code, message, .. }) => {
             eprintln!("API error: {message} [{code}]");
             ExitCode::FAILURE
         }
@@ -33,7 +33,7 @@ async fn main() -> ExitCode {
     }
 }
 
-async fn run(base_url: String, api_key: String) -> Result<(), BoxkiteError> {
+async fn run(base_url: String, api_key: String) -> Result<(), BoxxkiteError> {
     let client = Client::new(base_url, api_key)?;
 
     let sandbox = client
@@ -49,7 +49,7 @@ async fn run(base_url: String, api_key: String) -> Result<(), BoxkiteError> {
     result
 }
 
-async fn run_workload(client: &Client, session_id: &str) -> Result<(), BoxkiteError> {
+async fn run_workload(client: &Client, session_id: &str) -> Result<(), BoxxkiteError> {
     let exec_result = client
         .exec(session_id, "python3 -c 'print(1 + 1)'", ExecOptions::new())
         .await?;
@@ -59,7 +59,7 @@ async fn run_workload(client: &Client, session_id: &str) -> Result<(), BoxkiteEr
         .file_create(
             session_id,
             "hello.txt",
-            "hello from boxkite-client\n",
+            "hello from boxxkite-client\n",
             Default::default(),
         )
         .await?;

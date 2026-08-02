@@ -1,6 +1,6 @@
-"""Tests for `boxkite audit verify` -- the self-hosted, read-only hash-chain
+"""Tests for `boxxkite audit verify` -- the self-hosted, read-only hash-chain
 verifier CLI (GitHub issue #136, docs/TAMPER-EVIDENT-AUDIT-DESIGN.md §7).
-Unlike `boxkite log`/`boxkite watch`, this command is local-only and never
+Unlike `boxxkite log`/`boxxkite watch`, this command is local-only and never
 touches hosted config -- it operates directly on a `HashChainedSQLiteAuditSink`
 database file.
 """
@@ -13,8 +13,8 @@ import sqlite3
 
 from typer.testing import CliRunner
 
-from boxkite.audit import HashChainedSQLiteAuditSink
-from boxkite.cli import app
+from boxxkite.audit import HashChainedSQLiteAuditSink
+from boxxkite.cli import app
 
 runner = CliRunner()
 

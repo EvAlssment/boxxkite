@@ -9,9 +9,9 @@ issue #184's title) are explicitly out of scope; see the scoping doc.
 
 Mirrors sidecar_pty.py's/sidecar_browser.py's shape: one lazily-started,
 kept-alive process group per session (Xvfb -> a window manager -> x11vnc),
-bridged to a WebSocket. Gated by BOXKITE_DESKTOP_ENABLED (off by default,
+bridged to a WebSocket. Gated by BOXXKITE_DESKTOP_ENABLED (off by default,
 same "flagged off until a security review" posture as
-BOXKITE_AGENT_PTY_ENABLED/BOXKITE_BROWSER_ENABLED).
+BOXXKITE_AGENT_PTY_ENABLED/BOXXKITE_BROWSER_ENABLED).
 
 SECURITY (docs/GUI-COMPUTER-USE-SCOPING.md): unlike every other sidecar-
 launched subprocess, this stack always enters the sandbox namespace via
@@ -204,7 +204,7 @@ async def kill_desktop_session() -> None:
     recycled pod must never hand a new tenant a still-live Xvfb/WM/x11vnc
     session (windows, clipboard, whatever the previous tenant had open)
     left over from before. Always call this, not just when
-    BOXKITE_DESKTOP_ENABLED is set, since a still-live stack started while
+    BOXXKITE_DESKTOP_ENABLED is set, since a still-live stack started while
     the flag was on must still be killed if the flag was since flipped off
     before this recycle.
 
@@ -293,7 +293,7 @@ async def desktop_takeover(websocket: WebSocket) -> None:
     built speculatively here (YAGNI) -- it needs its own review once the
     base mechanism is proven.
     """
-    if not main.BOXKITE_DESKTOP_ENABLED:
+    if not main.BOXXKITE_DESKTOP_ENABLED:
         await websocket.close(code=4404, reason="GUI desktop takeover is not enabled on this deployment.")
         return
 

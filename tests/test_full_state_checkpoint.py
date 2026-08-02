@@ -1,6 +1,6 @@
 """Tests for opt-in full-state (process/memory) checkpoint
-(docs/FULL-STATE-SNAPSHOT-SCOPING.md, src/boxkite/checkpoint_backend.py,
-src/boxkite/_manager_checkpoint.py).
+(docs/FULL-STATE-SNAPSHOT-SCOPING.md, src/boxxkite/checkpoint_backend.py,
+src/boxxkite/_manager_checkpoint.py).
 
 Forensic-only -- these tests do NOT (and cannot, in this environment)
 verify anything against a live cluster with the kubelet's
@@ -16,18 +16,18 @@ from types import SimpleNamespace
 import pytest
 from kubernetes_asyncio.client.exceptions import ApiException
 
-from boxkite import resource_config
-from boxkite.checkpoint_backend import (
+from boxxkite import resource_config
+from boxxkite.checkpoint_backend import (
     CheckpointRestoreNotSupportedError,
     KubeletForensicCheckpointBackend,
     probe_checkpoint_support,
 )
-from boxkite.manager import SandboxManager
+from boxxkite.manager import SandboxManager
 
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch):
-    monkeypatch.delenv(resource_config.BOXKITE_FULL_STATE_SNAPSHOT_ENABLED_ENV, raising=False)
+    monkeypatch.delenv(resource_config.BOXXKITE_FULL_STATE_SNAPSHOT_ENABLED_ENV, raising=False)
 
 
 class _FakeNodeProxyCoreApi:
@@ -124,12 +124,12 @@ async def test_probe_treats_403_as_unavailable():
 
 async def test_create_full_state_checkpoint_rejected_when_flag_disabled():
     manager = SandboxManager()
-    with pytest.raises(RuntimeError, match="BOXKITE_FULL_STATE_SNAPSHOT_ENABLED"):
+    with pytest.raises(RuntimeError, match="BOXXKITE_FULL_STATE_SNAPSHOT_ENABLED"):
         await manager.create_full_state_checkpoint("session-1")
 
 
 async def test_create_full_state_checkpoint_rejected_in_compose_mode(monkeypatch):
-    monkeypatch.setenv(resource_config.BOXKITE_FULL_STATE_SNAPSHOT_ENABLED_ENV, "true")
+    monkeypatch.setenv(resource_config.BOXXKITE_FULL_STATE_SNAPSHOT_ENABLED_ENV, "true")
     manager = SandboxManager()
     manager._use_docker_compose = True
     with pytest.raises(RuntimeError, match="Docker Compose"):
@@ -137,7 +137,7 @@ async def test_create_full_state_checkpoint_rejected_in_compose_mode(monkeypatch
 
 
 async def test_create_full_state_checkpoint_resolves_pod_and_calls_backend(monkeypatch):
-    monkeypatch.setenv(resource_config.BOXKITE_FULL_STATE_SNAPSHOT_ENABLED_ENV, "true")
+    monkeypatch.setenv(resource_config.BOXXKITE_FULL_STATE_SNAPSHOT_ENABLED_ENV, "true")
     manager = SandboxManager()
     manager._use_docker_compose = False
 

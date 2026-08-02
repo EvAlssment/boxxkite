@@ -46,7 +46,7 @@ class TestLocalKmsGuard:
         verify_startup_config(
             _settings(
                 SECRETS_KMS_BACKEND="local",
-                BOXKITE_ALLOW_INSECURE_LOCAL_KMS=True,
+                BOXXKITE_ALLOW_INSECURE_LOCAL_KMS=True,
             )
         )
 

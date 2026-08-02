@@ -1,6 +1,6 @@
 """Hash-chain verifier for `exec_log_entries` -- the control-plane analog of
-`boxkite.audit.HashChainedSQLiteAuditSink.verify_chain` (GitHub issue #136,
-`docs/TAMPER-EVIDENT-AUDIT-DESIGN.md`). Reuses `boxkite.audit`'s shared
+`boxxkite.audit.HashChainedSQLiteAuditSink.verify_chain` (GitHub issue #136,
+`docs/TAMPER-EVIDENT-AUDIT-DESIGN.md`). Reuses `boxxkite.audit`'s shared
 `ChainRow`/`verify_chain_rows`/hash formula so both audit surfaces (this
 Postgres-backed table and the self-hosted `SQLiteAuditSink`) are provably
 running the exact same algorithm, not two independent reimplementations
@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from boxkite.audit import ChainRow, ChainVerificationResult, verify_chain_rows
+from boxxkite.audit import ChainRow, ChainVerificationResult, verify_chain_rows
 
 from .models_orm import ExecLogEntry
 

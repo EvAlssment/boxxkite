@@ -1,4 +1,4 @@
-"""Regression test: boxkite.__version__ previously drifted out of sync with
+"""Regression test: boxxkite.__version__ previously drifted out of sync with
 pyproject.toml's [project].version (0.1.0 vs 0.2.0) -- nothing enforced the
 two ever matched. Asserts they're read from the same source of truth
 (indirectly, by comparing values) so a future version bump that only
@@ -11,7 +11,7 @@ import re
 import tomllib
 from pathlib import Path
 
-import boxkite
+import boxxkite
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -29,16 +29,16 @@ def _cargo_version() -> str:
 
 
 def test_dunder_version_matches_pyproject_toml():
-    assert boxkite.__version__ == _pyproject_version(), (
-        f"boxkite.__version__ ({boxkite.__version__!r}) does not match "
+    assert boxxkite.__version__ == _pyproject_version(), (
+        f"boxxkite.__version__ ({boxxkite.__version__!r}) does not match "
         f"pyproject.toml's version ({_pyproject_version()!r}) -- update "
-        "src/boxkite/__init__.py's __version__ alongside any version bump."
+        "src/boxxkite/__init__.py's __version__ alongside any version bump."
     )
 
 
 def test_dunder_version_is_a_valid_semver_string():
-    assert re.match(r"^\d+\.\d+\.\d+$", boxkite.__version__), (
-        f"boxkite.__version__ ({boxkite.__version__!r}) is not a plain x.y.z string"
+    assert re.match(r"^\d+\.\d+\.\d+$", boxxkite.__version__), (
+        f"boxxkite.__version__ ({boxxkite.__version__!r}) is not a plain x.y.z string"
     )
 
 

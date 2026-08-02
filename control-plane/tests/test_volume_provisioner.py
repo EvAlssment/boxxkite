@@ -61,7 +61,7 @@ async def test_provision_creates_pvc_and_reports_ready_once_bound():
     assert len(fake_api.create_calls) == 1
     assert fake_api.create_calls[0]["body"]["kind"] == "PersistentVolumeClaim"
     # Internal bookkeeping keys must never reach the real K8s API call.
-    assert "_boxkite_pvc_name" not in fake_api.create_calls[0]["body"]
+    assert "_boxxkite_pvc_name" not in fake_api.create_calls[0]["body"]
 
 
 @pytest.mark.asyncio
@@ -103,7 +103,7 @@ async def test_provision_reports_failed_when_pvc_lost():
 
 @pytest.mark.asyncio
 async def test_provision_times_out_if_never_bound(monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_VOLUME_PROVISION_TIMEOUT_SECONDS", 0)
+    monkeypatch.setattr(settings, "BOXXKITE_VOLUME_PROVISION_TIMEOUT_SECONDS", 0)
     fake_api = _FakePvcCoreApi(phases=["Pending"])
     provisioner = K8sVolumeProvisioner(k8s_core_api=fake_api)
 
@@ -135,10 +135,10 @@ async def test_deprovision_deletes_pvc():
     fake_api = _FakePvcCoreApi()
     provisioner = K8sVolumeProvisioner(k8s_core_api=fake_api)
 
-    await provisioner.deprovision(pvc_name="boxkite-vol-acct1-vol1")
+    await provisioner.deprovision(pvc_name="boxxkite-vol-acct1-vol1")
 
     assert fake_api.delete_calls == [
-        {"name": "boxkite-vol-acct1-vol1", "namespace": fake_api.delete_calls[0]["namespace"]}
+        {"name": "boxxkite-vol-acct1-vol1", "namespace": fake_api.delete_calls[0]["namespace"]}
     ]
 
 

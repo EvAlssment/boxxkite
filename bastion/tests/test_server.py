@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncssh
 
-from boxkite_bastion.config import BastionSettings
-from boxkite_bastion.server import run_bastion
+from boxxkite_bastion.config import BastionSettings
+from boxxkite_bastion.server import run_bastion
 
 
 async def test_run_bastion_starts_listening_with_ephemeral_host_key():

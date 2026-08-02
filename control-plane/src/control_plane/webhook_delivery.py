@@ -10,9 +10,9 @@ already applies to `/watch`. `webhooks.enqueue_event` only ever writes
 deliberately separate so a slow or unreachable receiver can never add
 latency to the request that fired the event.
 
-Retry/backoff: exponential, `BOXKITE_WEBHOOK_RETRY_BASE_SECONDS * 2 **
-(attempt_count - 1)`, capped at `BOXKITE_WEBHOOK_RETRY_MAX_SECONDS`. A
-delivery that has not succeeded after `BOXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS`
+Retry/backoff: exponential, `BOXXKITE_WEBHOOK_RETRY_BASE_SECONDS * 2 **
+(attempt_count - 1)`, capped at `BOXXKITE_WEBHOOK_RETRY_MAX_SECONDS`. A
+delivery that has not succeeded after `BOXXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS`
 attempts is marked `failed` permanently -- there is no dead-letter queue or
 manual replay mechanism in this first cut (see the design doc's "what this
 does NOT add" section).
@@ -35,16 +35,16 @@ via `_record_failure` and retried/backed-off/exhausted the same way, never
 sent to the unsafe address.
 
 Payload shape (GitHub issue #125): `subscription.payload_format` selects
-the body actually POSTed -- the boxkite envelope as-is (`"boxkite_v1"`,
+the body actually POSTed -- the boxxkite envelope as-is (`"boxxkite_v1"`,
 default) or that same envelope wrapped for Splunk HTTP Event Collector
 ingestion (`"splunk_hec"`, via `webhooks.build_splunk_hec_payload`). Either
-way the `X-Boxkite-Webhook-Signature` HMAC is computed over the EXACT bytes
+way the `X-Boxxkite-Webhook-Signature` HMAC is computed over the EXACT bytes
 sent, never the pre-wrap envelope, so a receiver's own signature
 verification always matches the body it actually received. A
 `splunk_hec`-format subscription with a stored HEC token additionally gets
 an `Authorization: Splunk <token>` header, on top of (not instead of) the
-usual boxkite signature headers -- one authenticates the delivery as
-genuinely from boxkite, the other authenticates the caller to Splunk's own
+usual boxxkite signature headers -- one authenticates the delivery as
+genuinely from boxxkite, the other authenticates the caller to Splunk's own
 HEC endpoint; they are unrelated credentials.
 """
 
@@ -80,7 +80,7 @@ logger = logging.getLogger(__name__)
 # a receiver's response body is caller-controlled-sized data.
 _RESPONSE_BODY_MAX_LENGTH = 4096
 
-# Deliberately its own httpx.AsyncClient (not the one src/boxkite's
+# Deliberately its own httpx.AsyncClient (not the one src/boxxkite's
 # SandboxManager uses for manager<->sidecar traffic) -- this one calls
 # arbitrary, caller-registered, external URLs, a fundamentally different
 # trust boundary than the manager's pinned-cert sidecar channel. Overridable
@@ -92,7 +92,7 @@ _http_client: httpx.AsyncClient | None = None
 def _get_http_client() -> httpx.AsyncClient:
     global _http_client
     if _http_client is None:
-        _http_client = httpx.AsyncClient(timeout=settings.BOXKITE_WEBHOOK_DELIVERY_TIMEOUT_SECONDS)
+        _http_client = httpx.AsyncClient(timeout=settings.BOXXKITE_WEBHOOK_DELIVERY_TIMEOUT_SECONDS)
     return _http_client
 
 
@@ -112,10 +112,10 @@ async def close_http_client() -> None:
 
 def _next_backoff_seconds(attempt_count: int) -> float:
     """`attempt_count` is the count AFTER this failed attempt (1-indexed) --
-    the first retry waits BOXKITE_WEBHOOK_RETRY_BASE_SECONDS, the second
-    waits 2x that, etc., capped at BOXKITE_WEBHOOK_RETRY_MAX_SECONDS."""
-    backoff = settings.BOXKITE_WEBHOOK_RETRY_BASE_SECONDS * (2 ** max(0, attempt_count - 1))
-    return min(float(backoff), float(settings.BOXKITE_WEBHOOK_RETRY_MAX_SECONDS))
+    the first retry waits BOXXKITE_WEBHOOK_RETRY_BASE_SECONDS, the second
+    waits 2x that, etc., capped at BOXXKITE_WEBHOOK_RETRY_MAX_SECONDS."""
+    backoff = settings.BOXXKITE_WEBHOOK_RETRY_BASE_SECONDS * (2 ** max(0, attempt_count - 1))
+    return min(float(backoff), float(settings.BOXXKITE_WEBHOOK_RETRY_MAX_SECONDS))
 
 
 async def _attempt_delivery(delivery, subscription) -> None:
@@ -146,7 +146,7 @@ async def _attempt_delivery(delivery, subscription) -> None:
         return
 
     session_factory = get_session_factory()
-    payload_format = getattr(subscription, "payload_format", None) or "boxkite_v1"
+    payload_format = getattr(subscription, "payload_format", None) or "boxxkite_v1"
     body_payload = (
         build_splunk_hec_payload(delivery.payload) if payload_format == PAYLOAD_FORMAT_SPLUNK_HEC else delivery.payload
     )
@@ -241,7 +241,7 @@ async def _record_failure(
     delivery, *, response_status_code: int | None, response_body: str | None, failure_reason: str
 ) -> None:
     next_attempt_count = delivery.attempt_count + 1
-    exhausted = next_attempt_count >= settings.BOXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS
+    exhausted = next_attempt_count >= settings.BOXXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS
     next_attempt_at = None
     if not exhausted:
         backoff = _next_backoff_seconds(next_attempt_count)
@@ -268,7 +268,7 @@ async def _deliver_once() -> None:
     session_factory = get_session_factory()
     async with session_factory() as db:
         due = await WebhookDeliveryRepository(db).list_due(
-            now=datetime.now(timezone.utc), limit=settings.BOXKITE_WEBHOOK_WORKER_BATCH_LIMIT
+            now=datetime.now(timezone.utc), limit=settings.BOXXKITE_WEBHOOK_WORKER_BATCH_LIMIT
         )
         if not due:
             return
@@ -298,7 +298,7 @@ async def _deliver_once() -> None:
 
 
 async def run_webhook_delivery_loop(*, stop_event: asyncio.Event) -> None:
-    interval = settings.BOXKITE_WEBHOOK_WORKER_INTERVAL_SECONDS
+    interval = settings.BOXXKITE_WEBHOOK_WORKER_INTERVAL_SECONDS
     while not stop_event.is_set():
         try:
             await _deliver_once()

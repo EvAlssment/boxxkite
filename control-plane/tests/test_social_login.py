@@ -11,7 +11,7 @@ Two layers, per the design doc's §6 testing strategy:
   existing *social-only* account, refusing to reassign a conflicting
   provider identity, and refusing to auto-link onto a password- or
   SSO/SCIM-managed account) tested by monkeypatching the higher-level
-  `fetch_*_profile` functions directly, so these tests assert boxkite's own
+  `fetch_*_profile` functions directly, so these tests assert boxxkite's own
   behavior rather than re-mocking the same provider HTTP shape twice.
 """
 
@@ -37,7 +37,7 @@ def _state_with_nonce_cookie(client: httpx.AsyncClient, *, provider: str, next_p
     from control_plane.security import create_social_login_state_token
 
     state, nonce = create_social_login_state_token(provider=provider, next_path=next_path)
-    client.cookies.set("boxkite_oauth_state_nonce", nonce)
+    client.cookies.set("boxxkite_oauth_state_nonce", nonce)
     return state
 
 
@@ -120,23 +120,23 @@ async def test_fetch_google_profile_rejects_unverified_email(monkeypatch):
 
 # ── Layer 2: router behavior, gating, and account resolution ───────────
 async def test_github_routes_404_when_social_login_disabled(client: httpx.AsyncClient, monkeypatch):
-    # BOXKITE_SOCIAL_LOGIN_ENABLED now defaults to True (GitHub issue #114's
+    # BOXXKITE_SOCIAL_LOGIN_ENABLED now defaults to True (GitHub issue #114's
     # security review completed) -- explicitly disable to exercise the
     # still-supported opt-out path, rather than relying on a bare default.
-    monkeypatch.setattr(settings, "BOXKITE_SOCIAL_LOGIN_ENABLED", False)
+    monkeypatch.setattr(settings, "BOXXKITE_SOCIAL_LOGIN_ENABLED", False)
     resp = await client.get("/v1/auth/github/start")
     assert resp.status_code == 404
 
 
 async def test_github_routes_404_when_only_master_flag_set(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_SOCIAL_LOGIN_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_SOCIAL_LOGIN_ENABLED", True)
     # No client id/secret configured -- still 404 per config.py's "both must be set" contract.
     resp = await client.get("/v1/auth/github/start")
     assert resp.status_code == 404
 
 
 def _enable_github(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "BOXKITE_SOCIAL_LOGIN_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_SOCIAL_LOGIN_ENABLED", True)
     monkeypatch.setattr(settings, "GITHUB_OAUTH_CLIENT_ID", "gh-client-id")
     monkeypatch.setattr(settings, "GITHUB_OAUTH_CLIENT_SECRET", "gh-client-secret")
 
@@ -316,7 +316,7 @@ async def test_github_callback_rejects_conflicting_provider_identity(
 
 
 async def test_github_callback_with_next_sets_cookie_and_redirects(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     _enable_github(monkeypatch)
 
     async def fake_fetch(*, code: str, redirect_uri: str) -> SocialProfile:
@@ -330,7 +330,7 @@ async def test_github_callback_with_next_sets_cookie_and_redirects(client: httpx
     resp = await client.get("/v1/auth/github/callback", params={"code": "abc", "state": state})
     assert resp.status_code == 303
     assert resp.headers["location"] == next_path
-    assert "boxkite_oauth_session" in resp.cookies
+    assert "boxxkite_oauth_session" in resp.cookies
 
 
 async def test_github_callback_rejects_bad_state(client: httpx.AsyncClient, monkeypatch):
@@ -364,7 +364,7 @@ async def test_github_callback_rejects_state_with_no_nonce_cookie(client: httpx.
     from control_plane.security import create_social_login_state_token
 
     state, _nonce = create_social_login_state_token(provider="github", next_path=None)
-    # Deliberately do NOT set the boxkite_oauth_state_nonce cookie -- this
+    # Deliberately do NOT set the boxxkite_oauth_state_nonce cookie -- this
     # client never called /github/start, so it never received one.
     resp = await client.get("/v1/auth/github/callback", params={"code": "abc", "state": state})
     assert resp.status_code == 400
@@ -396,7 +396,7 @@ async def test_github_callback_rejects_state_with_mismatched_nonce_cookie(
     from control_plane.security import create_social_login_state_token
 
     state, _nonce = create_social_login_state_token(provider="github", next_path=None)
-    client.cookies.set("boxkite_oauth_state_nonce", "some-other-unrelated-nonce-value")
+    client.cookies.set("boxxkite_oauth_state_nonce", "some-other-unrelated-nonce-value")
     resp = await client.get("/v1/auth/github/callback", params={"code": "abc", "state": state})
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "invalid_state"
@@ -408,10 +408,10 @@ async def test_oauth_consent_screen_html_denies_framing(client: httpx.AsyncClien
     asserts the header is actually present on the one page it was written
     to protect: the real, HTML-rendered OAuth consent screen
     (GET /oauth/authorize), not just any endpoint."""
-    monkeypatch.setattr(settings, "BOXKITE_MCP_OAUTH_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_MCP_OAUTH_ENABLED", True)
     monkeypatch.setattr(settings, "GITHUB_OAUTH_CLIENT_ID", "gh-client-id")
     monkeypatch.setattr(settings, "GITHUB_OAUTH_CLIENT_SECRET", "gh-client-secret")
-    monkeypatch.setattr(settings, "BOXKITE_SOCIAL_LOGIN_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_SOCIAL_LOGIN_ENABLED", True)
 
     resp = await client.get(
         "/oauth/authorize",
@@ -430,11 +430,11 @@ async def test_oauth_consent_screen_html_denies_framing(client: httpx.AsyncClien
     assert "frame-ancestors 'none'" in resp.headers.get("content-security-policy", "")
 
 
-# ── Dashboard oauth-callback redirect (BOXKITE_DASHBOARD_URL) ────────────
+# ── Dashboard oauth-callback redirect (BOXXKITE_DASHBOARD_URL) ────────────
 
 
 def _dashboard_url(monkeypatch) -> str:
-    monkeypatch.setattr(settings, "BOXKITE_DASHBOARD_URL", "https://dashboard.example.com")
+    monkeypatch.setattr(settings, "BOXXKITE_DASHBOARD_URL", "https://dashboard.example.com")
     return "https://dashboard.example.com/dashboard/oauth-callback"
 
 
@@ -456,7 +456,7 @@ async def test_github_start_preserves_dashboard_callback_next(client: httpx.Asyn
 async def test_github_start_drops_dashboard_next_when_url_not_configured(
     client: httpx.AsyncClient, monkeypatch
 ):
-    """Without BOXKITE_DASHBOARD_URL set, no dashboard callback URL can
+    """Without BOXXKITE_DASHBOARD_URL set, no dashboard callback URL can
     ever match -- the same next value that would be honored once
     configured must be dropped when it isn't."""
     _enable_github(monkeypatch)
@@ -523,18 +523,18 @@ async def test_github_callback_with_dashboard_next_redirects_with_fragment_token
     assert fragment["access_token"][0]
     assert fragment["token_type"][0] == "bearer"
     assert "refresh_token" not in fragment
-    assert "boxkite_oauth_session" not in resp.cookies
+    assert "boxxkite_oauth_session" not in resp.cookies
 
 
 async def test_github_callback_with_dashboard_next_includes_refresh_token_when_enabled(
     client: httpx.AsyncClient, monkeypatch
 ):
     """OAuth login must mint a refresh token exactly like password login
-    does when BOXKITE_REFRESH_TOKENS_ENABLED is on -- otherwise an
+    does when BOXXKITE_REFRESH_TOKENS_ENABLED is on -- otherwise an
     OAuth-authenticated dashboard session would still expire at
     ACCESS_TOKEN_TTL_MINUTES with no way to renew it silently."""
     _enable_github(monkeypatch)
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
     dashboard_next = _dashboard_url(monkeypatch)
 
     async def fake_fetch(*, code: str, redirect_uri: str) -> SocialProfile:
@@ -640,7 +640,7 @@ async def test_github_callback_rejects_state_from_other_provider(client: httpx.A
 
 
 def _enable_google(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "BOXKITE_SOCIAL_LOGIN_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_SOCIAL_LOGIN_ENABLED", True)
     monkeypatch.setattr(settings, "GOOGLE_OAUTH_CLIENT_ID", "google-client-id")
     monkeypatch.setattr(settings, "GOOGLE_OAUTH_CLIENT_SECRET", "google-client-secret")
 

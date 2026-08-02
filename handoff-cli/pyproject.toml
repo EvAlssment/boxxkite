@@ -3,26 +3,26 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "boxkite-handoff"
+name = "boxxkite-handoff"
 version = "0.1.0"
-description = "Hand off an in-progress Claude Code / Codex / opencode / Cursor session from your local machine into a fresh boxkite sandbox, full conversation history included."
+description = "Hand off an in-progress Claude Code / Codex / opencode / Cursor session from your local machine into a fresh boxxkite sandbox, full conversation history included."
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 dependencies = [
-    "boxkite-client",
+    "boxxkite-client",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
-boxkite-handoff = "boxkite_handoff.cli:main"
+boxxkite-handoff = "boxxkite_handoff.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/EvAlssment/boxkite"
-Repository = "https://github.com/EvAlssment/boxkite"
-Issues = "https://github.com/EvAlssment/boxkite/issues"
+Homepage = "https://github.com/EvAlssment/boxxkite"
+Repository = "https://github.com/EvAlssment/boxxkite"
+Issues = "https://github.com/EvAlssment/boxxkite/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

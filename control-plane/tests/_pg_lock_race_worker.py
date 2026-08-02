@@ -20,7 +20,7 @@ shared barrier the two workers' concurrent-creation phases could drift
 apart enough to stop actually overlapping, making the race intermittent
 rather than reliable.
 
-Reads DATABASE_URL and BOXKITE_USAGE_LOCK_BACKEND from the environment (set
+Reads DATABASE_URL and BOXXKITE_USAGE_LOCK_BACKEND from the environment (set
 by the parent test) and prints this process's own `created` count to
 stdout, so the parent can sum both replicas' counts and check the combined
 total against the configured cap.

@@ -1,4 +1,4 @@
-"""Tests for boxkite.tools.http_request_tool and its wiring into
+"""Tests for boxxkite.tools.http_request_tool and its wiring into
 create_sandbox_tools (docs/SECRETS-DESIGN.md).
 
 Covers:
@@ -12,8 +12,8 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.tools import create_sandbox_tools
-from boxkite.tools.http_request_tool import create_http_request_tool
+from boxxkite.tools import create_sandbox_tools
+from boxxkite.tools.http_request_tool import create_http_request_tool
 
 
 class _FakeSandboxManager:

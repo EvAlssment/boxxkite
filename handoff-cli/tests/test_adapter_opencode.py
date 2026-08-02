@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from boxkite_handoff.adapters.opencode import OpencodeAdapter
-from boxkite_handoff.core import HandoffError
+from boxxkite_handoff.adapters.opencode import OpencodeAdapter
+from boxxkite_handoff.core import HandoffError
 
 
 class FakeRunner:

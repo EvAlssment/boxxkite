@@ -3,9 +3,9 @@
 # Control-plane API container.
 #
 # Build from the REPO ROOT (matches deploy/sidecar.Dockerfile's convention),
-# because this service depends on the sibling `boxkite` package at ../src:
+# because this service depends on the sibling `boxxkite` package at ../src:
 #
-#   docker build -f control-plane/Dockerfile -t boxkite-control-plane:local .
+#   docker build -f control-plane/Dockerfile -t boxxkite-control-plane:local .
 #
 # This image is intentionally separate from sidecar.Dockerfile/sandbox.Dockerfile:
 # it never runs alongside agent-generated code and holds no elevated Linux
@@ -22,7 +22,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /build
 
-# Copy the whole repo (both the `boxkite` package and control-plane) so the
+# Copy the whole repo (both the `boxxkite` package and control-plane) so the
 # editable `-e ..` requirement resolves.
 COPY --link src ./src
 COPY --link pyproject.toml ./pyproject.toml

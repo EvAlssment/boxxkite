@@ -137,7 +137,7 @@ def _build_kwargs(**overrides):
     kwargs = dict(
         image_id="9f2f5b2a-1111-4b2b-9c2c-abcdefabcdef",
         account_id="acct_1",
-        base="boxkite-default",
+        base="boxxkite-default",
         python_packages=["polars==1.9.0"],
         apt_packages=[],
     )
@@ -190,25 +190,25 @@ async def test_run_build_success_returns_completed_outcome_and_cleans_up():
     assert len(core_api.configmap_delete_calls) == 1
 
     # The submitted Job/ConfigMap bodies never leak the unit-test-only
-    # "_boxkite_*" introspection keys into the real API call.
+    # "_boxxkite_*" introspection keys into the real API call.
     job_body = batch_api.create_calls[0]["body"]
     configmap_body = core_api.configmap_create_calls[0]["body"]
-    assert not any(k.startswith("_boxkite_") for k in job_body)
-    assert not any(k.startswith("_boxkite_") for k in configmap_body)
+    assert not any(k.startswith("_boxxkite_") for k in job_body)
+    assert not any(k.startswith("_boxxkite_") for k in configmap_body)
     assert "polars==1.9.0" in configmap_body["data"]["Dockerfile"]
 
 
 async def test_run_build_uses_configured_namespace(monkeypatch):
-    monkeypatch.setattr(settings, "SANDBOX_NAMESPACE", "boxkite-builds")
+    monkeypatch.setattr(settings, "SANDBOX_NAMESPACE", "boxxkite-builds")
     batch_api = _FakeBatchApi(job_responses=[_job(succeeded=1)])
     core_api = _FakeCoreApi(pod=_pod_with_message(_VALID_DIGEST))
     runner = KanikoJobBuildRunner(k8s_batch_api=batch_api, k8s_core_api=core_api, scan_image=_clean_scan)
 
     await runner.run_build(**_build_kwargs())
 
-    assert core_api.configmap_create_calls[0]["namespace"] == "boxkite-builds"
-    assert batch_api.create_calls[0]["namespace"] == "boxkite-builds"
-    assert batch_api.read_calls[0]["namespace"] == "boxkite-builds"
+    assert core_api.configmap_create_calls[0]["namespace"] == "boxxkite-builds"
+    assert batch_api.create_calls[0]["namespace"] == "boxxkite-builds"
+    assert batch_api.read_calls[0]["namespace"] == "boxxkite-builds"
 
 
 async def test_run_build_job_failure_surfaces_log_tail_in_failure_reason():
@@ -240,8 +240,8 @@ async def test_run_build_success_with_missing_digest_fails_safely():
 
 
 async def test_run_build_times_out_and_cleans_up(monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS", 0.0)
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_BUILD_POLL_INTERVAL_SECONDS", 0.001)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS", 0.0)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_BUILD_POLL_INTERVAL_SECONDS", 0.001)
     batch_api = _FakeBatchApi(job_responses=[_job(succeeded=0, failed=0)])
     core_api = _FakeCoreApi(pod=None, logs=None)
     runner = KanikoJobBuildRunner(k8s_batch_api=batch_api, k8s_core_api=core_api)
@@ -340,7 +340,7 @@ async def test_run_build_rejected_when_scan_finds_high_severity_findings():
 
 
 async def test_run_build_fails_closed_when_scanner_unavailable_and_scan_required(monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_SCAN_REQUIRED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_SCAN_REQUIRED", True)
 
     async def _unavailable_scan(image_ref: str) -> dict:
         raise ImageScanUnavailableError("trivy binary not found on PATH")
@@ -358,7 +358,7 @@ async def test_run_build_fails_closed_when_scanner_unavailable_and_scan_required
 
 
 async def test_run_build_fails_open_when_scanner_unavailable_and_scan_not_required(monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_SCAN_REQUIRED", False)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_SCAN_REQUIRED", False)
 
     async def _unavailable_scan(image_ref: str) -> dict:
         raise ImageScanUnavailableError("trivy binary not found on PATH")
@@ -378,7 +378,7 @@ async def test_run_build_fails_open_when_scanner_unavailable_and_scan_not_requir
 
 
 async def test_run_build_fails_closed_on_scan_timeout(monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_SCAN_REQUIRED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_SCAN_REQUIRED", True)
 
     async def _timeout_scan(image_ref: str) -> dict:
         raise ImageScanTimeoutError(f"trivy scan of {image_ref!r} exceeded 300s")
@@ -394,7 +394,7 @@ async def test_run_build_fails_closed_on_scan_timeout(monkeypatch):
 
 
 async def test_run_build_fails_closed_on_malformed_scanner_output(monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_SCAN_REQUIRED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_SCAN_REQUIRED", True)
 
     async def _malformed_output_scan(image_ref: str) -> dict:
         raise ImageScanOutputError(f"trivy produced non-JSON output for {image_ref!r}")

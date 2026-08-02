@@ -65,8 +65,8 @@ async def _attempt_create(manager, account_id: str) -> str:
 async def test_concurrent_creates_do_not_exceed_per_account_cap(
     client: httpx.AsyncClient, monkeypatch, concurrency: int
 ):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 3)
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 3)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
 
     async with db_module.get_session_factory()() as db:
         account = await AccountRepository(db).create(email="race-per-account@example.com", password_hash="x")
@@ -82,8 +82,8 @@ async def test_concurrent_creates_do_not_exceed_per_account_cap(
 async def test_concurrent_creates_across_accounts_do_not_exceed_global_cap(
     client: httpx.AsyncClient, monkeypatch, concurrency: int
 ):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 100)
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 4)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 4)
 
     account_ids = []
     async with db_module.get_session_factory()() as db:
@@ -135,8 +135,8 @@ async def test_slow_pod_create_for_one_account_does_not_block_another_account(
     The lock now only guards the cheap count-check-then-reserve step; the
     slow call happens outside it. If the lock regressed back to wrapping
     the whole method, the `wait_for` below would time out."""
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 100)
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
 
     async with db_module.get_session_factory()() as db:
         account_repo = AccountRepository(db)

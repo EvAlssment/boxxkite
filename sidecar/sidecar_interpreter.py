@@ -32,7 +32,7 @@ router = APIRouter()
 # Written to stdout by the driver script the moment it's ready to accept
 # requests, so _spawn_interpreter() doesn't race sending the first snippet
 # before the interpreter has even started reading stdin.
-_INTERPRETER_READY_SENTINEL = "__BOXKITE_INTERPRETER_READY__"
+_INTERPRETER_READY_SENTINEL = "__BOXXKITE_INTERPRETER_READY__"
 
 # Runs inside the sandbox (nsenter'd exactly like exec_in_sandbox does for
 # one-shot commands), reading one JSON request per line from stdin
@@ -50,7 +50,7 @@ import traceback
 
 _globals = {"__name__": "__main__", "__builtins__": __builtins__}
 
-sys.stdout.write("BOXKITE_READY_SENTINEL\\n")
+sys.stdout.write("BOXXKITE_READY_SENTINEL\\n")
 sys.stdout.flush()
 
 for line in sys.stdin:
@@ -90,11 +90,11 @@ for line in sys.stdin:
     sys.stdout.flush()
 """
 
-# BOXKITE_READY_SENTINEL is a literal placeholder token (not a real Python
+# BOXXKITE_READY_SENTINEL is a literal placeholder token (not a real Python
 # name -- it's substituted below), kept distinct from the constant's own
 # name so a reader can't confuse the driver-source template with live code.
 _INTERPRETER_DRIVER_SOURCE = _INTERPRETER_DRIVER_SOURCE_TEMPLATE.replace(
-    "BOXKITE_READY_SENTINEL", _INTERPRETER_READY_SENTINEL
+    "BOXXKITE_READY_SENTINEL", _INTERPRETER_READY_SENTINEL
 )
 
 
@@ -153,7 +153,7 @@ async def _spawn_interpreter() -> "_InterpreterHandle":
     (`ulimit -v`), not a cooperative check the interpreter could evade.
     """
     os.makedirs(main.TMP_DIR, exist_ok=True)
-    script_path = os.path.join(main.TMP_DIR, f".boxkite-interpreter-{uuid4().hex}.py")
+    script_path = os.path.join(main.TMP_DIR, f".boxxkite-interpreter-{uuid4().hex}.py")
     with open(script_path, "w") as f:
         f.write(_INTERPRETER_DRIVER_SOURCE)
     os.chmod(script_path, 0o644)

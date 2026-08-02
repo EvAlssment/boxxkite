@@ -1,5 +1,5 @@
-# Install boxkite itself from the repo root first, with the `openai-agents`
-# extra (needed for to_openai_agents_tools()'s FunctionTool adapter -- boxkite's
+# Install boxxkite itself from the repo root first, with the `openai-agents`
+# extra (needed for to_openai_agents_tools()'s FunctionTool adapter -- boxxkite's
 # tool surface is framework-agnostic by default):
 #   pip install -e "../..[openai-agents]"
 #

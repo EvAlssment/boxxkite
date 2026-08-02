@@ -5,7 +5,7 @@ Covers:
 - build_s3fs_mount_command/build_s3fs_unmount_command produce the expected,
   read-only-only argv (no read-write mode exists to accidentally select).
 - Input validation on bucket/mount_path.
-- /mount-bucket 404s when BOXKITE_FUSE_MOUNT_ENABLED is off (the default).
+- /mount-bucket 404s when BOXXKITE_FUSE_MOUNT_ENABLED is off (the default).
 - /mount-bucket requires the same sidecar auth as every other route.
 - Even when enabled, /mount-bucket 501s because /dev/fuse isn't present in
   this container (real assertion against the actual filesystem, not
@@ -89,7 +89,7 @@ def test_mount_bucket_404s_when_disabled_by_default(monkeypatch):
 
 def test_mount_bucket_requires_auth_like_every_other_route(monkeypatch):
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", "the-real-secret")
-    monkeypatch.setattr(sidecar_main, "BOXKITE_FUSE_MOUNT_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_FUSE_MOUNT_ENABLED", True)
     client = _client()
 
     response = client.post("/mount-bucket", json={"bucket": "my-bucket", "mount_path": "/data"})
@@ -99,7 +99,7 @@ def test_mount_bucket_requires_auth_like_every_other_route(monkeypatch):
 
 def test_mount_bucket_501s_without_dev_fuse_even_when_enabled(monkeypatch):
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", "the-real-secret")
-    monkeypatch.setattr(sidecar_main, "BOXKITE_FUSE_MOUNT_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_FUSE_MOUNT_ENABLED", True)
     client = _client()
 
     # Real assertion, not mocked: this test environment (like every current
@@ -122,7 +122,7 @@ def test_mount_bucket_501s_even_with_dev_fuse_present(monkeypatch):
     docstring for why (s3fs isn't installed, credential handling isn't
     reviewed)."""
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", "the-real-secret")
-    monkeypatch.setattr(sidecar_main, "BOXKITE_FUSE_MOUNT_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_FUSE_MOUNT_ENABLED", True)
 
     def _fake_exists(path):
         return path == sidecar_main.FUSE_DEVICE_PATH

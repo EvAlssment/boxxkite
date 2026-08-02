@@ -1,6 +1,6 @@
 // Runnable end-to-end example against a real hosted control-plane.
 //
-//	BOXKITE_BASE_URL=https://your-control-plane BOXKITE_API_KEY=bxk_live_... \
+//	BOXXKITE_BASE_URL=https://your-control-plane BOXXKITE_API_KEY=bxk_live_... \
 //	    go run ./examples/quickstart.go
 package main
 
@@ -12,18 +12,18 @@ import (
 	"os"
 	"strings"
 
-	boxkite "github.com/EvAlssment/boxkite/sdk-go"
+	boxxkite "github.com/EvAlssment/boxxkite/sdk-go"
 )
 
 func main() {
-	baseURL := os.Getenv("BOXKITE_BASE_URL")
-	apiKey := os.Getenv("BOXKITE_API_KEY")
+	baseURL := os.Getenv("BOXXKITE_BASE_URL")
+	apiKey := os.Getenv("BOXXKITE_API_KEY")
 	if baseURL == "" || apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Set BOXKITE_BASE_URL and BOXKITE_API_KEY first.")
+		fmt.Fprintln(os.Stderr, "Set BOXXKITE_BASE_URL and BOXXKITE_API_KEY first.")
 		os.Exit(1)
 	}
 
-	client, err := boxkite.NewClient(baseURL, apiKey)
+	client, err := boxxkite.NewClient(baseURL, apiKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,8 +46,8 @@ func main() {
 		usage.ConcurrentSandboxes, usage.ConcurrentSandboxesLimit,
 	)
 
-	req := boxkite.CreateSandboxRequest{Label: boxkite.Ptr("sdk-go-quickstart")}
-	err = client.WithSandbox(ctx, req, func(sb *boxkite.Session) error {
+	req := boxxkite.CreateSandboxRequest{Label: boxxkite.Ptr("sdk-go-quickstart")}
+	err = client.WithSandbox(ctx, req, func(sb *boxxkite.Session) error {
 		fmt.Printf("Created sandbox %s\n", sb.ID)
 
 		result, err := sb.Exec(ctx, "python3 -c 'print(1 + 1)'", nil)
@@ -56,7 +56,7 @@ func main() {
 		}
 		fmt.Printf("exec result: %s\n", strings.TrimSpace(result.Stdout))
 
-		if _, err := sb.FileCreate(ctx, "hello.txt", "hello from boxkite-client (go)\n", nil); err != nil {
+		if _, err := sb.FileCreate(ctx, "hello.txt", "hello from boxxkite-client (go)\n", nil); err != nil {
 			return err
 		}
 		viewed, err := sb.View(ctx, "hello.txt", nil)
@@ -73,7 +73,7 @@ func main() {
 }
 
 func exitOnError(err error) {
-	var apiErr *boxkite.APIError
+	var apiErr *boxxkite.APIError
 	if errors.As(err, &apiErr) {
 		fmt.Fprintf(os.Stderr, "API error: %s [%s]\n", apiErr.Message, apiErr.Code)
 		os.Exit(1)

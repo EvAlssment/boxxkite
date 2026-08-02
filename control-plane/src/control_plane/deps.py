@@ -3,7 +3,7 @@ routes), and API-key-authenticated account (sandbox-management routes).
 
 The two credential types are intentionally never interchangeable:
 - `/v1/api-keys/*` (managing keys) requires a user JWT from /v1/auth/login.
-- `/v1/sandboxes/*` (using boxkite) requires a long-lived API key.
+- `/v1/sandboxes/*` (using boxxkite) requires a long-lived API key.
 A JWT presented to a sandbox route is rejected, and vice versa — see
 `get_current_account_via_api_key` and `get_current_user`. The one
 deliberate, narrow exception is `POST /v1/sandboxes` itself (GitHub issue
@@ -20,7 +20,7 @@ import jwt
 from fastapi import Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from boxkite import get_sandbox_manager
+from boxxkite import get_sandbox_manager
 
 from .db import get_db
 from .email_sender import EmailSender, get_email_sender
@@ -209,7 +209,7 @@ async def get_current_account_via_api_key_or_query(
 # without a circular import (sandboxes.py already imports this module).
 # Same documented limitation: this state is per-process, not shared across
 # replicas of a multi-instance deployment, bounded either way by the
-# token's short TTL (BOXKITE_SANDBOX_CREATE_TOKEN_TTL_SECONDS).
+# token's short TTL (BOXXKITE_SANDBOX_CREATE_TOKEN_TTL_SECONDS).
 _sandbox_create_jti_seen: dict[str, float] = {}
 
 

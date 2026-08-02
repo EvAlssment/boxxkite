@@ -1,5 +1,5 @@
 """Same walkthrough as curl_examples.sh, in Python using `requests` -- no
-LangChain and no boxkite Python package. This is the shape to copy if
+LangChain and no boxxkite Python package. This is the shape to copy if
 you're writing a tool-calling layer for a different agent framework and
 just need the wire contract for the sidecar's own HTTP API.
 
@@ -7,7 +7,7 @@ Talks directly to the local docker-compose sidecar. For the hosted
 control-plane's session-scoped equivalent, see ../hosted_control_plane.
 
 Prerequisites:
-    boxkite up      # from the repo root
+    boxxkite up      # from the repo root
     pip install requests
 
 Run:
@@ -30,15 +30,15 @@ def _load_token() -> str:
     if token:
         return token
 
-    local_env = Path.home() / ".boxkite" / "local.env"
+    local_env = Path.home() / ".boxxkite" / "local.env"
     if local_env.exists():
         for line in local_env.read_text().splitlines():
             if line.startswith("SIDECAR_AUTH_TOKEN="):
                 return line.split("=", 1)[1].strip()
 
     print(
-        "Set SIDECAR_AUTH_TOKEN, or run `boxkite up` first so "
-        "~/.boxkite/local.env has one.",
+        "Set SIDECAR_AUTH_TOKEN, or run `boxxkite up` first so "
+        "~/.boxxkite/local.env has one.",
         file=sys.stderr,
     )
     sys.exit(1)

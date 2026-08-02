@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from boxkite_handoff.core import Credential, LocatedSession, SessionFile
-from boxkite_handoff.orchestrator import create_handoff_sandbox
+from boxxkite_handoff.core import Credential, LocatedSession, SessionFile
+from boxxkite_handoff.orchestrator import create_handoff_sandbox
 
 
 class FakeWebsocket:
@@ -17,7 +17,7 @@ class FakeWebsocket:
         self.sent.append(data)
 
 
-class FakeBoxkiteClient:
+class FakeBoxxkiteClient:
     def __init__(self) -> None:
         self.created: list[dict] = []
         self.files_created: list[tuple[str, str, str]] = []
@@ -56,12 +56,12 @@ def located_session(session_file: Path) -> LocatedSession:
     )
 
 
-def _credential_file_pushes(client: FakeBoxkiteClient, credential_value: str) -> list[tuple[str, str, str]]:
+def _credential_file_pushes(client: FakeBoxxkiteClient, credential_value: str) -> list[tuple[str, str, str]]:
     return [entry for entry in client.files_created if entry[2] == credential_value]
 
 
 def test_create_handoff_sandbox_provisions_a_fresh_sandbox(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     result = create_handoff_sandbox(client, located_session)
 
@@ -70,7 +70,7 @@ def test_create_handoff_sandbox_provisions_a_fresh_sandbox(located_session: Loca
 
 
 def test_create_handoff_sandbox_pushes_every_session_file(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
 
@@ -82,7 +82,7 @@ def test_create_handoff_sandbox_pushes_every_session_file(located_session: Locat
 
 
 def test_create_handoff_sandbox_opens_takeover_for_the_new_sandbox(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
 
@@ -90,7 +90,7 @@ def test_create_handoff_sandbox_opens_takeover_for_the_new_sandbox(located_sessi
 
 
 def test_create_handoff_sandbox_types_unset_histfile_before_anything_else(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
 
@@ -104,7 +104,7 @@ def test_create_handoff_sandbox_never_types_the_raw_credential_value(located_ses
     webhook subscriber. The raw credential value must never appear in any
     typed line -- only a reference to a file pushed via file_create, whose
     own audit entry records path only, never content."""
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
 
@@ -115,7 +115,7 @@ def test_create_handoff_sandbox_never_types_the_raw_credential_value(located_ses
 def test_create_handoff_sandbox_pushes_the_credential_value_via_file_create_only(
     located_session: LocatedSession,
 ) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
 
@@ -128,7 +128,7 @@ def test_create_handoff_sandbox_pushes_the_credential_value_via_file_create_only
 def test_create_handoff_sandbox_types_a_cat_and_rm_referencing_the_pushed_credential_path(
     located_session: LocatedSession,
 ) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
 
@@ -141,7 +141,7 @@ def test_create_handoff_sandbox_types_a_cat_and_rm_referencing_the_pushed_creden
 
 
 def test_create_handoff_sandbox_cds_into_the_session_workdir(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
 
@@ -149,7 +149,7 @@ def test_create_handoff_sandbox_cds_into_the_session_workdir(located_session: Lo
 
 
 def test_create_handoff_sandbox_sends_resume_command_last(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
 
@@ -163,7 +163,7 @@ def test_create_handoff_sandbox_pushes_credential_values_containing_single_quote
     content as-is, no shell quoting needed) rather than being typed -- so a
     value containing a single quote must reach the sandbox unmodified, not
     escaped the way it would need to be if it were typed."""
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
     session = LocatedSession(
         tool="claude-code",
         session_id="abc123",
@@ -182,7 +182,7 @@ def test_create_handoff_sandbox_pushes_credential_values_containing_single_quote
 
 
 def test_create_handoff_sandbox_uses_a_default_label_when_none_given(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
 
@@ -190,7 +190,7 @@ def test_create_handoff_sandbox_uses_a_default_label_when_none_given(located_ses
 
 
 def test_create_handoff_sandbox_honors_custom_lifetime_minutes(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session, lifetime_minutes=30)
 
@@ -198,7 +198,7 @@ def test_create_handoff_sandbox_honors_custom_lifetime_minutes(located_session: 
 
 
 def test_create_handoff_sandbox_uses_a_fresh_credential_path_each_call(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)
     create_handoff_sandbox(client, located_session)
@@ -206,13 +206,13 @@ def test_create_handoff_sandbox_uses_a_fresh_credential_path_each_call(located_s
     paths = [entry[1] for entry in _credential_file_pushes(client, "sk-test-token")]
     assert len(paths) == 2
     assert paths[0] != paths[1]
-    assert all(re.fullmatch(r"/tmp/\.boxkite-handoff-credential-[0-9a-f]{32}", p) for p in paths)
+    assert all(re.fullmatch(r"/tmp/\.boxxkite-handoff-credential-[0-9a-f]{32}", p) for p in paths)
 
 
 def test_create_handoff_sandbox_calls_session_cleanup_after_pushing_files(
     session_file: Path,
 ) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
     cleanup_calls: list[str] = []
     session = LocatedSession(
         tool="opencode",
@@ -232,7 +232,7 @@ def test_create_handoff_sandbox_calls_session_cleanup_after_pushing_files(
 def test_create_handoff_sandbox_calls_cleanup_even_if_file_push_fails(
     session_file: Path,
 ) -> None:
-    class FailingClient(FakeBoxkiteClient):
+    class FailingClient(FakeBoxxkiteClient):
         def file_create(self, session_id: str, path: str, content: str, **_kwargs) -> dict:
             raise RuntimeError("push failed")
 
@@ -255,6 +255,6 @@ def test_create_handoff_sandbox_calls_cleanup_even_if_file_push_fails(
 
 
 def test_create_handoff_sandbox_tolerates_no_cleanup_set(located_session: LocatedSession) -> None:
-    client = FakeBoxkiteClient()
+    client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)  # must not raise

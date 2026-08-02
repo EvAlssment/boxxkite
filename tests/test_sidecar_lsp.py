@@ -3,7 +3,7 @@
 
 Mirrors tests/test_sidecar_node_interpreter.py's structure/conventions:
 
-- 404 when BOXKITE_LSP_ENABLED is off (the default).
+- 404 when BOXXKITE_LSP_ENABLED is off (the default).
 - Requires the same sidecar auth as every other route once enabled.
 - The Content-Length JSON-RPC framing helpers round-trip correctly,
   including a real byte-length (not character-length) multi-byte UTF-8
@@ -146,13 +146,13 @@ def _write_fake_driver(tmp_path) -> str:
 
 
 def _enable(monkeypatch, tmp_path):
-    """Enable BOXKITE_LSP_ENABLED, bypass nsenter/docker-exec (no real
+    """Enable BOXXKITE_LSP_ENABLED, bypass nsenter/docker-exec (no real
     sandbox container in this test environment, same technique every other
     sidecar test file uses), and point BOTH language slots at the fake
     driver script above so tests don't depend on real `pyright-langserver`/
     `typescript-language-server` binaries being installed."""
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
-    monkeypatch.setattr(sidecar_main, "BOXKITE_LSP_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_LSP_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: 1)
     monkeypatch.setattr(
         sidecar_main, "build_k8s_exec_command", lambda pid, command: ["sh", "-c", command]
@@ -387,7 +387,7 @@ def test_spawn_lsp_server_fails_when_sandbox_process_is_missing(monkeypatch):
     """K8s mode: if get_sandbox_pid() can't find the sandbox process,
     /lsp/start must fail loudly (502), not hang or silently no-op."""
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
-    monkeypatch.setattr(sidecar_main, "BOXKITE_LSP_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_LSP_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: None)
 
     with TestClient(sidecar_main.app) as client:
@@ -550,7 +550,7 @@ def _extend_safe_exec_env_path_for_node(monkeypatch):
 @pytest.mark.integration
 def test_real_pyright_langserver_returns_a_real_completion_item(monkeypatch, tmp_path, real_lsp_binaries):
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
-    monkeypatch.setattr(sidecar_main, "BOXKITE_LSP_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_LSP_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: 1)
     monkeypatch.setattr(
         sidecar_main, "build_k8s_exec_command", lambda pid, command: ["sh", "-c", command]
@@ -604,7 +604,7 @@ def test_real_typescript_language_server_returns_a_real_completion_item(
     monkeypatch, tmp_path, real_lsp_binaries
 ):
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
-    monkeypatch.setattr(sidecar_main, "BOXKITE_LSP_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_LSP_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: 1)
     monkeypatch.setattr(
         sidecar_main, "build_k8s_exec_command", lambda pid, command: ["sh", "-c", command]

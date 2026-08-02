@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.node_interpreter_tool, in particular its
+Tests for boxxkite.tools.node_interpreter_tool, in particular its
 AuditSink.record_exec integration point.
 
 Mirrors tests/test_python_interpreter_tool.py's pattern: mock
@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.tools.node_interpreter_tool import create_node_interpreter_tool
+from boxxkite.tools.node_interpreter_tool import create_node_interpreter_tool
 
 pytestmark = pytest.mark.pr
 

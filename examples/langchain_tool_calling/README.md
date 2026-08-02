@@ -1,6 +1,6 @@
 # Minimal LangChain tool-calling example
 
-The fastest path to seeing boxkite's tools work. One file, one task, two
+The fastest path to seeing boxxkite's tools work. One file, one task, two
 tools (`bash_tool` and `file_create` -- not all 5), and `langchain.agents.
 create_agent` instead of an explicit LangGraph graph. If you only have time
 to run one example, and you want the simplest possible thing to read top to
@@ -15,20 +15,20 @@ for first.
 
 ## Prerequisites
 
-1. A running boxkite stack: `boxkite up` from the repo root (see the main
+1. A running boxxkite stack: `boxxkite up` from the repo root (see the main
    README's "Quickstart: docker-compose" section).
-2. `pip install -e ../..` (boxkite itself) then `pip install -r
+2. `pip install -e ../..` (boxxkite itself) then `pip install -r
    requirements.txt` (this example's LangChain deps).
-3. `ANTHROPIC_API_KEY` set (or point `BOXKITE_EXAMPLE_MODEL` at another
+3. `ANTHROPIC_API_KEY` set (or point `BOXXKITE_EXAMPLE_MODEL` at another
    `init_chat_model`-supported provider and install its integration
    package).
 
 ## Run
 
 ```bash
-boxkite up
-# SandboxManager auto-loads the sidecar token + URL from ~/.boxkite/local.env
-# (written by `boxkite up`), so no manual SIDECAR_AUTH_TOKEN export is needed.
+boxxkite up
+# SandboxManager auto-loads the sidecar token + URL from ~/.boxxkite/local.env
+# (written by `boxxkite up`), so no manual SIDECAR_AUTH_TOKEN export is needed.
 export RUNTIME_MODE=compose
 export ANTHROPIC_API_KEY=sk-ant-...
 
@@ -43,7 +43,7 @@ Tools wired: ['bash_tool', 'file_create']
 Running agent...
 ------------------------------------------------------------
 The script printed:
-hello from boxkite
+hello from boxxkite
 2026-07-08
 Destroying session <uuid> ...
 ```

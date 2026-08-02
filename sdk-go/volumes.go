@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -32,7 +32,7 @@ type Volume struct {
 // via CreateSandboxRequest.VolumeMounts. Always asynchronous -- returns
 // immediately with Status "queued"; poll GetVolume for progress. 404s
 // ("feature_disabled") if the deployment hasn't enabled volumes
-// (BOXKITE_VOLUMES_ENABLED).
+// (BOXXKITE_VOLUMES_ENABLED).
 func (c *Client) CreateVolume(ctx context.Context, req CreateVolumeRequest) (*Volume, error) {
 	var out Volume
 	if err := c.doJSON(ctx, "POST", "/v1/volumes", req, &out, nil); err != nil {

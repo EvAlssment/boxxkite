@@ -19,7 +19,7 @@ What you expected to happen instead.
 ## Environment
 
 - Deployment path: [docker-compose / local-kind / a real K8s cluster]
-- boxkite version / commit:
+- boxxkite version / commit:
 - Storage backend: [S3 / Azure Blob / none configured]
 - Kubernetes version (if applicable):
 

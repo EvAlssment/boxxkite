@@ -2,18 +2,18 @@
 
 use std::fmt;
 
-/// Everything this crate's `Result<T, BoxkiteError>` can fail with.
+/// Everything this crate's `Result<T, BoxxkiteError>` can fail with.
 ///
-/// Mirrors `sdk-python`'s `BoxkiteApiError`/`BoxkiteConnectionError` split
-/// (both subclass `BoxkiteError` there; here both are variants of one enum,
+/// Mirrors `sdk-python`'s `BoxxkiteApiError`/`BoxxkiteConnectionError` split
+/// (both subclass `BoxxkiteError` there; here both are variants of one enum,
 /// the idiomatic Rust shape for a small, closed set of error kinds).
 #[derive(Debug, thiserror::Error)]
-pub enum BoxkiteError {
+pub enum BoxxkiteError {
     /// The control-plane responded with a non-2xx status. `code` is the
     /// machine-readable `error.code` field from the response envelope
     /// (`{"error": {"code", "message"}}`) -- see `docs/API.md`'s "Error
     /// codes" table for the full list this API can return.
-    #[error("boxkite API error {status}: {code} - {message}")]
+    #[error("boxxkite API error {status}: {code} - {message}")]
     Api {
         status: u16,
         code: String,
@@ -38,7 +38,7 @@ pub enum BoxkiteError {
 
     /// The Server-Sent Events stream (`watch`) errored. Boxed: the largest
     /// variant of the underlying `reqwest_eventsource::Error` embeds a full
-    /// `reqwest::Response`, which would otherwise make every `BoxkiteError`
+    /// `reqwest::Response`, which would otherwise make every `BoxxkiteError`
     /// (including cheap ones like `Config`) pay for that size on the stack.
     #[error("event stream error: {0}")]
     EventStream(#[source] Box<reqwest_eventsource::Error>),
@@ -51,37 +51,37 @@ pub enum BoxkiteError {
     Config(String),
 }
 
-impl From<reqwest::Error> for BoxkiteError {
+impl From<reqwest::Error> for BoxxkiteError {
     fn from(err: reqwest::Error) -> Self {
-        BoxkiteError::Connection(err)
+        BoxxkiteError::Connection(err)
     }
 }
 
-impl From<serde_json::Error> for BoxkiteError {
+impl From<serde_json::Error> for BoxxkiteError {
     fn from(err: serde_json::Error) -> Self {
-        BoxkiteError::Decode(err)
+        BoxxkiteError::Decode(err)
     }
 }
 
-impl From<tokio_tungstenite::tungstenite::Error> for BoxkiteError {
+impl From<tokio_tungstenite::tungstenite::Error> for BoxxkiteError {
     fn from(err: tokio_tungstenite::tungstenite::Error) -> Self {
-        BoxkiteError::WebSocket(err)
+        BoxxkiteError::WebSocket(err)
     }
 }
 
-impl From<reqwest_eventsource::Error> for BoxkiteError {
+impl From<reqwest_eventsource::Error> for BoxxkiteError {
     fn from(err: reqwest_eventsource::Error) -> Self {
-        BoxkiteError::EventStream(Box::new(err))
+        BoxxkiteError::EventStream(Box::new(err))
     }
 }
 
-impl BoxkiteError {
+impl BoxxkiteError {
     /// The machine-readable error code from an `Api` variant, if this is
     /// one -- e.g. `"concurrent_sandbox_limit_reached"`. `None` for every
     /// other variant.
     pub fn code(&self) -> Option<&str> {
         match self {
-            BoxkiteError::Api { code, .. } => Some(code),
+            BoxxkiteError::Api { code, .. } => Some(code),
             _ => None,
         }
     }
@@ -89,7 +89,7 @@ impl BoxkiteError {
     /// The HTTP status code from an `Api` variant, if this is one.
     pub fn status(&self) -> Option<u16> {
         match self {
-            BoxkiteError::Api { status, .. } => Some(*status),
+            BoxxkiteError::Api { status, .. } => Some(*status),
             _ => None,
         }
     }
@@ -117,13 +117,13 @@ fn default_error_code() -> String {
 /// response body, falling back to a generic message if the body isn't (or
 /// doesn't contain) that shape. Shared by [`crate::client::Client`]'s
 /// regular request path and `watch`'s Server-Sent Events path, which both
-/// need to turn a non-2xx response into the same `BoxkiteError::Api` shape.
-pub(crate) fn api_error_from_bytes(status: u16, bytes: &[u8]) -> BoxkiteError {
+/// need to turn a non-2xx response into the same `BoxxkiteError::Api` shape.
+pub(crate) fn api_error_from_bytes(status: u16, bytes: &[u8]) -> BoxxkiteError {
     let (code, message) = serde_json::from_slice::<ErrorEnvelope>(bytes)
         .ok()
         .map(|env| (env.error.code, env.error.message.unwrap_or_default()))
         .unwrap_or_else(|| ("error".to_string(), format!("HTTP {status}")));
-    BoxkiteError::Api {
+    BoxxkiteError::Api {
         status,
         code,
         message,

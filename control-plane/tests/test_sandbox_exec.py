@@ -215,7 +215,7 @@ async def test_exec_timeout_above_manager_request_timeout_margin_is_rejected(
     )
     assert at_ceiling.status_code == 200
 
-    from boxkite.manager import REQUEST_TIMEOUT
+    from boxxkite.manager import REQUEST_TIMEOUT
 
     assert SANDBOX_EXEC_MAX_TIMEOUT_SECONDS < REQUEST_TIMEOUT
 
@@ -302,7 +302,7 @@ async def test_exec_is_rate_limited_per_account(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE", 3)
+    monkeypatch.setattr(settings, "BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE", 3)
 
     key = await signup_and_get_api_key(client, "exec-rate-limited@example.com")
     session_id = await _create_session(client, key)
@@ -374,7 +374,7 @@ async def test_exec_rate_limit_is_scoped_per_account_not_global(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE", 1)
 
     key_a = await signup_and_get_api_key(client, "exec-rate-a@example.com")
     key_b = await signup_and_get_api_key(client, "exec-rate-b@example.com")

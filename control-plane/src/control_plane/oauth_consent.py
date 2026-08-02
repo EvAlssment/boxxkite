@@ -43,7 +43,7 @@ def render_page(*, title: str, body: str) -> str:
 
 def render_error_page(*, message: str) -> str:
     return render_page(
-        title="boxkite -- authorization error",
+        title="boxxkite -- authorization error",
         body=f'<h1>Can\'t continue</h1><p class="error">{html.escape(message)}</p>',
     )
 
@@ -73,7 +73,7 @@ def render_login_page(
         title=f"Sign in to allow {client_name}",
         body=f"""
 <h1>Sign in to continue</h1>
-<p class="detail">{html.escape(client_name)} wants to connect to your boxkite account.</p>
+<p class="detail">{html.escape(client_name)} wants to connect to your boxxkite account.</p>
 {error_html}
 <form method="post" action="/oauth/authorize/login">
   <input type="hidden" name="authorize_query" value="{html.escape(authorize_query)}">
@@ -94,7 +94,7 @@ def render_consent_page(*, client_name: str, account_email: str, authorize_query
     return render_page(
         title=f"Allow {client_name}?",
         body=f"""
-<h1>{html.escape(client_name)} wants to access your boxkite account</h1>
+<h1>{html.escape(client_name)} wants to access your boxxkite account</h1>
 <p class="detail">Signed in as {html.escape(account_email)}. This grants the same access an API key already has: creating, using, and destroying sandboxes on your account.</p>
 <form method="post" action="/oauth/authorize/decide">
   <input type="hidden" name="authorize_query" value="{html.escape(authorize_query)}">

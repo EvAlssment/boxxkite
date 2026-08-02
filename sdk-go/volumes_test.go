@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -37,7 +37,7 @@ func TestGetVolume(t *testing.T) {
 		if r.URL.Path != "/v1/volumes/vol-1" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
-		writeJSON(t, w, 200, `{"id": "vol-1", "label": "training-data", "size_gb": 20, "status": "ready", "pvc_name": "boxkite-volume-vol-1", "failure_reason": null, "created_at": "2026-01-01T00:00:00Z"}`)
+		writeJSON(t, w, 200, `{"id": "vol-1", "label": "training-data", "size_gb": 20, "status": "ready", "pvc_name": "boxxkite-volume-vol-1", "failure_reason": null, "created_at": "2026-01-01T00:00:00Z"}`)
 	})
 	defer closeServer()
 

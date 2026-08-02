@@ -1,6 +1,6 @@
 """Cursor adapter tests.
 
-See boxkite_handoff/adapters/cursor.py's module docstring for the
+See boxxkite_handoff/adapters/cursor.py's module docstring for the
 verification record this test file exercises: Cursor's `cursor-agent` CLI
 does have a documented local resume mechanism (`--resume [chatId]`,
 `agent ls`, `CURSOR_API_KEY` for headless auth), but the on-disk artifact
@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import pytest
 
-from boxkite_handoff.adapters.cursor import CursorAdapter
-from boxkite_handoff.core import HandoffError
+from boxxkite_handoff.adapters.cursor import CursorAdapter
+from boxxkite_handoff.core import HandoffError
 
 
 def test_cursor_adapter_name_is_cursor() -> None:

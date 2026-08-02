@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.test_parsers.pytest_parser (parse_pytest_output).
+Tests for boxxkite.tools.test_parsers.pytest_parser (parse_pytest_output).
 
 Covers the three cases run_tests_tool.py relies on: a clean passing run, a
 failing run with specific failure detail extracted, and malformed/
@@ -9,8 +9,8 @@ raw output instead of crashing.
 
 import pytest
 
-from boxkite.tools.test_parsers.pytest_parser import parse_pytest_output
-from boxkite.tools.test_parsers.schema import TestFailure, TestRunResult
+from boxxkite.tools.test_parsers.pytest_parser import parse_pytest_output
+from boxxkite.tools.test_parsers.schema import TestFailure, TestRunResult
 
 pytestmark = pytest.mark.pr
 

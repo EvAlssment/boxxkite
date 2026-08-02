@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 /// @notice Toy, EVMbench-style vulnerable vault: a classic reentrancy bug
 /// (external call before the internal balance is zeroed). Intentionally
-/// insecure -- for boxkite's Foundry/Anvil audit-sandbox example only,
+/// insecure -- for boxxkite's Foundry/Anvil audit-sandbox example only,
 /// never a real contract. See ../../README.md for the full "detect / patch
 /// / exploit" story this contract, VaultFixed.sol, and Attacker.sol
 /// together demonstrate.

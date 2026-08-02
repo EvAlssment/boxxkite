@@ -81,7 +81,7 @@ async def test_duplicate_secret_name_within_account_is_409(client: httpx.AsyncCl
 async def test_create_secret_is_rate_limited(client: httpx.AsyncClient, monkeypatch):
     """Every other mutating router rate-limits its writes (webhooks/images/
     volumes) -- secret create must too, in its own conservative bucket."""
-    monkeypatch.setattr(settings, "BOXKITE_SECRET_RATE_LIMIT_PER_MINUTE", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_SECRET_RATE_LIMIT_PER_MINUTE", 2)
     api_key = await _account_with_key(client, "secrets-rate-limited@example.com")
 
     for i in range(2):

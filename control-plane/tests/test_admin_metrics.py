@@ -57,7 +57,7 @@ async def test_admin_account_can_read_cluster_metrics(client: httpx.AsyncClient)
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["total_accounts"] >= 1
-    assert body["global_concurrent_sandboxes_limit"] == settings.BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES
+    assert body["global_concurrent_sandboxes_limit"] == settings.BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES
     assert isinstance(body["accounts"], list)
 
 

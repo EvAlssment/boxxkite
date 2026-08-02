@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::{CreateImageOptions, ImageBase};
+use boxxkite_client::{CreateImageOptions, ImageBase};
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -14,7 +14,7 @@ async fn create_image_sends_base_and_packages() {
         .and(path("/v1/images"))
         .and(body_json(json!({
             "label": "data-science",
-            "base": "boxkite-default",
+            "base": "boxxkite-default",
             "python_packages": ["polars==1.9.0"],
             "apt_packages": ["ripgrep==14.1.0-1"]
         })))
@@ -26,7 +26,7 @@ async fn create_image_sends_base_and_packages() {
 
     let options = CreateImageOptions::new()
         .label("data-science")
-        .base(ImageBase::BoxkiteDefault)
+        .base(ImageBase::BoxxkiteDefault)
         .python_packages(["polars==1.9.0"])
         .apt_packages(["ripgrep==14.1.0-1"]);
 
@@ -41,14 +41,14 @@ async fn create_image_sends_base_and_packages() {
 }
 
 #[tokio::test]
-async fn create_image_node_base_serializes_as_boxkite_node() {
+async fn create_image_node_base_serializes_as_boxxkite_node() {
     let server = common::mock_server().await;
     let client = common::client_for(&server);
 
     Mock::given(method("POST"))
         .and(path("/v1/images"))
         .and(body_json(
-            json!({"base": "boxkite-node", "npm_packages": ["typescript==5.6.0"]}),
+            json!({"base": "boxxkite-node", "npm_packages": ["typescript==5.6.0"]}),
         ))
         .respond_with(ResponseTemplate::new(202).set_body_json(json!({
             "id": "img_2", "status": "queued", "created_at": "2026-01-01T00:00:00Z"
@@ -57,7 +57,7 @@ async fn create_image_node_base_serializes_as_boxkite_node() {
         .await;
 
     let options = CreateImageOptions::new()
-        .base(ImageBase::BoxkiteNode)
+        .base(ImageBase::BoxxkiteNode)
         .npm_packages(["typescript==5.6.0"]);
     client
         .create_image(options)
@@ -73,7 +73,7 @@ async fn get_image_parses_full_detail() {
     Mock::given(method("GET"))
         .and(path("/v1/images/img_1"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "id": "img_1", "label": "data-science", "base": "boxkite-default",
+            "id": "img_1", "label": "data-science", "base": "boxxkite-default",
             "python_packages": ["polars==1.9.0"], "apt_packages": [], "npm_packages": [],
             "status": "completed", "digest": "sha256:abc", "registry_ref": "registry/img:abc",
             "scan_result": {"clean": true}, "failure_reason": null,

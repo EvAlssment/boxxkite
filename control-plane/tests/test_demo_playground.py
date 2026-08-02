@@ -2,8 +2,8 @@
 (issue #103, routers/demo_playground.py).
 
 Covers: the happy-path create -> exec -> destroy flow; 404 when the feature
-flag is off; 429 once BOXKITE_DEMO_RATE_LIMIT_PER_MINUTE is exceeded; 503
-once BOXKITE_DEMO_MAX_CONCURRENT demo sessions are active; and token
+flag is off; 429 once BOXXKITE_DEMO_RATE_LIMIT_PER_MINUTE is exceeded; 503
+once BOXXKITE_DEMO_MAX_CONCURRENT demo sessions are active; and token
 rejection for a missing, mismatched, or expired X-Demo-Token on /exec.
 """
 
@@ -22,7 +22,7 @@ def _enable_demo_playground(monkeypatch):
     # Off by default (opt-in feature) -- every test in this file explicitly
     # turns it on, mirroring test_sandbox_images.py's
     # _enable_image_builder fixture.
-    monkeypatch.setattr(settings, "BOXKITE_DEMO_PLAYGROUND_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_DEMO_PLAYGROUND_ENABLED", True)
 
 
 async def _create_demo_sandbox(client: httpx.AsyncClient) -> dict:
@@ -47,7 +47,7 @@ async def test_create_exec_destroy_happy_path(client: httpx.AsyncClient, fake_ma
     assert body["exit_code"] == 0
     assert "echo hello" in body["stdout"]
     assert body["truncated"] is False
-    assert fake_manager.exec_calls[-1]["timeout"] == settings.BOXKITE_DEMO_EXEC_TIMEOUT_SECONDS
+    assert fake_manager.exec_calls[-1]["timeout"] == settings.BOXXKITE_DEMO_EXEC_TIMEOUT_SECONDS
 
     destroy_resp = await client.delete(
         f"/v1/demo/sandboxes/{created['session_id']}",
@@ -74,7 +74,7 @@ async def test_create_exec_destroy_happy_path(client: httpx.AsyncClient, fake_ma
 
 
 async def test_disabled_by_default(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_DEMO_PLAYGROUND_ENABLED", False)
+    monkeypatch.setattr(settings, "BOXXKITE_DEMO_PLAYGROUND_ENABLED", False)
     resp = await client.post("/v1/demo/sandboxes", json={})
     assert resp.status_code == 404
     assert resp.json()["error"]["code"] == "not_found"
@@ -83,8 +83,8 @@ async def test_disabled_by_default(client: httpx.AsyncClient, monkeypatch):
 async def test_rate_limit_returns_429_after_exceeding_limit(client: httpx.AsyncClient, monkeypatch):
     # Isolate the rate-limit behavior from the capacity check by giving
     # capacity plenty of headroom.
-    monkeypatch.setattr(settings, "BOXKITE_DEMO_MAX_CONCURRENT", 100)
-    monkeypatch.setattr(settings, "BOXKITE_DEMO_RATE_LIMIT_PER_MINUTE", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_DEMO_MAX_CONCURRENT", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_DEMO_RATE_LIMIT_PER_MINUTE", 2)
 
     first = await client.post("/v1/demo/sandboxes", json={})
     assert first.status_code == 201, first.text
@@ -99,8 +99,8 @@ async def test_rate_limit_returns_429_after_exceeding_limit(client: httpx.AsyncC
 async def test_capacity_returns_503_after_max_concurrent_reached(client: httpx.AsyncClient, monkeypatch):
     # Isolate the capacity check from the rate limiter by giving the rate
     # limiter plenty of headroom.
-    monkeypatch.setattr(settings, "BOXKITE_DEMO_RATE_LIMIT_PER_MINUTE", 100)
-    monkeypatch.setattr(settings, "BOXKITE_DEMO_MAX_CONCURRENT", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_DEMO_RATE_LIMIT_PER_MINUTE", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_DEMO_MAX_CONCURRENT", 1)
 
     first = await client.post("/v1/demo/sandboxes", json={})
     assert first.status_code == 201, first.text
@@ -121,7 +121,7 @@ async def test_exec_rejects_missing_token(client: httpx.AsyncClient):
 
 
 async def test_exec_rejects_mismatched_session_token(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_DEMO_MAX_CONCURRENT", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_DEMO_MAX_CONCURRENT", 100)
     session_a = await _create_demo_sandbox(client)
     session_b = await _create_demo_sandbox(client)
 

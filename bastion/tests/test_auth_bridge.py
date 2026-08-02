@@ -1,9 +1,9 @@
-"""Tests for boxkite_bastion.auth_bridge -- the security-critical part of
+"""Tests for boxxkite_bastion.auth_bridge -- the security-critical part of
 the bastion (GitHub issue #134, docs/SSH-BASTION-DESIGN.md section 3): the
 exchange of SSH (username=session_id, password=takeover token) credentials
 for control-plane's existing `WS /v1/sandboxes/{id}/takeover?token=` route.
 
-Written first (TDD), before boxkite_bastion.auth_bridge existed, per this
+Written first (TDD), before boxxkite_bastion.auth_bridge existed, per this
 task's instructions -- the raw SSH protocol handling (asyncssh's own
 listener, channel, pty-req plumbing) is deliberately NOT re-tested here;
 that leans on asyncssh's own test coverage, per the design doc's scoping
@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from boxkite_bastion.auth_bridge import (
+from boxxkite_bastion.auth_bridge import (
     TakeoverAuthError,
     build_takeover_ws_url,
     exchange_ssh_credentials_for_takeover_ws,

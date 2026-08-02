@@ -1,13 +1,13 @@
 """
-Tests for boxkite.tools' framework-agnostic core and its adapters.
+Tests for boxxkite.tools' framework-agnostic core and its adapters.
 
-boxkite.tools.create_sandbox_tool_specs() (and each create_*_tool_spec())
+boxxkite.tools.create_sandbox_tool_specs() (and each create_*_tool_spec())
 returns plain ToolSpec objects (name, description, JSON-schema parameters,
 and a plain async handler) with no LangChain dependency anywhere in
 bash_tool.py, file_tools.py, present_files.py, search_tools.py,
 process_tools.py, git_tools.py, python_interpreter_tool.py, or
 node_interpreter_tool.py.
-boxkite.tools.adapters converts those specs into framework-specific shapes:
+boxxkite.tools.adapters converts those specs into framework-specific shapes:
 to_langchain_tools (LangChain BaseTool objects) and to_openai_functions
 (an OpenAI-style function-calling schema, pure stdlib).
 
@@ -21,22 +21,22 @@ import inspect
 
 import pytest
 
-import boxkite.tools.bash_tool as bash_tool_module
-import boxkite.tools.file_tools as file_tools_module
-import boxkite.tools.git_tools as git_tools_module
-import boxkite.tools.node_interpreter_tool as node_interpreter_tool_module
-import boxkite.tools.present_files as present_files_module
-import boxkite.tools.process_tools as process_tools_module
-import boxkite.tools.python_interpreter_tool as python_interpreter_tool_module
-import boxkite.tools.search_tools as search_tools_module
-from boxkite.tools import create_sandbox_tool_specs
-from boxkite.tools.bash_tool import create_bash_tool_spec
-from boxkite.tools.file_tools import create_view_tool_spec
-from boxkite.tools.git_tools import create_git_status_tool_spec, create_git_tool_specs
-from boxkite.tools.node_interpreter_tool import create_node_interpreter_tool_spec
-from boxkite.tools.process_tools import create_start_process_tool_spec
-from boxkite.tools.python_interpreter_tool import create_python_interpreter_tool_spec
-from boxkite.tools.types import ToolImageResult, ToolSpec
+import boxxkite.tools.bash_tool as bash_tool_module
+import boxxkite.tools.file_tools as file_tools_module
+import boxxkite.tools.git_tools as git_tools_module
+import boxxkite.tools.node_interpreter_tool as node_interpreter_tool_module
+import boxxkite.tools.present_files as present_files_module
+import boxxkite.tools.process_tools as process_tools_module
+import boxxkite.tools.python_interpreter_tool as python_interpreter_tool_module
+import boxxkite.tools.search_tools as search_tools_module
+from boxxkite.tools import create_sandbox_tool_specs
+from boxxkite.tools.bash_tool import create_bash_tool_spec
+from boxxkite.tools.file_tools import create_view_tool_spec
+from boxxkite.tools.git_tools import create_git_status_tool_spec, create_git_tool_specs
+from boxxkite.tools.node_interpreter_tool import create_node_interpreter_tool_spec
+from boxxkite.tools.process_tools import create_start_process_tool_spec
+from boxxkite.tools.python_interpreter_tool import create_python_interpreter_tool_spec
+from boxxkite.tools.types import ToolImageResult, ToolSpec
 
 pytestmark = pytest.mark.pr
 
@@ -73,7 +73,7 @@ def test_tool_modules_have_no_top_level_langchain_import(module):
     # Each tool module's actual logic must be importable and callable with
     # zero LangChain dependency. Only the legacy create_*_tool() wrappers
     # reach for langchain_core, lazily, inside their own function bodies
-    # via boxkite.tools.adapters -- never at module scope.
+    # via boxxkite.tools.adapters -- never at module scope.
     source = inspect.getsource(module)
     top_level_import_lines = [
         line
@@ -155,7 +155,7 @@ async def test_view_spec_handler_returns_tool_image_result_for_images():
 
 
 def test_to_openai_functions_produces_the_expected_schema_shape():
-    from boxkite.tools.adapters import to_openai_functions
+    from boxxkite.tools.adapters import to_openai_functions
 
     specs = create_sandbox_tool_specs(sandbox_manager=_FakeSandboxManager(), session_id="s1")
     schema = to_openai_functions(specs)
@@ -169,7 +169,7 @@ def test_to_openai_functions_produces_the_expected_schema_shape():
 
 
 def test_to_langchain_tools_produces_working_langchain_tools():
-    from boxkite.tools.adapters import to_langchain_tools
+    from boxxkite.tools.adapters import to_langchain_tools
 
     manager = _FakeSandboxManager()
     specs = create_sandbox_tool_specs(sandbox_manager=manager, session_id="s1")
@@ -180,7 +180,7 @@ def test_to_langchain_tools_produces_working_langchain_tools():
 
 @pytest.mark.asyncio
 async def test_to_langchain_tools_bash_tool_round_trips_through_ainvoke():
-    from boxkite.tools.adapters import to_langchain_tools
+    from boxxkite.tools.adapters import to_langchain_tools
 
     manager = _FakeSandboxManager()
     spec = create_bash_tool_spec(session_id="s1", sandbox_manager=manager)
@@ -193,7 +193,7 @@ async def test_to_langchain_tools_bash_tool_round_trips_through_ainvoke():
 
 @pytest.mark.asyncio
 async def test_to_langchain_tools_view_wraps_images_in_a_tool_message():
-    from boxkite.tools.adapters import to_langchain_tools
+    from boxxkite.tools.adapters import to_langchain_tools
 
     spec = create_view_tool_spec(sandbox_manager=_FakeSandboxManager(), session_id="s1")
     tool = to_langchain_tools([spec])[0]
@@ -207,7 +207,7 @@ async def test_to_langchain_tools_view_wraps_images_in_a_tool_message():
 
 
 def test_to_llamaindex_tools_produces_working_function_tools():
-    from boxkite.tools.adapters import to_llamaindex_tools
+    from boxxkite.tools.adapters import to_llamaindex_tools
 
     manager = _FakeSandboxManager()
     specs = create_sandbox_tool_specs(sandbox_manager=manager, session_id="s1")
@@ -218,7 +218,7 @@ def test_to_llamaindex_tools_produces_working_function_tools():
 
 @pytest.mark.asyncio
 async def test_to_llamaindex_tools_bash_tool_round_trips_through_acall():
-    from boxkite.tools.adapters import to_llamaindex_tools
+    from boxxkite.tools.adapters import to_llamaindex_tools
 
     manager = _FakeSandboxManager()
     spec = create_bash_tool_spec(session_id="s1", sandbox_manager=manager)
@@ -231,7 +231,7 @@ async def test_to_llamaindex_tools_bash_tool_round_trips_through_acall():
 
 
 def test_to_openai_agents_tools_produces_working_function_tools():
-    from boxkite.tools.adapters import to_openai_agents_tools
+    from boxxkite.tools.adapters import to_openai_agents_tools
 
     manager = _FakeSandboxManager()
     specs = create_sandbox_tool_specs(sandbox_manager=manager, session_id="s1")
@@ -245,7 +245,7 @@ def test_to_openai_agents_tools_produces_working_function_tools():
 async def test_to_openai_agents_tools_bash_tool_round_trips_through_on_invoke_tool():
     import json
 
-    from boxkite.tools.adapters import to_openai_agents_tools
+    from boxxkite.tools.adapters import to_openai_agents_tools
 
     manager = _FakeSandboxManager()
     spec = create_bash_tool_spec(session_id="s1", sandbox_manager=manager)
@@ -261,7 +261,7 @@ async def test_to_openai_agents_tools_bash_tool_round_trips_through_on_invoke_to
 async def test_to_openai_agents_tools_view_surfaces_image_metadata_as_text():
     import json
 
-    from boxkite.tools.adapters import to_openai_agents_tools
+    from boxxkite.tools.adapters import to_openai_agents_tools
 
     spec = create_view_tool_spec(sandbox_manager=_FakeSandboxManager(), session_id="s1")
     tool = to_openai_agents_tools([spec])[0]
@@ -273,7 +273,7 @@ async def test_to_openai_agents_tools_view_surfaces_image_metadata_as_text():
 
 @pytest.mark.asyncio
 async def test_to_llamaindex_tools_view_surfaces_image_metadata_as_text():
-    from boxkite.tools.adapters import to_llamaindex_tools
+    from boxxkite.tools.adapters import to_llamaindex_tools
 
     spec = create_view_tool_spec(sandbox_manager=_FakeSandboxManager(), session_id="s1")
     tool = to_llamaindex_tools([spec])[0]
@@ -284,7 +284,7 @@ async def test_to_llamaindex_tools_view_surfaces_image_metadata_as_text():
 
 
 def test_to_llamaindex_tools_schema_marks_required_and_optional_params_correctly():
-    from boxkite.tools.adapters import to_llamaindex_tools
+    from boxxkite.tools.adapters import to_llamaindex_tools
 
     spec = create_bash_tool_spec(session_id="s1", sandbox_manager=_FakeSandboxManager())
     tool = to_llamaindex_tools([spec])[0]
@@ -468,7 +468,7 @@ def test_every_tool_spec_including_node_interpreter_is_a_tool_spec():
 
 
 def test_to_openai_functions_covers_every_tool_spec_including_node_interpreter():
-    from boxkite.tools.adapters import to_openai_functions
+    from boxxkite.tools.adapters import to_openai_functions
 
     specs = _create_every_tool_spec()
     schema = to_openai_functions(specs)
@@ -479,7 +479,7 @@ def test_to_openai_functions_covers_every_tool_spec_including_node_interpreter()
 
 
 def test_to_langchain_tools_covers_every_tool_spec_including_node_interpreter():
-    from boxkite.tools.adapters import to_langchain_tools
+    from boxxkite.tools.adapters import to_langchain_tools
 
     specs = _create_every_tool_spec()
     tools = to_langchain_tools(specs)
@@ -488,7 +488,7 @@ def test_to_langchain_tools_covers_every_tool_spec_including_node_interpreter():
 
 
 def test_to_llamaindex_tools_covers_every_tool_spec_including_node_interpreter():
-    from boxkite.tools.adapters import to_llamaindex_tools
+    from boxxkite.tools.adapters import to_llamaindex_tools
 
     specs = _create_every_tool_spec()
     tools = to_llamaindex_tools(specs)
@@ -497,7 +497,7 @@ def test_to_llamaindex_tools_covers_every_tool_spec_including_node_interpreter()
 
 
 def test_to_openai_agents_tools_covers_every_tool_spec_including_node_interpreter():
-    from boxkite.tools.adapters import to_openai_agents_tools
+    from boxxkite.tools.adapters import to_openai_agents_tools
 
     specs = _create_every_tool_spec()
     tools = to_openai_agents_tools(specs)
@@ -518,7 +518,7 @@ def test_to_openai_agents_tools_covers_every_tool_spec_including_node_interprete
 
 @pytest.mark.asyncio
 async def test_to_langchain_tools_node_interpreter_round_trips_through_ainvoke():
-    from boxkite.tools.adapters import to_langchain_tools
+    from boxxkite.tools.adapters import to_langchain_tools
 
     manager = _FakeNodeInterpreterSandboxManager()
     spec = create_node_interpreter_tool_spec(session_id="s1", sandbox_manager=manager)
@@ -531,7 +531,7 @@ async def test_to_langchain_tools_node_interpreter_round_trips_through_ainvoke()
 
 @pytest.mark.asyncio
 async def test_to_llamaindex_tools_node_interpreter_round_trips_through_acall():
-    from boxkite.tools.adapters import to_llamaindex_tools
+    from boxxkite.tools.adapters import to_llamaindex_tools
 
     manager = _FakeNodeInterpreterSandboxManager()
     spec = create_node_interpreter_tool_spec(session_id="s1", sandbox_manager=manager)
@@ -546,7 +546,7 @@ async def test_to_llamaindex_tools_node_interpreter_round_trips_through_acall():
 async def test_to_openai_agents_tools_node_interpreter_round_trips_through_on_invoke_tool():
     import json
 
-    from boxkite.tools.adapters import to_openai_agents_tools
+    from boxxkite.tools.adapters import to_openai_agents_tools
 
     manager = _FakeNodeInterpreterSandboxManager()
     spec = create_node_interpreter_tool_spec(session_id="s1", sandbox_manager=manager)

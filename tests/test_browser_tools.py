@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.browser_tools, in particular its
+Tests for boxxkite.tools.browser_tools, in particular its
 AuditSink.record_exec integration point.
 
 Mirrors tests/test_node_interpreter_tool.py's pattern (mock SandboxManager,
@@ -13,14 +13,14 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.tools.browser_tools import (
+from boxxkite.tools.browser_tools import (
     create_browser_close_tool_spec,
     create_browser_exec_tool_spec,
     create_browser_navigate_tool_spec,
     create_browser_screenshot_tool_spec,
     create_browser_tool_specs,
 )
-from boxkite.tools.types import ToolImageResult
+from boxxkite.tools.types import ToolImageResult
 
 pytestmark = pytest.mark.pr
 

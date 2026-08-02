@@ -2,7 +2,7 @@
 docs/ADAPTIVE-WARM-POOL-SIZING.md).
 
 Covers the rolling claim-rate tracker itself, the floor/ceiling clamping
-in compute_adaptive_target, and that BOXKITE_ADAPTIVE_WARM_POOL_ENABLED
+in compute_adaptive_target, and that BOXXKITE_ADAPTIVE_WARM_POOL_ENABLED
 being off (the default) is a true no-op -- byte-identical to today's
 static WARM_POOL_SIZE_TARGETS behavior. Does NOT (and cannot, in this
 environment) validate the chosen algorithm or its default constants
@@ -12,12 +12,12 @@ module docstring for that disclosure.
 
 import pytest
 
-import boxkite.warm_pool as warm_pool_module
-from boxkite.warm_pool import WarmPoolManager
-from boxkite.warm_pool_sizing import (
-    BOXKITE_ADAPTIVE_WARM_POOL_COVERAGE_SECONDS_ENV,
-    BOXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV,
-    BOXKITE_ADAPTIVE_WARM_POOL_WINDOW_SECONDS_ENV,
+import boxxkite.warm_pool as warm_pool_module
+from boxxkite.warm_pool import WarmPoolManager
+from boxxkite.warm_pool_sizing import (
+    BOXXKITE_ADAPTIVE_WARM_POOL_COVERAGE_SECONDS_ENV,
+    BOXXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV,
+    BOXXKITE_ADAPTIVE_WARM_POOL_WINDOW_SECONDS_ENV,
     ClaimRateTracker,
     adaptive_warm_pool_coverage_seconds,
     adaptive_warm_pool_enabled,
@@ -29,9 +29,9 @@ from boxkite.warm_pool_sizing import (
 
 @pytest.fixture(autouse=True)
 def _clean_adaptive_warm_pool_env(monkeypatch):
-    monkeypatch.delenv(BOXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, raising=False)
-    monkeypatch.delenv(BOXKITE_ADAPTIVE_WARM_POOL_WINDOW_SECONDS_ENV, raising=False)
-    monkeypatch.delenv(BOXKITE_ADAPTIVE_WARM_POOL_COVERAGE_SECONDS_ENV, raising=False)
+    monkeypatch.delenv(BOXXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, raising=False)
+    monkeypatch.delenv(BOXXKITE_ADAPTIVE_WARM_POOL_WINDOW_SECONDS_ENV, raising=False)
+    monkeypatch.delenv(BOXXKITE_ADAPTIVE_WARM_POOL_COVERAGE_SECONDS_ENV, raising=False)
 
 
 # ── env accessors ────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ def test_adaptive_warm_pool_disabled_by_default():
 
 
 def test_adaptive_warm_pool_enabled_when_flag_set(monkeypatch):
-    monkeypatch.setenv(BOXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, "true")
+    monkeypatch.setenv(BOXXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, "true")
     assert adaptive_warm_pool_enabled() is True
 
 
@@ -51,7 +51,7 @@ def test_adaptive_warm_pool_window_seconds_default_is_300():
 
 
 def test_adaptive_warm_pool_window_seconds_operator_configurable(monkeypatch):
-    monkeypatch.setenv(BOXKITE_ADAPTIVE_WARM_POOL_WINDOW_SECONDS_ENV, "120")
+    monkeypatch.setenv(BOXXKITE_ADAPTIVE_WARM_POOL_WINDOW_SECONDS_ENV, "120")
     assert adaptive_warm_pool_window_seconds() == 120
 
 
@@ -60,7 +60,7 @@ def test_adaptive_warm_pool_coverage_seconds_default_is_60():
 
 
 def test_adaptive_warm_pool_coverage_seconds_operator_configurable(monkeypatch):
-    monkeypatch.setenv(BOXKITE_ADAPTIVE_WARM_POOL_COVERAGE_SECONDS_ENV, "30")
+    monkeypatch.setenv(BOXXKITE_ADAPTIVE_WARM_POOL_COVERAGE_SECONDS_ENV, "30")
     assert adaptive_warm_pool_coverage_seconds() == 30
 
 
@@ -159,8 +159,8 @@ def test_resolve_targets_is_byte_identical_to_static_when_flag_off():
 
 
 def test_resolve_targets_computes_adaptive_values_when_enabled(monkeypatch):
-    monkeypatch.setenv(BOXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, "true")
-    monkeypatch.setenv(BOXKITE_ADAPTIVE_WARM_POOL_COVERAGE_SECONDS_ENV, "60")
+    monkeypatch.setenv(BOXXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, "true")
+    monkeypatch.setenv(BOXXKITE_ADAPTIVE_WARM_POOL_COVERAGE_SECONDS_ENV, "60")
     static_targets = {"small": 3, "medium": 0, "large": 0}
     tracker = ClaimRateTracker(window_seconds=100)
     # 1 claim/sec of "small" claims => adaptive target 60, clamped to ceiling 15.
@@ -173,7 +173,7 @@ def test_resolve_targets_computes_adaptive_values_when_enabled(monkeypatch):
 
 
 def test_resolve_targets_never_shrinks_below_static_floor_when_enabled(monkeypatch):
-    monkeypatch.setenv(BOXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, "true")
+    monkeypatch.setenv(BOXXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, "true")
     static_targets = {"small": 3, "medium": 2, "large": 0}
     tracker = ClaimRateTracker(window_seconds=100)  # no claims recorded at all
     result = resolve_warm_pool_size_targets(static_targets, ceiling=15, tracker=tracker, now=0.0)
@@ -204,7 +204,7 @@ def test_manager_targets_are_static_by_default(_isolated_claim_rate_tracker):
 
 
 def test_manager_targets_adapt_when_flag_enabled(monkeypatch, _isolated_claim_rate_tracker):
-    monkeypatch.setenv(BOXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, "true")
+    monkeypatch.setenv(BOXXKITE_ADAPTIVE_WARM_POOL_ENABLED_ENV, "true")
     manager = WarmPoolManager()
     # 200 claims recorded back-to-back (same real-clock instant, for
     # practical purposes) is an extreme burst rate within the 100s window

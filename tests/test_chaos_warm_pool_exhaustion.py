@@ -22,7 +22,7 @@ from uuid import uuid4
 import pytest
 from kubernetes_asyncio.client.exceptions import ApiException
 
-from boxkite.manager import SandboxManager
+from boxxkite.manager import SandboxManager
 from test_manager import _FakeCoreApi
 
 pytestmark = pytest.mark.pr

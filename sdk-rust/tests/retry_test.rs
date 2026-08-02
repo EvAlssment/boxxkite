@@ -109,7 +109,7 @@ async fn does_not_retry_non_idempotent_post_5xx() {
         .await;
 
     let err = client
-        .create_sandbox(boxkite_client::CreateSandboxOptions::new())
+        .create_sandbox(boxxkite_client::CreateSandboxOptions::new())
         .await
         .unwrap_err();
     assert_eq!(err.status(), Some(500));

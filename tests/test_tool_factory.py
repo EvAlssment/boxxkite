@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.factory.create_sandbox_tools and the AuditSink hook.
+Tests for boxxkite.tools.factory.create_sandbox_tools and the AuditSink hook.
 
 The system this package was extracted from also had a test suite covering
 a per-agent "enable_sandbox" toggle, but that test exercised it through an
@@ -10,7 +10,7 @@ coverage that *is* portable — that the sandbox tool factory assembles the
 right tool set, that it's gateable by the caller (simply: call
 create_sandbox_tools() or don't), and that the optional AuditSink
 integration point degrades safely — is covered here directly against
-boxkite's own factory.py instead.
+boxxkite's own factory.py instead.
 """
 
 from types import SimpleNamespace
@@ -18,8 +18,8 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.audit import NoOpAuditSink, safe_call
-from boxkite.tools import create_sandbox_tools
+from boxxkite.audit import NoOpAuditSink, safe_call
+from boxxkite.tools import create_sandbox_tools
 
 pytestmark = pytest.mark.pr
 

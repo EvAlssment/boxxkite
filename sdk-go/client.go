@@ -1,12 +1,12 @@
-// Package boxkite is a Go client for a hosted boxkite control-plane -- the
-// same v1 HTTP API sdk-python's BoxkiteClient and sdk-js's BoxkiteClient
-// wrap (see docs/API.md in the boxkite repo). It is a thin request/response
+// Package boxxkite is a Go client for a hosted boxxkite control-plane -- the
+// same v1 HTTP API sdk-python's BoxxkiteClient and sdk-js's BoxxkiteClient
+// wrap (see docs/API.md in the boxxkite repo). It is a thin request/response
 // client: create sandboxes, run commands, edit files, stream the audit log,
 // take over a sandbox's shell over a WebSocket -- all over HTTP against
 // *someone else's* running control-plane. It is not a client for the
-// boxkite package itself (SandboxManager, embedded directly against a
+// boxxkite package itself (SandboxManager, embedded directly against a
 // Kubernetes cluster).
-package boxkite
+package boxxkite
 
 import (
 	"bytes"
@@ -40,7 +40,7 @@ var localhostHostnames = map[string]bool{
 	"::1":       true,
 }
 
-// Client is a synchronous client for a hosted boxkite control-plane. Safe
+// Client is a synchronous client for a hosted boxxkite control-plane. Safe
 // for concurrent use by multiple goroutines (it holds no mutable state
 // beyond a shared *http.Client).
 type Client struct {
@@ -108,7 +108,7 @@ func WithRetry(cfg RetryConfig) Option {
 }
 
 // NewClient constructs a Client for a hosted control-plane at baseURL,
-// authenticating every request with apiKey (a boxkite account API key,
+// authenticating every request with apiKey (a boxxkite account API key,
 // `bxk_live_...`, sent as `Authorization: Bearer <apiKey>`).
 //
 // baseURL must be https://, or http://localhost (local dev only) -- an
@@ -200,7 +200,7 @@ func (c *Client) doJSON(ctx context.Context, method, path string, reqBody any, o
 		var err error
 		encoded, err = json.Marshal(reqBody)
 		if err != nil {
-			return fmt.Errorf("boxkite: encoding request body: %w", err)
+			return fmt.Errorf("boxxkite: encoding request body: %w", err)
 		}
 	}
 
@@ -263,7 +263,7 @@ func (c *Client) doJSON(ctx context.Context, method, path string, reqBody any, o
 
 		if out != nil && len(respBody) > 0 {
 			if err := json.Unmarshal(respBody, out); err != nil {
-				return fmt.Errorf("boxkite: decoding response body: %w", err)
+				return fmt.Errorf("boxxkite: decoding response body: %w", err)
 			}
 		}
 		return nil

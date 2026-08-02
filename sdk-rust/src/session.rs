@@ -13,7 +13,7 @@ use futures_util::Stream;
 use crate::audit::{AuditLogEntry, AuditLogResponse, GetLogOptions};
 use crate::client::Client;
 use crate::desktop::DesktopStream;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 use crate::files::{
     ExecOptions, ExecResult, FileCreateResult, FileOptions, GlobOptions, GlobResult, GrepOptions,
     GrepResult, HttpRequestOptions, HttpRequestResult, LsOptions, LsResult, StrReplaceOptions,
@@ -54,7 +54,7 @@ impl SandboxSession {
         &self,
         command: &str,
         options: ExecOptions,
-    ) -> Result<ExecResult, BoxkiteError> {
+    ) -> Result<ExecResult, BoxxkiteError> {
         self.client.exec(&self.id, command, options).await
     }
 
@@ -63,7 +63,7 @@ impl SandboxSession {
         method: &str,
         url: &str,
         options: HttpRequestOptions,
-    ) -> Result<HttpRequestResult, BoxkiteError> {
+    ) -> Result<HttpRequestResult, BoxxkiteError> {
         self.client
             .http_request(&self.id, method, url, options)
             .await
@@ -74,13 +74,13 @@ impl SandboxSession {
         path: &str,
         content: &str,
         options: FileOptions,
-    ) -> Result<FileCreateResult, BoxkiteError> {
+    ) -> Result<FileCreateResult, BoxxkiteError> {
         self.client
             .file_create(&self.id, path, content, options)
             .await
     }
 
-    pub async fn view(&self, path: &str, options: ViewOptions) -> Result<ViewResult, BoxkiteError> {
+    pub async fn view(&self, path: &str, options: ViewOptions) -> Result<ViewResult, BoxxkiteError> {
         self.client.view(&self.id, path, options).await
     }
 
@@ -90,13 +90,13 @@ impl SandboxSession {
         old_str: &str,
         new_str: &str,
         options: StrReplaceOptions,
-    ) -> Result<StrReplaceResult, BoxkiteError> {
+    ) -> Result<StrReplaceResult, BoxxkiteError> {
         self.client
             .str_replace(&self.id, path, old_str, new_str, options)
             .await
     }
 
-    pub async fn ls(&self, options: LsOptions) -> Result<LsResult, BoxkiteError> {
+    pub async fn ls(&self, options: LsOptions) -> Result<LsResult, BoxxkiteError> {
         self.client.ls(&self.id, options).await
     }
 
@@ -104,7 +104,7 @@ impl SandboxSession {
         &self,
         pattern: &str,
         options: GlobOptions,
-    ) -> Result<GlobResult, BoxkiteError> {
+    ) -> Result<GlobResult, BoxxkiteError> {
         self.client.glob(&self.id, pattern, options).await
     }
 
@@ -112,17 +112,17 @@ impl SandboxSession {
         &self,
         pattern: &str,
         options: GrepOptions,
-    ) -> Result<GrepResult, BoxkiteError> {
+    ) -> Result<GrepResult, BoxxkiteError> {
         self.client.grep(&self.id, pattern, options).await
     }
 
-    pub async fn get_log(&self, options: GetLogOptions) -> Result<AuditLogResponse, BoxkiteError> {
+    pub async fn get_log(&self, options: GetLogOptions) -> Result<AuditLogResponse, BoxxkiteError> {
         self.client.get_log(&self.id, options).await
     }
 
     pub fn watch(
         &self,
-    ) -> Pin<Box<dyn Stream<Item = Result<AuditLogEntry, BoxkiteError>> + Send + 'static>> {
+    ) -> Pin<Box<dyn Stream<Item = Result<AuditLogEntry, BoxxkiteError>> + Send + 'static>> {
         self.client.watch(&self.id)
     }
 
@@ -130,11 +130,11 @@ impl SandboxSession {
         &self,
         command: &str,
         options: StartProcessOptions,
-    ) -> Result<ProcessStartResult, BoxkiteError> {
+    ) -> Result<ProcessStartResult, BoxxkiteError> {
         self.client.start_process(&self.id, command, options).await
     }
 
-    pub async fn list_processes(&self) -> Result<ProcessListResult, BoxkiteError> {
+    pub async fn list_processes(&self) -> Result<ProcessListResult, BoxxkiteError> {
         self.client.list_processes(&self.id).await
     }
 
@@ -142,7 +142,7 @@ impl SandboxSession {
         &self,
         process_id: &str,
         since_offset: i64,
-    ) -> Result<ProcessOutputResult, BoxkiteError> {
+    ) -> Result<ProcessOutputResult, BoxxkiteError> {
         self.client
             .get_process_output(&self.id, process_id, since_offset)
             .await
@@ -152,21 +152,21 @@ impl SandboxSession {
         &self,
         process_id: &str,
         data: &str,
-    ) -> Result<ProcessInputResult, BoxkiteError> {
+    ) -> Result<ProcessInputResult, BoxxkiteError> {
         self.client
             .send_process_input(&self.id, process_id, data)
             .await
     }
 
-    pub async fn stop_process(&self, process_id: &str) -> Result<ProcessStopResult, BoxkiteError> {
+    pub async fn stop_process(&self, process_id: &str) -> Result<ProcessStopResult, BoxxkiteError> {
         self.client.stop_process(&self.id, process_id).await
     }
 
-    pub async fn takeover(&self) -> Result<TakeoverStream, BoxkiteError> {
+    pub async fn takeover(&self) -> Result<TakeoverStream, BoxxkiteError> {
         self.client.takeover(&self.id).await
     }
 
-    pub async fn desktop_takeover(&self) -> Result<DesktopStream, BoxkiteError> {
+    pub async fn desktop_takeover(&self) -> Result<DesktopStream, BoxxkiteError> {
         self.client.desktop_takeover(&self.id).await
     }
 
@@ -174,7 +174,7 @@ impl SandboxSession {
         &self,
         port: u16,
         ttl_seconds: Option<u32>,
-    ) -> Result<PreviewUrl, BoxkiteError> {
+    ) -> Result<PreviewUrl, BoxxkiteError> {
         self.client
             .create_preview_url(&self.id, port, ttl_seconds)
             .await
@@ -184,13 +184,13 @@ impl SandboxSession {
         &self,
         port: u16,
         token_id: &str,
-    ) -> Result<PreviewRevokeResult, BoxkiteError> {
+    ) -> Result<PreviewRevokeResult, BoxxkiteError> {
         self.client
             .revoke_preview_url(&self.id, port, token_id)
             .await
     }
 
-    pub async fn lsp_start(&self, language: &str) -> Result<LspStartResult, BoxkiteError> {
+    pub async fn lsp_start(&self, language: &str) -> Result<LspStartResult, BoxxkiteError> {
         self.client.lsp_start(&self.id, language).await
     }
 
@@ -199,7 +199,7 @@ impl SandboxSession {
         lsp_id: &str,
         path: &str,
         content: &str,
-    ) -> Result<LspOpenResult, BoxkiteError> {
+    ) -> Result<LspOpenResult, BoxxkiteError> {
         self.client.lsp_open(&self.id, lsp_id, path, content).await
     }
 
@@ -209,13 +209,13 @@ impl SandboxSession {
         path: &str,
         line: u32,
         character: u32,
-    ) -> Result<LspCompletionResult, BoxkiteError> {
+    ) -> Result<LspCompletionResult, BoxxkiteError> {
         self.client
             .lsp_completion(&self.id, lsp_id, path, line, character)
             .await
     }
 
-    pub async fn lsp_stop(&self, lsp_id: &str) -> Result<LspStopResult, BoxkiteError> {
+    pub async fn lsp_stop(&self, lsp_id: &str) -> Result<LspStopResult, BoxxkiteError> {
         self.client.lsp_stop(&self.id, lsp_id).await
     }
 }
@@ -227,9 +227,9 @@ impl Client {
     /// an error), mirroring every sibling SDK's cleanup semantics.
     ///
     /// ```no_run
-    /// use boxkite_client::{Client, CreateSandboxOptions, ExecOptions};
+    /// use boxxkite_client::{Client, CreateSandboxOptions, ExecOptions};
     ///
-    /// # async fn example() -> Result<(), boxkite_client::BoxkiteError> {
+    /// # async fn example() -> Result<(), boxxkite_client::BoxxkiteError> {
     /// let client = Client::new("https://cp.example.com", "bxk_live_...")?;
     /// let stdout = client
     ///     .with_sandbox(CreateSandboxOptions::new().label("demo"), |sb| async move {
@@ -245,10 +245,10 @@ impl Client {
         &self,
         options: CreateSandboxOptions,
         f: F,
-    ) -> Result<T, BoxkiteError>
+    ) -> Result<T, BoxxkiteError>
     where
         F: FnOnce(SandboxSession) -> Fut,
-        Fut: Future<Output = Result<T, BoxkiteError>>,
+        Fut: Future<Output = Result<T, BoxxkiteError>>,
     {
         let sandbox = self.create_sandbox(options).await?;
         let session = SandboxSession {

@@ -1,4 +1,4 @@
-"""Sync BoxkiteClient tests. httpx.MockTransport stands in for the real
+"""Sync BoxxkiteClient tests. httpx.MockTransport stands in for the real
 control-plane -- no network, no real deployment needed."""
 
 from __future__ import annotations
@@ -6,11 +6,11 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from boxkite_client import BoxkiteApiError, BoxkiteClient
+from boxxkite_client import BoxxkiteApiError, BoxxkiteClient
 
 
-def _client_with(handler) -> BoxkiteClient:
-    return BoxkiteClient(
+def _client_with(handler) -> BoxxkiteClient:
+    return BoxxkiteClient(
         base_url="https://cp.example.com",
         api_key="bxk_live_test",
         transport=httpx.MockTransport(handler),
@@ -22,11 +22,11 @@ def test_rejects_plain_http_to_a_remote_host():
     `Authorization: Bearer` on every request -- an http:// URL to anything
     other than localhost would put it on the wire in cleartext."""
     with pytest.raises(ValueError, match="cleartext"):
-        BoxkiteClient(base_url="http://cp.example.com", api_key="bxk_live_test")
+        BoxxkiteClient(base_url="http://cp.example.com", api_key="bxk_live_test")
 
 
 def test_allows_http_localhost_for_local_dev():
-    client = BoxkiteClient(base_url="http://localhost:8090", api_key="bxk_live_test")
+    client = BoxxkiteClient(base_url="http://localhost:8090", api_key="bxk_live_test")
     assert client is not None
 
 
@@ -78,7 +78,7 @@ def test_confirm_password_reset_raises_on_invalid_token():
         )
 
     client = _client_with(handler)
-    with pytest.raises(BoxkiteApiError) as exc_info:
+    with pytest.raises(BoxxkiteApiError) as exc_info:
         client.confirm_password_reset("bad-tok", "new-hunter2")
     assert exc_info.value.code == "invalid_or_expired_token"
 
@@ -140,7 +140,7 @@ def test_refresh_token_raises_on_reused_token():
         )
 
     client = _client_with(handler)
-    with pytest.raises(BoxkiteApiError) as exc_info:
+    with pytest.raises(BoxxkiteApiError) as exc_info:
         client.refresh_token("already-used")
     assert exc_info.value.code == "refresh_token_reused"
     assert exc_info.value.status_code == 401
@@ -381,7 +381,7 @@ def test_create_image_sends_pinned_packages():
         assert request.url.path == "/v1/images"
         assert json.loads(request.content) == {
             "label": "demo",
-            "base": "boxkite-minimal",
+            "base": "boxxkite-minimal",
             "python_packages": ["requests==2.32.3"],
             "apt_packages": ["curl==8.5.0-2ubuntu10.1"],
         }
@@ -390,7 +390,7 @@ def test_create_image_sends_pinned_packages():
     client = _client_with(handler)
     result = client.create_image(
         label="demo",
-        base="boxkite-minimal",
+        base="boxxkite-minimal",
         python_packages=["requests==2.32.3"],
         apt_packages=["curl==8.5.0-2ubuntu10.1"],
     )
@@ -402,7 +402,7 @@ def test_create_image_defaults_base_when_omitted():
     def handler(request: httpx.Request) -> httpx.Response:
         import json
 
-        assert json.loads(request.content) == {"base": "boxkite-default"}
+        assert json.loads(request.content) == {"base": "boxxkite-default"}
         return httpx.Response(202, json={"id": "img-2", "label": None, "status": "queued", "created_at": "now"})
 
     client = _client_with(handler)
@@ -455,13 +455,13 @@ def test_create_image_sends_npm_packages():
         import json
 
         assert json.loads(request.content) == {
-            "base": "boxkite-node",
+            "base": "boxxkite-node",
             "npm_packages": ["typescript==5.6.0"],
         }
         return httpx.Response(202, json={"id": "img-3", "label": None, "status": "queued", "created_at": "now"})
 
     client = _client_with(handler)
-    result = client.create_image(base="boxkite-node", npm_packages=["typescript==5.6.0"])
+    result = client.create_image(base="boxxkite-node", npm_packages=["typescript==5.6.0"])
     assert result["id"] == "img-3"
 
 
@@ -909,7 +909,7 @@ def test_api_error_parses_envelope():
         return httpx.Response(404, json={"error": {"code": "not_found", "message": "Sandbox session not found"}})
 
     client = _client_with(handler)
-    with pytest.raises(BoxkiteApiError) as exc_info:
+    with pytest.raises(BoxxkiteApiError) as exc_info:
         client.get_sandbox("missing")
 
     assert exc_info.value.status_code == 404
@@ -922,9 +922,9 @@ def test_connection_error_wrapped():
         raise httpx.ConnectError("boom")
 
     client = _client_with(handler)
-    from boxkite_client import BoxkiteConnectionError
+    from boxxkite_client import BoxxkiteConnectionError
 
-    with pytest.raises(BoxkiteConnectionError):
+    with pytest.raises(BoxxkiteConnectionError):
         client.account()
 
 
@@ -1060,7 +1060,7 @@ def test_watch_raises_on_error_status():
         return httpx.Response(404, json={"error": {"code": "not_found", "message": "no such session"}})
 
     client = _client_with(handler)
-    with pytest.raises(BoxkiteApiError) as exc_info:
+    with pytest.raises(BoxxkiteApiError) as exc_info:
         list(client.watch("sess-1"))
     assert exc_info.value.status_code == 404
 
@@ -1086,7 +1086,7 @@ def test_stream_process_output_raises_on_error_status():
         return httpx.Response(404, json={"error": {"code": "not_found", "message": "Process not found"}})
 
     client = _client_with(handler)
-    with pytest.raises(BoxkiteApiError) as exc_info:
+    with pytest.raises(BoxxkiteApiError) as exc_info:
         list(client.stream_process_output("sess-1", "proc-1"))
     assert exc_info.value.status_code == 404
 
@@ -1247,7 +1247,7 @@ def test_takeover_connects_to_wss_url_with_authorization_header():
         captured["kwargs"] = kwargs
         return "fake-connection"
 
-    client = BoxkiteClient(
+    client = BoxxkiteClient(
         base_url="https://cp.example.com", api_key="bxk_live_test", ws_connect=fake_connect
     )
     result = client.takeover("sess-1")
@@ -1277,7 +1277,7 @@ def test_takeover_sends_and_receives_raw_bytes():
         server_thread.start()
         try:
             port = server.socket.getsockname()[1]
-            client = BoxkiteClient(base_url=f"http://localhost:{port}", api_key="bxk_live_test")
+            client = BoxxkiteClient(base_url=f"http://localhost:{port}", api_key="bxk_live_test")
             with client.takeover("sess-1") as ws:
                 ws.send(b"hello pty")
                 reply = ws.recv()
@@ -1299,7 +1299,7 @@ def test_desktop_takeover_connects_to_wss_url_with_authorization_header():
         captured["kwargs"] = kwargs
         return "fake-connection"
 
-    client = BoxkiteClient(
+    client = BoxxkiteClient(
         base_url="https://cp.example.com", api_key="bxk_live_test", ws_connect=fake_connect
     )
     result = client.desktop_takeover("sess-1")
@@ -1329,7 +1329,7 @@ def test_desktop_takeover_sends_and_receives_raw_bytes():
         server_thread.start()
         try:
             port = server.socket.getsockname()[1]
-            client = BoxkiteClient(base_url=f"http://localhost:{port}", api_key="bxk_live_test")
+            client = BoxxkiteClient(base_url=f"http://localhost:{port}", api_key="bxk_live_test")
             with client.desktop_takeover("sess-1") as ws:
                 ws.send(b"hello desktop")
                 reply = ws.recv()
@@ -1352,7 +1352,7 @@ def test_sandbox_session_desktop_takeover_delegates_to_client():
             return httpx.Response(204)
         raise AssertionError("unexpected call")
 
-    client = BoxkiteClient(
+    client = BoxxkiteClient(
         base_url="https://cp.example.com",
         api_key="bxk_live_test",
         transport=httpx.MockTransport(handler),
@@ -1441,7 +1441,7 @@ def test_sandbox_session_takeover_delegates_to_client():
             return httpx.Response(204)
         raise AssertionError("unexpected call")
 
-    client = BoxkiteClient(
+    client = BoxxkiteClient(
         base_url="https://cp.example.com",
         api_key="bxk_live_test",
         transport=httpx.MockTransport(handler),

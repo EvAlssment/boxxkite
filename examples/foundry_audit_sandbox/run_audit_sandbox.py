@@ -1,5 +1,5 @@
 """Run the Foundry/Anvil audit-sandbox example (GitHub issue #137) end to
-end against a real boxkite sandbox: seed the pre-baked contracts project
+end against a real boxxkite sandbox: seed the pre-baked contracts project
 into /workspace, run `forge build`/`forge test` (the "detect + verify the
 patch" step), then run scripts/deploy_and_exploit.sh against a live,
 deterministic local Anvil chain (the "exploit a persistent chain" step).
@@ -24,7 +24,7 @@ a SANDBOX_IMAGE env var):
          -f deploy/docker-compose.yml \\
          -f examples/foundry_audit_sandbox/docker-compose.override.yml \\
          up -d --build
-  2. `pip install -e ../..` (boxkite itself; no extra needed).
+  2. `pip install -e ../..` (boxxkite itself; no extra needed).
 
 Run (reuse the SAME SIDECAR_AUTH_TOKEN value from step 1 above):
     export SIDECAR_AUTH_TOKEN=<the same value exported in step 1>
@@ -37,8 +37,8 @@ from __future__ import annotations
 import asyncio
 from uuid import uuid4
 
-from boxkite import SandboxManager
-from boxkite.tools.bash_tool import create_bash_tool_spec
+from boxxkite import SandboxManager
+from boxxkite.tools.bash_tool import create_bash_tool_spec
 
 SEED_COMMAND = "cp -r /opt/foundry-audit-template/. /workspace/"
 

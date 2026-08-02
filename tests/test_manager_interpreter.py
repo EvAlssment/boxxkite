@@ -1,6 +1,6 @@
 """Tests for SandboxManager.interpreter_exec/interpreter_reset.
 
-Mirrors execute()'s own shape (see src/boxkite/manager.py): resolve the
+Mirrors execute()'s own shape (see src/boxxkite/manager.py): resolve the
 session, get the pod's HTTP client, POST to the sidecar, return the parsed
 JSON body. These tests stub `_resolve_session`/`_get_http_client` the same
 way tests/test_manager.py does for other single-call wrappers, rather than
@@ -9,7 +9,7 @@ spinning up a real sidecar.
 
 import pytest
 
-from boxkite.manager import SandboxManager
+from boxxkite.manager import SandboxManager
 
 pytestmark = pytest.mark.pr
 

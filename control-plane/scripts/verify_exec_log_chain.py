@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """CLI verifier for `exec_log_entries`' hash chain (GitHub issue #136,
 docs/TAMPER-EVIDENT-AUDIT-DESIGN.md §7) -- the control-plane analog of
-`boxkite audit verify`.
+`boxxkite audit verify`.
 
 Connects to the control-plane's own configured `DATABASE_URL` (same config
 this service itself uses -- see `control_plane.config.settings`) and
@@ -17,7 +17,7 @@ rely on is a verification run against an *exported* copy of the rows (or,
 for the hosted product, a page through the existing `GET .../log` API),
 not this script asking the live service "are your own logs valid?" -- this
 script is provided as an operator convenience for the same live-database
-check `boxkite audit verify` provides for the self-hosted SQLite path, not
+check `boxxkite audit verify` provides for the self-hosted SQLite path, not
 as the primary compliance artifact.
 """
 

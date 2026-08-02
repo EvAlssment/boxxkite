@@ -11,7 +11,7 @@ of CDP -- see docs/BROWSER-EXEC-DESIGN.md §2), communicating with this
 sidecar over the same newline-delimited JSON request/response protocol
 sidecar_node_interpreter.py's driver uses over stdin/stdout.
 
-Gated by BOXKITE_BROWSER_ENABLED (off by default): new attack surface, and
+Gated by BOXXKITE_BROWSER_ENABLED (off by default): new attack surface, and
 per docs/BROWSER-EXEC-DESIGN.md §5, this one deserves MORE scrutiny than any
 other opt-in tool this repo ships before being turned on for a real
 multi-tenant deployment -- it is the first tool here whose egress needs
@@ -25,7 +25,7 @@ uses, applied here ONLY to the browser driver's own spawn command, never
 session-wide. Every other exec/interpreter/process call for this session
 still gets the normal per-call empty network namespace. The corresponding
 NetworkPolicy this requires lives in
-src/boxkite/browser_network_policy.py, not in this file -- this module has
+src/boxxkite/browser_network_policy.py, not in this file -- this module has
 no say over what the browser process can actually reach once it has a
 network namespace; only the operator's NetworkPolicy (or its absence) does.
 """
@@ -50,7 +50,7 @@ logger = logging.getLogger("sidecar")
 router = APIRouter()
 
 
-_BROWSER_READY_SENTINEL = "__BOXKITE_BROWSER_READY__"
+_BROWSER_READY_SENTINEL = "__BOXXKITE_BROWSER_READY__"
 
 # One Node.js driver script, `require('playwright')`'d the same way
 # NODE_PATH/PLAYWRIGHT_BROWSERS_PATH are already set up for the sandbox
@@ -58,7 +58,7 @@ _BROWSER_READY_SENTINEL = "__BOXKITE_BROWSER_READY__"
 # no new binary or image change needed. Deliberately never passes
 # `executablePath` in production: Playwright resolves its own pinned,
 # checksum-verified Chrome-for-Testing build from PLAYWRIGHT_BROWSERS_PATH
-# on its own. BOXKITE_BROWSER_EXECUTABLE_PATH is an optional escape hatch
+# on its own. BOXXKITE_BROWSER_EXECUTABLE_PATH is an optional escape hatch
 # (unset in production) so an operator -- or a test harness without the
 # sandbox image's pinned browser available -- can point at a different
 # Chromium/Chrome binary explicitly.
@@ -86,8 +86,8 @@ let page = null;
 async function ensureBrowser() {
   if (browser === null) {
     const launchOptions = { headless: true };
-    if (process.env.BOXKITE_BROWSER_EXECUTABLE_PATH) {
-      launchOptions.executablePath = process.env.BOXKITE_BROWSER_EXECUTABLE_PATH;
+    if (process.env.BOXXKITE_BROWSER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.BOXXKITE_BROWSER_EXECUTABLE_PATH;
     }
     browser = await chromium.launch(launchOptions);
   }
@@ -142,7 +142,7 @@ async function dispatch(req) {
   }
 }
 
-process.stdout.write("BOXKITE_READY_SENTINEL\\n");
+process.stdout.write("BOXXKITE_READY_SENTINEL\\n");
 
 const rl = readline.createInterface({ input: process.stdin, terminal: false });
 // Requests are processed strictly one at a time, chained onto this promise
@@ -173,7 +173,7 @@ rl.on('line', (rawLine) => {
 """
 
 _BROWSER_DRIVER_SOURCE = _BROWSER_DRIVER_SOURCE_TEMPLATE.replace(
-    "BOXKITE_READY_SENTINEL", _BROWSER_READY_SENTINEL
+    "BOXXKITE_READY_SENTINEL", _BROWSER_READY_SENTINEL
 )
 
 
@@ -233,13 +233,13 @@ async def _spawn_browser() -> "_BrowserHandle":
     nobody enumerated in advance. This does NOT widen the pod's own
     NetworkPolicy egress/ingress posture; it only lets THIS one process
     share the pod's own existing network namespace instead of getting a
-    fresh, empty one. See src/boxkite/browser_network_policy.py for the
+    fresh, empty one. See src/boxxkite/browser_network_policy.py for the
     NetworkPolicy this then requires. Applies identically in both runtime
     modes now (see get_sandbox_pid's docstring for why compose mode reuses
     the same nsenter path as K8s).
     """
     os.makedirs(main.TMP_DIR, exist_ok=True)
-    script_path = os.path.join(main.TMP_DIR, f".boxkite-browser-{uuid4().hex}.js")
+    script_path = os.path.join(main.TMP_DIR, f".boxxkite-browser-{uuid4().hex}.js")
     with open(script_path, "w") as f:
         f.write(_BROWSER_DRIVER_SOURCE)
     os.chmod(script_path, 0o644)
@@ -316,7 +316,7 @@ async def _reset_browser() -> None:
     browser page from the previous tenant -- same cross-tenant leak
     _reset_node_interpreter's docstring describes), and by graceful
     shutdown. Called from /configure UNCONDITIONALLY, regardless of the
-    current value of BOXKITE_BROWSER_ENABLED -- a browser process started
+    current value of BOXXKITE_BROWSER_ENABLED -- a browser process started
     while the flag was on must still be killed if the flag was since
     flipped off before this recycle (docs/BROWSER-EXEC-DESIGN.md §4)."""
     async with _get_browser_lock():
@@ -397,10 +397,10 @@ async def browser_navigate(req: "main.BrowserNavigateRequest"):
     Load `req.url` in the session's one browser page. Lazily starts the
     browser process on first call. See docs/BROWSER-EXEC-DESIGN.md §2.
 
-    404s unless BOXKITE_BROWSER_ENABLED is set -- new attack surface, off
+    404s unless BOXXKITE_BROWSER_ENABLED is set -- new attack surface, off
     by default, same posture as /node-interpreter/exec.
     """
-    if not main.BOXKITE_BROWSER_ENABLED:
+    if not main.BOXXKITE_BROWSER_ENABLED:
         raise HTTPException(status_code=404, detail="Browser tool is not enabled on this deployment.")
 
     if not req.url or not req.url.strip():
@@ -459,9 +459,9 @@ async def browser_exec(req: "main.BrowserExecRequest"):
     (with a blank page) if it isn't already running. See
     docs/BROWSER-EXEC-DESIGN.md §2.
 
-    404s unless BOXKITE_BROWSER_ENABLED is set, same as /browser/navigate.
+    404s unless BOXXKITE_BROWSER_ENABLED is set, same as /browser/navigate.
     """
-    if not main.BOXKITE_BROWSER_ENABLED:
+    if not main.BOXXKITE_BROWSER_ENABLED:
         raise HTTPException(status_code=404, detail="Browser tool is not enabled on this deployment.")
 
     if not req.script or not req.script.strip():
@@ -503,11 +503,11 @@ async def browser_screenshot(req: "main.BrowserScreenshotRequest"):
     / CDP `Page.captureScreenshot`). Lazily starts the browser (with a blank
     page) if it isn't already running. See docs/BROWSER-EXEC-DESIGN.md §2.
 
-    404s unless BOXKITE_BROWSER_ENABLED is set, same as /browser/navigate.
+    404s unless BOXXKITE_BROWSER_ENABLED is set, same as /browser/navigate.
     Does not consume the session exec budget -- capturing a screenshot of
     an already-loaded page runs no new script/navigation.
     """
-    if not main.BOXKITE_BROWSER_ENABLED:
+    if not main.BOXXKITE_BROWSER_ENABLED:
         raise HTTPException(status_code=404, detail="Browser tool is not enabled on this deployment.")
 
     error_to_raise: Optional[HTTPException] = None
@@ -561,9 +561,9 @@ async def browser_close():
     running). The next /browser/navigate call starts a fresh one. See
     docs/BROWSER-EXEC-DESIGN.md §2.
 
-    404s unless BOXKITE_BROWSER_ENABLED is set, same as /browser/navigate.
+    404s unless BOXXKITE_BROWSER_ENABLED is set, same as /browser/navigate.
     """
-    if not main.BOXKITE_BROWSER_ENABLED:
+    if not main.BOXXKITE_BROWSER_ENABLED:
         raise HTTPException(status_code=404, detail="Browser tool is not enabled on this deployment.")
     await _reset_browser()
     return main.BrowserCloseResponse(status="closed")

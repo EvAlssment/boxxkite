@@ -1,28 +1,28 @@
-# Publish the root `boxkite` package (PyPI distribution name:
-# "boxkite-sandbox" — see pyproject.toml's [project].name comment; the
-# import path stays `import boxkite`) to PyPI using OIDC trusted publishing.
+# Publish the root `boxxkite` package (PyPI distribution name:
+# "boxxkite-sandbox" — see pyproject.toml's [project].name comment; the
+# import path stays `import boxxkite`) to PyPI using OIDC trusted publishing.
 #
 # ONE-TIME MANUAL SETUP REQUIRED BEFORE THIS CAN EVER SUCCEED:
 # Trusted publishing has no API token/secret to configure here — instead,
 # PyPI must be told in advance to trust workflow runs from this exact repo
 # + workflow file. Only the project owner (an account with publish rights
-# for the "boxkite-sandbox" PyPI project — currently EvAlssment) can do
+# for the "boxxkite-sandbox" PyPI project — currently EvAlssment) can do
 # this, and it must be done manually on pypi.org:
 #
 #   1. Log in to https://pypi.org with the account that owns/will own the
-#      "boxkite-sandbox" project.
+#      "boxxkite-sandbox" project.
 #   2. If the project does NOT exist on PyPI yet: go to
 #      https://pypi.org/manage/account/publishing/ ("Publishing" under
 #      Account Settings) and use the "Add a new pending publisher" form.
 #      Fill in:
-#        PyPI Project Name: boxkite-sandbox
+#        PyPI Project Name: boxxkite-sandbox
 #        Owner:             EvAlssment
-#        Repository name:   boxkite
+#        Repository name:   boxxkite
 #        Workflow name:     publish-pypi.yml
 #        Environment name:  (leave blank unless you add `environment:` below)
 #      Submitting this creates a "pending" trusted publisher; the first
 #      successful run of this workflow then automatically creates the
-#      "boxkite-sandbox" project on PyPI and claims it.
+#      "boxxkite-sandbox" project on PyPI and claims it.
 #   3. If the project already exists on PyPI: go to the project's page ->
 #      Manage -> Publishing, and add the same repo/workflow/environment
 #      values as a trusted publisher there instead.
@@ -38,7 +38,7 @@ on:
 
 jobs:
   build-and-publish:
-    name: Build and publish boxkite-sandbox
+    name: Build and publish boxxkite-sandbox
     runs-on: ubuntu-latest
     permissions:
       id-token: write

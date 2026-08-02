@@ -10,7 +10,7 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::client::{Client, EXEC_TIMEOUT_HEADROOM};
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
 /// Optional `exec` parameters.
 #[derive(Debug, Clone, Default)]
@@ -354,7 +354,7 @@ impl Client {
         session_id: &str,
         command: &str,
         options: ExecOptions,
-    ) -> Result<ExecResult, BoxkiteError> {
+    ) -> Result<ExecResult, BoxxkiteError> {
         let body = ExecBody {
             command,
             timeout: options.timeout,
@@ -382,7 +382,7 @@ impl Client {
         method: &str,
         url: &str,
         options: HttpRequestOptions,
-    ) -> Result<HttpRequestResult, BoxkiteError> {
+    ) -> Result<HttpRequestResult, BoxxkiteError> {
         let body = HttpRequestBody {
             method,
             url,
@@ -410,7 +410,7 @@ impl Client {
         path: &str,
         content: &str,
         options: FileOptions,
-    ) -> Result<FileCreateResult, BoxkiteError> {
+    ) -> Result<FileCreateResult, BoxxkiteError> {
         let body = FileCreateBody {
             path,
             content,
@@ -431,7 +431,7 @@ impl Client {
         session_id: &str,
         path: &str,
         options: ViewOptions,
-    ) -> Result<ViewResult, BoxkiteError> {
+    ) -> Result<ViewResult, BoxxkiteError> {
         let body = ViewBody {
             path,
             view_range: options.view_range,
@@ -456,7 +456,7 @@ impl Client {
         old_str: &str,
         new_str: &str,
         options: StrReplaceOptions,
-    ) -> Result<StrReplaceResult, BoxkiteError> {
+    ) -> Result<StrReplaceResult, BoxxkiteError> {
         let body = StrReplaceBody {
             path,
             old_str,
@@ -474,7 +474,7 @@ impl Client {
     }
 
     /// `POST /v1/sandboxes/{id}/files/ls` -- list a directory's direct children.
-    pub async fn ls(&self, session_id: &str, options: LsOptions) -> Result<LsResult, BoxkiteError> {
+    pub async fn ls(&self, session_id: &str, options: LsOptions) -> Result<LsResult, BoxxkiteError> {
         let body = LsBody {
             path: options.path.unwrap_or_else(|| "/".to_string()),
         };
@@ -494,7 +494,7 @@ impl Client {
         session_id: &str,
         pattern: &str,
         options: GlobOptions,
-    ) -> Result<GlobResult, BoxkiteError> {
+    ) -> Result<GlobResult, BoxxkiteError> {
         let body = GlobBody {
             pattern,
             path: options.path.unwrap_or_else(|| "/".to_string()),
@@ -514,7 +514,7 @@ impl Client {
         session_id: &str,
         pattern: &str,
         options: GrepOptions,
-    ) -> Result<GrepResult, BoxkiteError> {
+    ) -> Result<GrepResult, BoxxkiteError> {
         let body = GrepBody {
             pattern,
             path: options.path.unwrap_or_else(|| "/".to_string()),

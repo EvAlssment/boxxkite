@@ -1,14 +1,14 @@
 //! [`Client`]/[`ClientBuilder`] and the shared request plumbing every other
 //! module in this crate builds on. No behavior lives here beyond
-//! request/response handling -- mirrors `sdk-python`'s `BoxkiteClient`/
-//! `sdk-js`'s `BoxkiteClient` in spirit (thin HTTP wrapper, same v1 API).
+//! request/response handling -- mirrors `sdk-python`'s `BoxxkiteClient`/
+//! `sdk-js`'s `BoxxkiteClient` in spirit (thin HTTP wrapper, same v1 API).
 
 use std::time::Duration;
 
 use reqwest::{header, Method, RequestBuilder, StatusCode};
 use serde::de::DeserializeOwned;
 
-use crate::error::{api_error_from_bytes, BoxkiteError};
+use crate::error::{api_error_from_bytes, BoxxkiteError};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 /// Extra headroom added on top of a caller-supplied `exec`/`http_request`
@@ -19,7 +19,7 @@ pub(crate) const EXEC_TIMEOUT_HEADROOM: Duration = Duration::from_secs(15);
 
 const LOCALHOST_HOSTNAMES: [&str; 3] = ["localhost", "127.0.0.1", "::1"];
 
-/// A client for a hosted boxkite control-plane's `/v1/*` REST API.
+/// A client for a hosted boxxkite control-plane's `/v1/*` REST API.
 ///
 /// Construct one with [`Client::new`] for the common case, or
 /// [`Client::builder`] for control over the timeout or the underlying
@@ -38,7 +38,7 @@ impl Client {
     pub fn new(
         base_url: impl Into<String>,
         api_key: impl Into<String>,
-    ) -> Result<Self, BoxkiteError> {
+    ) -> Result<Self, BoxxkiteError> {
         ClientBuilder::new()
             .base_url(base_url)
             .api_key(api_key)
@@ -84,13 +84,13 @@ impl Client {
     async fn execute_with_retry(
         &self,
         builder: RequestBuilder,
-    ) -> Result<reqwest::Response, BoxkiteError> {
-        let request = builder.build().map_err(BoxkiteError::from)?;
+    ) -> Result<reqwest::Response, BoxxkiteError> {
+        let request = builder.build().map_err(BoxxkiteError::from)?;
 
         // A non-clonable body (streaming) or a disabled policy can't/shouldn't
         // be retried -- send once and return whatever happens.
         if self.retry.max_retries == 0 || request.try_clone().is_none() {
-            return self.http.execute(request).await.map_err(BoxkiteError::from);
+            return self.http.execute(request).await.map_err(BoxxkiteError::from);
         }
 
         let idempotent = is_idempotent(request.method());
@@ -119,26 +119,26 @@ impl Client {
                         tokio::time::sleep(delay).await;
                         continue;
                     }
-                    return Err(BoxkiteError::from(err));
+                    return Err(BoxxkiteError::from(err));
                 }
             }
         }
     }
 
     /// Send a request and deserialize a JSON response body. Non-2xx
-    /// responses become `BoxkiteError::Api`; the body is expected to
+    /// responses become `BoxxkiteError::Api`; the body is expected to
     /// contain valid JSON of shape `T` on success.
     pub(crate) async fn send<T: DeserializeOwned>(
         &self,
         builder: RequestBuilder,
-    ) -> Result<T, BoxkiteError> {
+    ) -> Result<T, BoxxkiteError> {
         let resp = self.execute_with_retry(builder).await?;
         let status = resp.status();
         let bytes = resp.bytes().await?;
         if !status.is_success() {
             return Err(api_error_from_bytes(status.as_u16(), &bytes));
         }
-        serde_json::from_slice(&bytes).map_err(BoxkiteError::from)
+        serde_json::from_slice(&bytes).map_err(BoxxkiteError::from)
     }
 
     /// Like [`Client::send`], but for endpoints that may return an empty
@@ -149,7 +149,7 @@ impl Client {
     pub(crate) async fn send_or_default<T: DeserializeOwned + Default>(
         &self,
         builder: RequestBuilder,
-    ) -> Result<T, BoxkiteError> {
+    ) -> Result<T, BoxxkiteError> {
         let resp = self.execute_with_retry(builder).await?;
         let status = resp.status();
         let bytes = resp.bytes().await?;
@@ -159,7 +159,7 @@ impl Client {
         if bytes.is_empty() {
             return Ok(T::default());
         }
-        serde_json::from_slice(&bytes).map_err(BoxkiteError::from)
+        serde_json::from_slice(&bytes).map_err(BoxxkiteError::from)
     }
 
     /// Send a request expecting no meaningful response body (`204 No
@@ -167,7 +167,7 @@ impl Client {
     pub(crate) async fn send_no_content(
         &self,
         builder: RequestBuilder,
-    ) -> Result<(), BoxkiteError> {
+    ) -> Result<(), BoxxkiteError> {
         let resp = self.execute_with_retry(builder).await?;
         let status = resp.status();
         if !status.is_success() {
@@ -205,7 +205,7 @@ impl ClientBuilder {
         self
     }
 
-    /// A boxkite account API key (`bxk_live_...`).
+    /// A boxxkite account API key (`bxk_live_...`).
     pub fn api_key(mut self, api_key: impl Into<String>) -> Self {
         self.api_key = Some(api_key.into());
         self
@@ -252,15 +252,15 @@ impl ClientBuilder {
     /// Validate the configuration and construct the [`Client`].
     ///
     /// # Errors
-    /// [`BoxkiteError::Config`] if `base_url`/`api_key` weren't set, or if
+    /// [`BoxxkiteError::Config`] if `base_url`/`api_key` weren't set, or if
     /// `base_url` isn't a valid `https://` (or localhost-only `http://`) URL.
-    pub fn build(self) -> Result<Client, BoxkiteError> {
+    pub fn build(self) -> Result<Client, BoxxkiteError> {
         let base_url = self
             .base_url
-            .ok_or_else(|| BoxkiteError::Config("base_url is required".to_string()))?;
+            .ok_or_else(|| BoxxkiteError::Config("base_url is required".to_string()))?;
         let api_key = self
             .api_key
-            .ok_or_else(|| BoxkiteError::Config("api_key is required".to_string()))?;
+            .ok_or_else(|| BoxxkiteError::Config("api_key is required".to_string()))?;
         validate_base_url_scheme(&base_url)?;
         let base_url = base_url.trim_end_matches('/').to_string();
 
@@ -269,7 +269,7 @@ impl ClientBuilder {
             None => reqwest::Client::builder()
                 .timeout(self.timeout.unwrap_or(DEFAULT_TIMEOUT))
                 .build()
-                .map_err(BoxkiteError::from)?,
+                .map_err(BoxxkiteError::from)?,
         };
 
         Ok(Client {
@@ -396,9 +396,9 @@ fn random_fraction() -> f64 {
     (hasher.finish() as f64) / (u64::MAX as f64 + 1.0)
 }
 
-fn validate_base_url_scheme(base_url: &str) -> Result<(), BoxkiteError> {
+fn validate_base_url_scheme(base_url: &str) -> Result<(), BoxxkiteError> {
     let parsed = url::Url::parse(base_url)
-        .map_err(|err| BoxkiteError::Config(format!("invalid base_url {base_url:?}: {err}")))?;
+        .map_err(|err| BoxxkiteError::Config(format!("invalid base_url {base_url:?}: {err}")))?;
     match parsed.scheme() {
         "https" => Ok(()),
         "http"
@@ -408,7 +408,7 @@ fn validate_base_url_scheme(base_url: &str) -> Result<(), BoxkiteError> {
         {
             Ok(())
         }
-        _ => Err(BoxkiteError::Config(format!(
+        _ => Err(BoxxkiteError::Config(format!(
             "refusing to use non-https base_url {base_url:?}: this would send your API key in \
              cleartext. Use an https:// URL, or http://localhost (local dev only)."
         ))),
@@ -440,7 +440,7 @@ mod tests {
             .api_key("bxk_live_test")
             .build()
             .unwrap_err();
-        assert!(matches!(err, BoxkiteError::Config(_)));
+        assert!(matches!(err, BoxxkiteError::Config(_)));
     }
 
     #[test]
@@ -484,14 +484,14 @@ mod tests {
     fn requires_base_url_and_api_key() {
         assert!(matches!(
             Client::builder().api_key("k").build().unwrap_err(),
-            BoxkiteError::Config(_)
+            BoxxkiteError::Config(_)
         ));
         assert!(matches!(
             Client::builder()
                 .base_url("https://cp.example.com")
                 .build()
                 .unwrap_err(),
-            BoxkiteError::Config(_)
+            BoxxkiteError::Config(_)
         ));
     }
 

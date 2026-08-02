@@ -1,6 +1,6 @@
 """Account identity via API key -- the same trust boundary
 `get_current_account_via_api_key` already grants for /v1/sandboxes and
-/v1/usage, exposed as a small "who am I" lookup for `boxkite whoami`.
+/v1/usage, exposed as a small "who am I" lookup for `boxxkite whoami`.
 
 Also hosts the JWT-authenticated, read-only mirrors of the API-key routes
 (`/me`, `/sandboxes`, `/usage`) added for the browser dashboard: a browser
@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from boxkite.command_whitelist import _compile_patterns, _normalize_rules
+from boxxkite.command_whitelist import _compile_patterns, _normalize_rules
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,23 +54,23 @@ def _validate_allowed_commands_request(body: AllowedCommandsRequest) -> list:
     runtime behavior of silently skipping an invalid pattern, a rule a user
     is persisting should be rejected outright if it won't actually compile,
     so they get immediate feedback instead of a silently-inert rule."""
-    if len(body.rules) > settings.BOXKITE_MAX_ALLOWLIST_RULES:
+    if len(body.rules) > settings.BOXXKITE_MAX_ALLOWLIST_RULES:
         raise ApiError(
             400,
             "too_many_rules",
-            f"At most {settings.BOXKITE_MAX_ALLOWLIST_RULES} allowlist rules are allowed per account.",
+            f"At most {settings.BOXXKITE_MAX_ALLOWLIST_RULES} allowlist rules are allowed per account.",
         )
 
     raw_rules = [r if isinstance(r, str) else r.model_dump() for r in body.rules]
     for rule in raw_rules:
         if isinstance(rule, dict):
             for pattern in (*rule.get("args_allow", []), *rule.get("args_deny", [])):
-                if len(pattern) > settings.BOXKITE_MAX_ALLOWLIST_PATTERN_LENGTH:
+                if len(pattern) > settings.BOXXKITE_MAX_ALLOWLIST_PATTERN_LENGTH:
                     raise ApiError(
                         400,
                         "pattern_too_long",
                         f"Argument patterns must be at most "
-                        f"{settings.BOXKITE_MAX_ALLOWLIST_PATTERN_LENGTH} characters "
+                        f"{settings.BOXXKITE_MAX_ALLOWLIST_PATTERN_LENGTH} characters "
                         f"(command {rule['command']!r}).",
                     )
 
@@ -227,9 +227,9 @@ async def get_account_usage(
     hours_used = await policy.monthly_hours_used(account.id)
     return UsageSummary(
         monthly_sandbox_hours_used=round(hours_used, 4),
-        monthly_sandbox_hours_limit=settings.BOXKITE_FREE_MONTHLY_SANDBOX_HOURS,
+        monthly_sandbox_hours_limit=settings.BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS,
         concurrent_sandboxes=active_count,
-        concurrent_sandboxes_limit=settings.BOXKITE_MAX_CONCURRENT_SANDBOXES,
+        concurrent_sandboxes_limit=settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES,
     )
 
 
@@ -238,8 +238,8 @@ async def get_account_usage(
     response_model=SandboxCreateTokenResponse,
     summary="Mint a short-lived, single-use token for POST /v1/sandboxes",
     description=(
-        f"Mints a short-lived (default {settings.BOXKITE_SANDBOX_CREATE_TOKEN_TTL_SECONDS}s, "
-        "BOXKITE_SANDBOX_CREATE_TOKEN_TTL_SECONDS), single-use token scoped to the "
+        f"Mints a short-lived (default {settings.BOXXKITE_SANDBOX_CREATE_TOKEN_TTL_SECONDS}s, "
+        "BOXXKITE_SANDBOX_CREATE_TOKEN_TTL_SECONDS), single-use token scoped to the "
         "authenticated account. Pass the returned `token` as the `Authorization: Bearer` "
         "credential on `POST /v1/sandboxes` immediately after minting it -- it is consumed "
         "on first use and expires quickly even if never redeemed. Lets a dashboard session "
@@ -251,7 +251,7 @@ async def get_account_usage(
 )
 async def mint_sandbox_create_token(account: Account = Depends(get_current_user)) -> SandboxCreateTokenResponse:
     token, expires_at = create_sandbox_create_token(
-        account_id=account.id, ttl_seconds=settings.BOXKITE_SANDBOX_CREATE_TOKEN_TTL_SECONDS
+        account_id=account.id, ttl_seconds=settings.BOXXKITE_SANDBOX_CREATE_TOKEN_TTL_SECONDS
     )
     return SandboxCreateTokenResponse(token=token, expires_at=expires_at)
 
@@ -286,8 +286,8 @@ async def get_allowed_commands(
         "command name (unconstrained) or {command, args_allow?, args_deny?} "
         "with Python regexes matched against the joined argument string. "
         "Rejects the request outright if any pattern fails to compile, "
-        f"exceeds {settings.BOXKITE_MAX_ALLOWLIST_PATTERN_LENGTH} characters, or the rule "
-        f"count exceeds {settings.BOXKITE_MAX_ALLOWLIST_RULES}. Use DELETE to clear back to "
+        f"exceeds {settings.BOXXKITE_MAX_ALLOWLIST_PATTERN_LENGTH} characters, or the rule "
+        f"count exceeds {settings.BOXXKITE_MAX_ALLOWLIST_RULES}. Use DELETE to clear back to "
         "unrestricted."
     ),
 )

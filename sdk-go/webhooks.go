@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -38,7 +38,7 @@ type Webhook struct {
 	LastTriggeredAt *string  `json:"last_triggered_at"`
 	// Secret is the raw signing secret, shown exactly once on the
 	// CreateWebhook response. Use it to verify the
-	// X-Boxkite-Webhook-Signature header on every delivery; it cannot be
+	// X-Boxxkite-Webhook-Signature header on every delivery; it cannot be
 	// retrieved again after this response.
 	Secret string `json:"secret,omitempty"`
 }

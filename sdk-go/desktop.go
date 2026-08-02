@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 // both surface as an error from the first ReadMessage/WriteMessage call,
 // since the close happens after the opening handshake completes. This
 // route also closes with 4404 when the deployment has not set
-// BOXKITE_DESKTOP_ENABLED.
+// BOXXKITE_DESKTOP_ENABLED.
 //
 // The caller must call Close on the returned *websocket.Conn once done.
 func (c *Client) DesktopTakeover(ctx context.Context, sessionID string) (*websocket.Conn, error) {

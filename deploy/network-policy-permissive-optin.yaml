@@ -22,7 +22,7 @@ metadata:
   name: sandbox-network-policy-permissive
   namespace: default # Change to your namespace
   labels:
-    boxkite.dev/policy-mode: permissive-opt-in
+    boxxkite.dev/policy-mode: permissive-opt-in
 spec:
   podSelector:
     matchLabels:

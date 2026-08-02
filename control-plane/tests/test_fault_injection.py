@@ -22,7 +22,7 @@ audit-log writes / rate-limit state silently drop"):
   rate_limit.py's own module docstring: the default "memory" backend is an
   in-process `OrderedDict`, explicitly documented as NOT shared across
   replicas or surviving a restart -- single-instance/local-dev only. The
-  "postgres" backend (`BOXKITE_RATE_LIMIT_BACKEND=postgres`) exists
+  "postgres" backend (`BOXXKITE_RATE_LIMIT_BACKEND=postgres`) exists
   specifically to make this durable/cross-replica when it matters.
 
 So this file has one test confirming durability where it's actually meant

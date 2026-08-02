@@ -1,4 +1,4 @@
-"""Password-reset flow (issue #79), opt-in via BOXKITE_PASSWORD_RESET_ENABLED.
+"""Password-reset flow (issue #79), opt-in via BOXXKITE_PASSWORD_RESET_ENABLED.
 
 Email delivery is stubbed (email_sender.py) -- these tests intercept the
 raw token via the `fake_email_sender` fixture (see conftest.py), the same
@@ -31,7 +31,7 @@ async def test_request_reset_for_existing_account_sends_email_with_token(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
 
     await signup(client, "reset-me@example.com", password="original-pass-1")
 
@@ -51,7 +51,7 @@ async def test_request_reset_for_unknown_account_returns_identical_response(
     """No account-enumeration signal: same response, no email actually sent."""
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
 
     resp_known_shape = await client.post(
         "/v1/auth/password-reset/request", json={"email": "never-signed-up-reset@example.com"}
@@ -68,7 +68,7 @@ async def test_confirm_reset_updates_password_and_old_password_stops_working(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
 
     await signup(client, "confirm-reset@example.com", password="original-pass-1")
     await client.post("/v1/auth/password-reset/request", json={"email": "confirm-reset@example.com"})
@@ -95,7 +95,7 @@ async def test_confirm_reset_token_is_single_use(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
 
     await signup(client, "single-use@example.com", password="original-pass-1")
     await client.post("/v1/auth/password-reset/request", json={"email": "single-use@example.com"})
@@ -116,7 +116,7 @@ async def test_confirm_reset_token_is_single_use(
 async def test_confirm_reset_rejects_unknown_token(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
 
     resp = await client.post(
         "/v1/auth/password-reset/confirm", json={"token": "not-a-real-token", "new_password": "newpassword1"}
@@ -130,7 +130,7 @@ async def test_confirm_reset_rejects_short_new_password(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
 
     await signup(client, "short-new-pass@example.com")
     await client.post("/v1/auth/password-reset/request", json={"email": "short-new-pass@example.com"})
@@ -147,7 +147,7 @@ async def test_new_reset_request_invalidates_previous_outstanding_token(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
 
     await signup(client, "double-request@example.com", password="original-pass-1")
     await client.post("/v1/auth/password-reset/request", json={"email": "double-request@example.com"})
@@ -175,8 +175,8 @@ async def test_confirm_reset_revokes_outstanding_refresh_tokens(
     refresh token too, not just change the password."""
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
 
     signup_resp = await signup(client, "reset-kills-refresh@example.com", password="original-pass-1")
     refresh_token = signup_resp["refresh_token"]
@@ -197,7 +197,7 @@ async def test_confirm_reset_rejects_expired_token(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
     # Negative TTL means the token is already expired the instant it's minted.
     monkeypatch.setattr(settings, "PASSWORD_RESET_TOKEN_TTL_MINUTES", -1)
 
@@ -215,8 +215,8 @@ async def test_confirm_reset_rejects_expired_token(
 async def test_password_reset_request_rate_limited(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_ENABLED", True)
-    monkeypatch.setattr(settings, "BOXKITE_PASSWORD_RESET_RATE_LIMIT_PER_MINUTE", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_PASSWORD_RESET_RATE_LIMIT_PER_MINUTE", 2)
 
     for _ in range(2):
         await client.post("/v1/auth/password-reset/request", json={"email": "rate-limited-reset@example.com"})

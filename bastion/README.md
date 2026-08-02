@@ -1,9 +1,9 @@
-# boxkite-bastion
+# boxxkite-bastion
 
-A standalone SSH bastion in front of boxkite's existing human-takeover
+A standalone SSH bastion in front of boxxkite's existing human-takeover
 feature — real `ssh` from a local terminal, without a second `sshd` inside
 the sandbox container. See
-[`docs/SSH-BASTION-DESIGN.md`](https://github.com/EvAlssment/boxkite/blob/main/docs/SSH-BASTION-DESIGN.md)
+[`docs/SSH-BASTION-DESIGN.md`](https://github.com/EvAlssment/boxxkite/blob/main/docs/SSH-BASTION-DESIGN.md)
 for the full design rationale (GitHub issue #134) and `SECURITY.md` for
 this component's trust boundary.
 
@@ -32,16 +32,16 @@ and JS SDK, speaking SSH to the human instead of WebSocket + xterm.js.
 
    ```bash
    curl -X POST https://your-control-plane.example.com/v1/sandboxes/<session_id>/takeover-token \
-     -H "Authorization: Bearer $BOXKITE_API_KEY"
+     -H "Authorization: Bearer $BOXXKITE_API_KEY"
    ```
 
    Returns `{"token": "...", "expires_at": "...", "read_only": false}`.
    The token is short-lived and single-use.
 
    > **TTL caveat (current reality vs. design):** the token uses
-   > control-plane's existing `BOXKITE_TAKEOVER_TOKEN_TTL_SECONDS` (default
+   > control-plane's existing `BOXXKITE_TAKEOVER_TOKEN_TTL_SECONDS` (default
    > **30s**). The design doc (§3, step 2) proposes a separate, longer
-   > `BOXKITE_BASTION_TOKEN_TTL_SECONDS` (~120s) and a `for_bastion` request
+   > `BOXXKITE_BASTION_TOKEN_TTL_SECONDS` (~120s) and a `for_bastion` request
    > flag so a human has more time to paste the token as an SSH password,
    > but **that is not implemented on the control-plane side yet** — the
    > mint route (`mint_sandbox_takeover_token`) accepts neither today. Mint
@@ -60,17 +60,17 @@ and JS SDK, speaking SSH to the human instead of WebSocket + xterm.js.
 
 ```bash
 pip install -e .
-BOXKITE_BASTION_CONTROL_PLANE_URL=https://your-control-plane.example.com \
-BOXKITE_BASTION_LISTEN_PORT=2222 \
-boxkite-bastion
+BOXXKITE_BASTION_CONTROL_PLANE_URL=https://your-control-plane.example.com \
+BOXXKITE_BASTION_LISTEN_PORT=2222 \
+boxxkite-bastion
 ```
 
 | Variable | Required | Meaning |
 |---|---|---|
-| `BOXKITE_BASTION_CONTROL_PLANE_URL` | yes | control-plane's base URL (`http(s)://` or `ws(s)://`) -- the ONLY network destination this process ever talks to |
-| `BOXKITE_BASTION_LISTEN_HOST` | no (default `0.0.0.0`) | SSH listener bind address |
-| `BOXKITE_BASTION_LISTEN_PORT` | no (default `2222`) | SSH listener port |
-| `BOXKITE_BASTION_HOST_KEY_PATH` | no | path to a persistent SSH host key (PEM); an ephemeral key is generated per-process if unset, which changes across restarts |
+| `BOXXKITE_BASTION_CONTROL_PLANE_URL` | yes | control-plane's base URL (`http(s)://` or `ws(s)://`) -- the ONLY network destination this process ever talks to |
+| `BOXXKITE_BASTION_LISTEN_HOST` | no (default `0.0.0.0`) | SSH listener bind address |
+| `BOXXKITE_BASTION_LISTEN_PORT` | no (default `2222`) | SSH listener port |
+| `BOXXKITE_BASTION_HOST_KEY_PATH` | no | path to a persistent SSH host key (PEM); an ephemeral key is generated per-process if unset, which changes across restarts |
 
 ## What this component does NOT do
 

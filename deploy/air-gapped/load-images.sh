@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUNDLE="${1:-$SCRIPT_DIR/bundle/boxkite-airgapped-bundle.tar.gz}"
+BUNDLE="${1:-$SCRIPT_DIR/bundle/boxxkite-airgapped-bundle.tar.gz}"
 
 if [ ! -f "$BUNDLE" ]; then
   echo "Bundle not found: $BUNDLE" >&2
@@ -19,8 +19,8 @@ time gunzip -c "$BUNDLE" | docker load
 echo "== Verifying loaded images against expected tags =="
 MISSING=0
 for tag in \
-  "boxkite-sandbox-minimal:bundle" \
-  "boxkite-sidecar:bundle" \
+  "boxxkite-sandbox-minimal:bundle" \
+  "boxxkite-sidecar:bundle" \
   "minio/minio:latest" \
   "minio/mc:latest" \
   "hashicorp/vault:1.16"

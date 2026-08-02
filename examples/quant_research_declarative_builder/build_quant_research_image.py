@@ -2,14 +2,14 @@
 declarative builder (`POST /v1/images`) -- see GitHub issue #135 and
 `docs/DECLARATIVE-BUILDER-DESIGN.md` for the full API design.
 
-boxkite's default sandbox image already ships pandas/numpy/polars/
+boxxkite's default sandbox image already ships pandas/numpy/polars/
 scikit-learn (see the "self-hosted quant research agent for banks" blog
 post, `site/app/blog/self-hosted-quant-research-agent-for-banks/page.tsx`)
 -- real quant desks additionally lean on vectorbt (vectorized backtesting),
 backtrader (event-driven, broker-realistic backtesting), TA-Lib (technical
 indicators), QuantLib (derivatives/fixed-income pricing), and quantstats
 (portfolio tear sheets), none of which are preinstalled. This script builds
-those five, exact-version-pinned, on top of "boxkite-default" instead of
+those five, exact-version-pinned, on top of "boxxkite-default" instead of
 hand-maintaining a new Dockerfile for this one vertical.
 
 Follows `../hosted_control_plane/hosted_flow.py`'s signup -> API key ->
@@ -22,7 +22,7 @@ built.
 IMPORTANT -- read before running this against anything but a local dev
 instance:
   - The declarative builder is OFF by default
-    (`BOXKITE_IMAGE_BUILDER_ENABLED=false`); every /v1/images route 404s
+    (`BOXXKITE_IMAGE_BUILDER_ENABLED=false`); every /v1/images route 404s
     until an operator opts in.
   - Per docs/DECLARATIVE-BUILDER-DESIGN.md's own status note, the real
     Kubernetes build path (`KanikoJobBuildRunner.run_build`) has not been
@@ -34,7 +34,7 @@ instance:
 
 Prerequisites:
   - A running control-plane instance reachable at CONTROL_PLANE_URL with
-    BOXKITE_IMAGE_BUILDER_ENABLED=true (see this directory's README).
+    BOXXKITE_IMAGE_BUILDER_ENABLED=true (see this directory's README).
   - `pip install httpx`
 
 Run:
@@ -60,7 +60,7 @@ POLL_TIMEOUT_SECONDS = 120.0
 # Exact-version pins -- see this directory's README for how each was
 # checked against the live PyPI index (real releases, real wheels for the
 # base image's Python 3.11 / glibc combination) rather than guessed.
-# Layered on "boxkite-default" (the full pandas/numpy/polars/scikit-learn
+# Layered on "boxxkite-default" (the full pandas/numpy/polars/scikit-learn
 # stack the blog post above describes) since a quant workload wants both
 # the existing data-science stack and these five additions, not a leaner
 # base with the existing stack re-declared on top of it.
@@ -114,7 +114,7 @@ def _build_image(api_headers: dict[str, str]) -> dict:
         f"{CONTROL_PLANE_URL}/v1/images",
         json={
             "label": "quant-research",
-            "base": "boxkite-default",
+            "base": "boxxkite-default",
             "python_packages": PYTHON_PACKAGES,
         },
         headers=api_headers,

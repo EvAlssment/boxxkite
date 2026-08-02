@@ -1,25 +1,25 @@
-/** Error types raised by BoxkiteClient. */
+/** Error types raised by BoxxkiteClient. */
 
-export class BoxkiteError extends Error {}
+export class BoxxkiteError extends Error {}
 
 /** The control-plane could not be reached at all (DNS, TLS, timeout). */
-export class BoxkiteConnectionError extends BoxkiteError {
+export class BoxxkiteConnectionError extends BoxxkiteError {
   constructor(message: string) {
     super(message);
-    this.name = "BoxkiteConnectionError";
+    this.name = "BoxxkiteConnectionError";
   }
 }
 
 /** The control-plane responded with an error envelope
  * (`{"error": {code, message}}`), e.g. a 404, 401, or 429. */
-export class BoxkiteApiError extends BoxkiteError {
+export class BoxxkiteApiError extends BoxxkiteError {
   statusCode: number;
   code: string;
   message: string;
 
   constructor(statusCode: number, code: string, message: string) {
     super(`${message} [${code}] (HTTP ${statusCode})`);
-    this.name = "BoxkiteApiError";
+    this.name = "BoxxkiteApiError";
     this.statusCode = statusCode;
     this.code = code;
     this.message = message;

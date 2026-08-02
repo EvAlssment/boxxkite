@@ -2,8 +2,8 @@
 
 Closes a real, previously-undocumented gap noted in `docs/E2B-COMPARISON.md`
 §4.1: E2B has a narrated "connect an LLM provider" quickstart per provider
-(OpenAI, Gemini, Mistral, Groq); boxkite had the equivalent underlying
-capability (`boxkite.tools.adapters.to_openai_functions`, pure stdlib, no
+(OpenAI, Gemini, Mistral, Groq); boxxkite had the equivalent underlying
+capability (`boxxkite.tools.adapters.to_openai_functions`, pure stdlib, no
 provider SDK dependency) but no runnable example showing it for Mistral.
 This is that example.
 
@@ -37,17 +37,17 @@ each `tool_call` back to the matching `ToolSpec.handler()` by name.
 
 ## Prerequisites
 
-1. A running boxkite stack: `boxkite up` from the repo root (see the main
+1. A running boxxkite stack: `boxxkite up` from the repo root (see the main
    README's "Quickstart: docker-compose" section).
-2. `pip install -e ../..` (boxkite itself -- no extra needed) then
+2. `pip install -e ../..` (boxxkite itself -- no extra needed) then
    `pip install -r requirements.txt` (just the `mistralai` package).
 3. `MISTRAL_API_KEY` set.
 
 ## Run
 
 ```bash
-boxkite up
-export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxkite/local.env | cut -d= -f2)
+boxxkite up
+export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxxkite/local.env | cut -d= -f2)
 export RUNTIME_MODE=compose
 export SIDECAR_URL=http://localhost:8080
 export MISTRAL_API_KEY=...
@@ -63,7 +63,7 @@ Tools wired: ['bash_tool', 'file_create']
 Running agent...
 ------------------------------------------------------------
 The script printed:
-hello from boxkite
+hello from boxxkite
 2026-07-11
 Destroying session <uuid> ...
 ```
@@ -71,7 +71,7 @@ Destroying session <uuid> ...
 ## What's verified vs. what needs a live run
 
 Imports and tool wiring were verified against the actual installed
-`boxkite`/`mistralai` 2.6.0 package versions in this environment: the
+`boxxkite`/`mistralai` 2.6.0 package versions in this environment: the
 `mistralai.client.Mistral` import path, `Mistral(api_key=...)` and
 `client.chat.complete_async`'s real async signature, and the
 `Tool`/`Function`/`ToolCall`/`FunctionCall` model field sets (confirming the

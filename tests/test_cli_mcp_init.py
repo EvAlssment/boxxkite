@@ -1,4 +1,4 @@
-"""Tests for `boxkite mcp init <target>`. No real MCP client or control-plane
+"""Tests for `boxxkite mcp init <target>`. No real MCP client or control-plane
 involved -- only the JSON/TOML config-file merge-write logic and the
 hosted-config precondition are exercised."""
 
@@ -11,7 +11,7 @@ import pytest
 import tomli_w
 from typer.testing import CliRunner
 
-from boxkite.cli import app, cmd_mcp, config_store
+from boxxkite.cli import app, cmd_mcp, config_store
 
 runner = CliRunner()
 
@@ -33,7 +33,7 @@ def _servers_key(path) -> str:
 
 @pytest.fixture(autouse=True)
 def _isolated_config(tmp_path, monkeypatch):
-    config_dir = tmp_path / ".boxkite"
+    config_dir = tmp_path / ".boxxkite"
     monkeypatch.setattr(config_store, "CONFIG_DIR", config_dir)
     monkeypatch.setattr(config_store, "CONFIG_FILE", config_dir / "config.toml")
     monkeypatch.setattr(config_store, "LOCAL_ENV_FILE", config_dir / "local.env")
@@ -49,7 +49,7 @@ UNRELATED_ENTRY = {"other-server": {"command": "some-other-mcp-server"}}
 
 
 @pytest.mark.parametrize("target", list(cmd_mcp.TARGETS))
-def test_mcp_init_merges_boxkite_entry_without_clobbering_others(target):
+def test_mcp_init_merges_boxxkite_entry_without_clobbering_others(target):
     config_store.write_hosted_config(base_url="https://cp.example.com", api_key="bxk_live_abc")
 
     path = cmd_mcp._config_path_for_target(target)
@@ -65,11 +65,11 @@ def test_mcp_init_merges_boxkite_entry_without_clobbering_others(target):
     data = _load_config(path)
     assert data["someUnrelatedTopLevelKey"] is True
     assert data[servers_key]["other-server"] == UNRELATED_ENTRY["other-server"]
-    assert data[servers_key]["boxkite"] == {
-        "command": "boxkite-mcp",
+    assert data[servers_key]["boxxkite"] == {
+        "command": "boxxkite-mcp",
         "env": {
-            "BOXKITE_BASE_URL": "https://cp.example.com",
-            "BOXKITE_API_KEY": "bxk_live_abc",
+            "BOXXKITE_BASE_URL": "https://cp.example.com",
+            "BOXXKITE_API_KEY": "bxk_live_abc",
         },
     }
 
@@ -78,7 +78,7 @@ def test_mcp_init_requires_hosted_config():
     result = runner.invoke(app, ["mcp", "init", "cursor"])
 
     assert result.exit_code == 1
-    assert "boxkite signup" in result.output
+    assert "boxxkite signup" in result.output
 
 
 def test_mcp_init_is_idempotent_on_already_configured_file():
@@ -90,11 +90,11 @@ def test_mcp_init_is_idempotent_on_already_configured_file():
         json.dumps(
             {
                 "mcpServers": {
-                    "boxkite": {
-                        "command": "boxkite-mcp",
+                    "boxxkite": {
+                        "command": "boxxkite-mcp",
                         "env": {
-                            "BOXKITE_BASE_URL": "https://cp.example.com",
-                            "BOXKITE_API_KEY": "bxk_live_abc",
+                            "BOXXKITE_BASE_URL": "https://cp.example.com",
+                            "BOXXKITE_API_KEY": "bxk_live_abc",
                         },
                     },
                     **UNRELATED_ENTRY,
@@ -110,7 +110,7 @@ def test_mcp_init_is_idempotent_on_already_configured_file():
 
     data = json.loads(path.read_text())
     assert data["mcpServers"]["other-server"] == UNRELATED_ENTRY["other-server"]
-    assert data["mcpServers"]["boxkite"]["env"]["BOXKITE_API_KEY"] == "bxk_live_abc"
+    assert data["mcpServers"]["boxxkite"]["env"]["BOXXKITE_API_KEY"] == "bxk_live_abc"
 
 
 def test_mcp_init_is_idempotent_on_already_configured_codex_toml_file():
@@ -122,11 +122,11 @@ def test_mcp_init_is_idempotent_on_already_configured_codex_toml_file():
         path,
         {
             "mcp_servers": {
-                "boxkite": {
-                    "command": "boxkite-mcp",
+                "boxxkite": {
+                    "command": "boxxkite-mcp",
                     "env": {
-                        "BOXKITE_BASE_URL": "https://cp.example.com",
-                        "BOXKITE_API_KEY": "bxk_live_abc",
+                        "BOXXKITE_BASE_URL": "https://cp.example.com",
+                        "BOXXKITE_API_KEY": "bxk_live_abc",
                     },
                 },
                 **UNRELATED_ENTRY,
@@ -141,7 +141,7 @@ def test_mcp_init_is_idempotent_on_already_configured_codex_toml_file():
 
     data = tomllib.loads(path.read_text())
     assert data["mcp_servers"]["other-server"] == UNRELATED_ENTRY["other-server"]
-    assert data["mcp_servers"]["boxkite"]["env"]["BOXKITE_API_KEY"] == "bxk_live_abc"
+    assert data["mcp_servers"]["boxxkite"]["env"]["BOXXKITE_API_KEY"] == "bxk_live_abc"
 
 
 def test_mcp_init_refuses_to_overwrite_invalid_toml_file():

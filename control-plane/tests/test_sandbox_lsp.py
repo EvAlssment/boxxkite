@@ -2,7 +2,7 @@
 the control-plane proxy to SandboxManager.lsp_start/.lsp_open/
 .lsp_completion/.lsp_stop (GitHub issue #183,
 docs/LSP-SUPPORT-SCOPING.md). Mirrors test_sandbox_exec.py's and
-test_sandbox_desktop_takeover.py's structure: BOXKITE_LSP_ENABLED gate
+test_sandbox_desktop_takeover.py's structure: BOXXKITE_LSP_ENABLED gate
 tests first (mirrors the desktop-takeover feature-flag pattern), then
 cross-tenant/unknown-session 404s, then the happy path and failure
 translation for each route.
@@ -24,14 +24,14 @@ async def _create_session(client: httpx.AsyncClient, api_key: str) -> str:
 def _enable_lsp(monkeypatch) -> None:
     import control_plane.routers.sandboxes as sandboxes_module
 
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_LSP_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_LSP_ENABLED", True)
 
 
-# ── BOXKITE_LSP_ENABLED gate ─────────────────────────────────────────────
+# ── BOXXKITE_LSP_ENABLED gate ─────────────────────────────────────────────
 
 
 async def test_lsp_start_404s_when_feature_disabled(client: httpx.AsyncClient, fake_manager: FakeSandboxManager):
-    """settings.BOXKITE_LSP_ENABLED defaults to False -- the route must
+    """settings.BOXXKITE_LSP_ENABLED defaults to False -- the route must
     404 unconditionally, even for a valid key and an owned session."""
     key = await signup_and_get_api_key(client, "lsp-start-disabled@example.com")
     session_id = await _create_session(client, key)

@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "boxkite-client"
+name = "boxxkite-client"
 version = "0.2.2"
-description = "Python client for a hosted boxkite control-plane (sandbox creation, exec, files, LangChain tools)."
+description = "Python client for a hosted boxxkite control-plane (sandbox creation, exec, files, LangChain tools)."
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
@@ -19,9 +19,9 @@ langchain = ["langchain-core>=0.3"]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.urls]
-Homepage = "https://github.com/EvAlssment/boxkite"
-Repository = "https://github.com/EvAlssment/boxkite"
-Issues = "https://github.com/EvAlssment/boxkite/issues"
+Homepage = "https://github.com/EvAlssment/boxxkite"
+Repository = "https://github.com/EvAlssment/boxxkite"
+Issues = "https://github.com/EvAlssment/boxxkite/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

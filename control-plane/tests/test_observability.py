@@ -14,7 +14,7 @@ from control_plane.observability import JsonLogFormatter, configure_logging
 class TestJsonLogFormatter:
     def _record(self, **extra):
         return logging.LogRecord(
-            name="boxkite.test",
+            name="boxxkite.test",
             level=logging.INFO,
             pathname=__file__,
             lineno=1,
@@ -28,13 +28,13 @@ class TestJsonLogFormatter:
         line = JsonLogFormatter().format(record)
         obj = json.loads(line)
         assert obj["level"] == "INFO"
-        assert obj["logger"] == "boxkite.test"
+        assert obj["logger"] == "boxxkite.test"
         assert obj["message"] == "hello world"
         assert "ts" in obj
 
     def test_includes_structured_extra_fields(self):
         record = logging.LogRecord(
-            "boxkite.access", logging.INFO, __file__, 1, "GET / 200", None, None
+            "boxxkite.access", logging.INFO, __file__, 1, "GET / 200", None, None
         )
         record.request_id = "abc123"
         record.status = 200
@@ -53,7 +53,7 @@ class TestConfigureLogging:
         assert not isinstance(logging.getLogger().handlers[0].formatter, JsonLogFormatter)
 
     def test_explicit_flag_overrides_environment(self):
-        configure_logging(Settings(ENVIRONMENT="development", BOXKITE_JSON_LOGS=True))
+        configure_logging(Settings(ENVIRONMENT="development", BOXXKITE_JSON_LOGS=True))
         assert isinstance(logging.getLogger().handlers[0].formatter, JsonLogFormatter)
 
 
@@ -68,8 +68,8 @@ class TestMetricsEndpoint:
         assert resp.status_code == 200
         assert "text/plain" in resp.headers["content-type"]
         body = resp.text
-        assert "boxkite_http_requests_total" in body
-        assert "boxkite_http_request_duration_seconds" in body
+        assert "boxxkite_http_requests_total" in body
+        assert "boxxkite_http_request_duration_seconds" in body
         # The matched route template (not the raw path) is used as a label.
         assert "/v1/sandboxes" in body
 
@@ -78,6 +78,6 @@ class TestMetricsEndpoint:
         assert resp.headers.get("x-request-id")
 
     async def test_metrics_404_when_disabled(self, client: httpx.AsyncClient, monkeypatch):
-        monkeypatch.setattr("control_plane.main.settings.BOXKITE_METRICS_ENABLED", False)
+        monkeypatch.setattr("control_plane.main.settings.BOXXKITE_METRICS_ENABLED", False)
         resp = await client.get("/metrics")
         assert resp.status_code == 404

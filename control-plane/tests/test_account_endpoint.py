@@ -1,4 +1,4 @@
-"""GET /v1/account -- account identity via API key, for `boxkite whoami`.
+"""GET /v1/account -- account identity via API key, for `boxxkite whoami`.
 API keys are already scoped to one account for every other /v1/sandboxes
 and /v1/usage call; this is the same trust boundary, not a new one.
 """

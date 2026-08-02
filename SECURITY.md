@@ -1,6 +1,6 @@
 # Security Policy
 
-boxkite executes arbitrary, agent-generated code. A security bug here is not
+boxxkite executes arbitrary, agent-generated code. A security bug here is not
 a normal bug — it's a potential sandbox escape or credential leak for every
 self-hosted deployment. **We treat security reports as the highest-priority
 category of issue in this project**, and we ask you to help us keep it that
@@ -29,7 +29,7 @@ technical details, and a maintainer will reach out for a private channel.
 - Sidecar HTTP API authentication bypass: anything that lets a request reach
   `/exec`, `/file-create`, `/str-replace`, `/configure`, `/tool-call`,
   `/process/*`, or any other sidecar route without a valid
-  `X-Sidecar-Auth-Token` (see `src/boxkite/sidecar_auth.py`), or that
+  `X-Sidecar-Auth-Token` (see `src/boxxkite/sidecar_auth.py`), or that
   recovers/predicts another pod's token.
 - Cross-tenant leakage of a background process (`/process/*`) across pod
   recycling: a process (or its buffered output) started by one tenant's
@@ -50,16 +50,16 @@ technical details, and a maintainer will reach out for a private channel.
   pods despite `deploy/network-policy.yaml`.
 - Secret exposure: sidecar storage credentials (S3/Azure) leaking into
   sandboxed process environments, logs, or tool output (see the redaction
-  patterns in `src/boxkite/tools/bash_tool.py` — gaps there are in scope).
+  patterns in `src/boxxkite/tools/bash_tool.py` — gaps there are in scope).
 - RBAC over-permissioning in `deploy/rbac.yaml` beyond what
   `SandboxManager`/`WarmPoolManager` actually need.
 - Path traversal in the sidecar's file endpoints (`/file-create`, `/view`,
   `/str-replace`, `/present-files`, `/ls`, `/glob`, `/grep`).
-- Command whitelist bypass in `src/boxkite/command_whitelist.py` for agents
+- Command whitelist bypass in `src/boxxkite/command_whitelist.py` for agents
   configured with `sandbox_allowed_commands`.
 - Manager-to-sidecar TLS bypass: anything that lets the manager's HTTP
   client accept a cert other than the one pinned for that specific pod
-  (`src/boxkite/tls.py`'s `build_pinned_ssl_context`), or that lets a pod's
+  (`src/boxxkite/tls.py`'s `build_pinned_ssl_context`), or that lets a pod's
   sidecar serve plaintext HTTP while `SIDECAR_TLS_DISABLED` is unset/false.
 
 ## What's out of scope
@@ -72,9 +72,9 @@ technical details, and a maintainer will reach out for a private channel.
 - Denial-of-service from a user intentionally exhausting their own sandbox's
   resource limits (`deploy/pod-template.yaml` requests/limits) — that's the
   isolation working as intended, not a vulnerability.
-- Vulnerabilities in upstream dependencies without a boxkite-specific
+- Vulnerabilities in upstream dependencies without a boxxkite-specific
   exploitation path — please report those upstream, though we'll still want
-  to know if a boxkite default makes an upstream CVE reachable.
+  to know if a boxxkite default makes an upstream CVE reachable.
 
 ## Verifying released images
 
@@ -100,23 +100,23 @@ public, append-only transparency log.
 ```bash
 # Verify the image signature
 cosign verify \
-  --certificate-identity-regexp "^https://github\.com/EvAlssment/boxkite/\.github/workflows/publish-images\.yml@refs/tags/.+$" \
+  --certificate-identity-regexp "^https://github\.com/EvAlssment/boxxkite/\.github/workflows/publish-images\.yml@refs/tags/.+$" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/evalssment/boxkite-sandbox:<tag>
+  ghcr.io/evalssment/boxxkite-sandbox:<tag>
 
 # Verify the attached SBOM attestation and print the SBOM itself
 cosign verify-attestation \
   --type spdxjson \
-  --certificate-identity-regexp "^https://github\.com/EvAlssment/boxkite/\.github/workflows/publish-images\.yml@refs/tags/.+$" \
+  --certificate-identity-regexp "^https://github\.com/EvAlssment/boxxkite/\.github/workflows/publish-images\.yml@refs/tags/.+$" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/evalssment/boxkite-sandbox:<tag>
+  ghcr.io/evalssment/boxxkite-sandbox:<tag>
 ```
 
-Swap `boxkite-sandbox` for `boxkite-sandbox-minimal`, `boxkite-sidecar`, or
-`boxkite-control-plane` for the other three images. Note that `boxkite-sandbox`
+Swap `boxxkite-sandbox` for `boxxkite-sandbox-minimal`, `boxxkite-sidecar`, or
+`boxxkite-control-plane` for the other three images. Note that `boxxkite-sandbox`
 is published for **linux/amd64 only** (its Dockerfile hard-fails on arm64 — the
 pinned Chrome-for-Testing release has no arm64 build); the other three are
-multi-arch, and arm64 / Apple-Silicon users should use `boxkite-sandbox-minimal`.
+multi-arch, and arm64 / Apple-Silicon users should use `boxxkite-sandbox-minimal`.
 What a successful
 `cosign verify` does and does not protect against:
 
@@ -147,7 +147,7 @@ Disclosed here rather than left for you to discover:
   upstream-signed checksum manifest still does not exist for either
   dependency, so re-derive the cross-check every time
   `PANDOC_VERSION`/`CHROME_FOR_TESTING_VERSION` is bumped.
-- Command-name allowlisting (`src/boxkite/command_whitelist.py`) is a
+- Command-name allowlisting (`src/boxxkite/command_whitelist.py`) is a
   guardrail against accidental/unexpected commands, not a sandbox-escape
   boundary — allowing a general-purpose interpreter (`python3`, `bash`,
   `node`) through it still permits arbitrary code to run once it starts.

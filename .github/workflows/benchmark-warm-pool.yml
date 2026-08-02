@@ -8,8 +8,8 @@
 # HTTP directly to a real deployment, so it needs two repo secrets an
 # operator with access to that deployment must configure themselves
 # (Settings -> Secrets and variables -> Actions):
-#   BOXKITE_BENCHMARK_BASE_URL  -- e.g. https://your-control-plane.example.com
-#   BOXKITE_BENCHMARK_API_KEY   -- a disposable account's API key, NOT a
+#   BOXXKITE_BENCHMARK_BASE_URL  -- e.g. https://your-control-plane.example.com
+#   BOXXKITE_BENCHMARK_API_KEY   -- a disposable account's API key, NOT a
 #                                  production account's -- this workflow
 #                                  creates and destroys real sandbox
 #                                  sessions against whatever account owns
@@ -48,7 +48,7 @@ jobs:
     # Skip cleanly (not fail loudly) when the one-time secret setup above
     # hasn't been done yet -- a fork or a fresh clone of this repo
     # shouldn't get a red X for a manual workflow nobody has configured.
-    if: ${{ vars.BOXKITE_BENCHMARK_CONFIGURED == 'true' }}
+    if: ${{ vars.BOXXKITE_BENCHMARK_CONFIGURED == 'true' }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
@@ -57,13 +57,13 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install boxkite
+      - name: Install boxxkite
         run: pip install -e .
 
       - name: Run benchmark
         env:
-          BOXKITE_BASE_URL: ${{ secrets.BOXKITE_BENCHMARK_BASE_URL }}
-          BOXKITE_API_KEY: ${{ secrets.BOXKITE_BENCHMARK_API_KEY }}
+          BOXXKITE_BASE_URL: ${{ secrets.BOXXKITE_BENCHMARK_BASE_URL }}
+          BOXXKITE_API_KEY: ${{ secrets.BOXXKITE_BENCHMARK_API_KEY }}
         run: |
           python scripts/benchmark_warm_pool.py \
             --samples "${{ github.event.inputs.samples }}" \

@@ -3,7 +3,7 @@
 Asserts against the actual parsed YAML content (not just "the file exists")
 so this can't silently regress back to an 0.0.0.0/0 egress rule, and checks
 that the default policy's podSelector matches labels real pods actually
-carry (src/boxkite/manager.py / src/boxkite/warm_pool.py only ever set
+carry (src/boxxkite/manager.py / src/boxxkite/warm_pool.py only ever set
 `app: sandbox` — never a `component` label).
 
 Also covers the fix for a later finding: the permissive, fully-open-egress
@@ -143,7 +143,7 @@ def test_permissive_policy_is_separately_named_labeled_and_filed():
     permissive = [
         p
         for p in policies
-        if p["metadata"].get("labels", {}).get("boxkite.dev/policy-mode") == "permissive-opt-in"
+        if p["metadata"].get("labels", {}).get("boxxkite.dev/policy-mode") == "permissive-opt-in"
     ]
     assert len(permissive) == 1
     assert permissive[0]["metadata"]["name"] != "sandbox-network-policy"
@@ -151,7 +151,7 @@ def test_permissive_policy_is_separately_named_labeled_and_filed():
     # And it must NOT also appear in the default policy's file -- that's the
     # exact bug this split fixes.
     assert not any(
-        p["metadata"].get("labels", {}).get("boxkite.dev/policy-mode") == "permissive-opt-in"
+        p["metadata"].get("labels", {}).get("boxxkite.dev/policy-mode") == "permissive-opt-in"
         for p in _load_policies(NETWORK_POLICY_PATH)
     )
 
@@ -163,7 +163,7 @@ def test_permissive_policy_is_the_only_place_a_blanket_egress_appears():
     permissive = next(
         p
         for p in policies
-        if p["metadata"].get("labels", {}).get("boxkite.dev/policy-mode") == "permissive-opt-in"
+        if p["metadata"].get("labels", {}).get("boxxkite.dev/policy-mode") == "permissive-opt-in"
     )
     egress = _egress_rules(permissive)
     assert egress == [{}]

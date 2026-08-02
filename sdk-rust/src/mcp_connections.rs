@@ -12,9 +12,9 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
-/// A curated outbound-MCP catalog entry -- restricted to boxkite's own
+/// A curated outbound-MCP catalog entry -- restricted to boxxkite's own
 /// reviewed allowlist, never a caller-supplied hostname.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -51,7 +51,7 @@ impl Client {
         &self,
         label: &str,
         catalog_id: McpCatalogId,
-    ) -> Result<McpConnection, BoxkiteError> {
+    ) -> Result<McpConnection, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             label: &'a str,
@@ -65,7 +65,7 @@ impl Client {
     }
 
     /// `GET /v1/mcp-connections` -- outbound-MCP connection grants for this account.
-    pub async fn list_mcp_connections(&self) -> Result<Vec<McpConnection>, BoxkiteError> {
+    pub async fn list_mcp_connections(&self) -> Result<Vec<McpConnection>, BoxxkiteError> {
         let builder = self.request(Method::GET, "/v1/mcp-connections");
         self.send_or_default(builder).await
     }
@@ -73,7 +73,7 @@ impl Client {
     /// `DELETE /v1/mcp-connections/{id}` -- delete an outbound-MCP
     /// connection grant owned by this account. 404s if already gone or
     /// never owned by this account.
-    pub async fn delete_mcp_connection(&self, connection_id: &str) -> Result<(), BoxkiteError> {
+    pub async fn delete_mcp_connection(&self, connection_id: &str) -> Result<(), BoxxkiteError> {
         let builder = self.request(
             Method::DELETE,
             &format!("/v1/mcp-connections/{connection_id}"),

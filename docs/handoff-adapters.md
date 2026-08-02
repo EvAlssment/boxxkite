@@ -1,8 +1,8 @@
-# Handoff adapters: moving a local coding-agent session into a boxkite sandbox
+# Handoff adapters: moving a local coding-agent session into a boxxkite sandbox
 
-`boxkite-handoff` lets someone running Claude Code, Codex CLI, opencode, or
+`boxxkite-handoff` lets someone running Claude Code, Codex CLI, opencode, or
 Cursor locally move their **in-progress, full-history conversation** into a
-fresh boxkite sandbox and keep interacting with it from there — the CLI
+fresh boxxkite sandbox and keep interacting with it from there — the CLI
 keeps running under the user's own (portable, scoped) credential, not a
 copy of their laptop's raw login session.
 
@@ -26,9 +26,9 @@ decisions so a future contributor doesn't have to re-derive them.
 
 ## Architecture: no new server-side surface needed
 
-`boxkite-client` already exposes everything this needs:
+`boxxkite-client` already exposes everything this needs:
 
-1. `create_sandbox(...)` — fresh sandbox, same as any other boxkite session.
+1. `create_sandbox(...)` — fresh sandbox, same as any other boxxkite session.
 2. `file_create(session_id, path, content)` — push the local session file(s)
    into the sandbox at the path the tool's own resume mechanism expects.
 3. `takeover(session_id)` — opens the **same PTY websocket the human-takeover
@@ -49,13 +49,13 @@ requires zero changes to `sidecar/` or `control-plane/`.
 ```mermaid
 flowchart LR
     subgraph local["Your machine"]
-        cli["boxkite-handoff CLI"]
+        cli["boxxkite-handoff CLI"]
         adapter["HandoffAdapter\n(locate_session)"]
         files["Local session files\n(~/.claude/projects/...,\n~/.codex/sessions/...)"]
         cli --> adapter --> files
     end
 
-    subgraph cloud["boxkite control-plane"]
+    subgraph cloud["boxxkite control-plane"]
         cp["create_sandbox\nfile_create\ntakeover (WS)"]
         audit["exec_log_entries\n(audit log)"]
         cp -.->|"typed PTY bytes\n(never the raw credential)"| audit
@@ -86,14 +86,14 @@ sequenceDiagram
     participant CP as control-plane
     participant SB as Sandbox pod
 
-    U->>A: boxkite-handoff claude-code
+    U->>A: boxxkite-handoff claude-code
     A->>A: locate local session file +\nportable credential (setup-token, etc.)
     A-->>O: LocatedSession
     O->>CP: create_sandbox()
     CP-->>O: sandbox_id
     O->>CP: file_create(session file)
     CP->>SB: write to /workspace/...
-    O->>CP: file_create(/tmp/.boxkite-handoff-credential-*)
+    O->>CP: file_create(/tmp/.boxxkite-handoff-credential-*)
     CP->>SB: write to /tmp (never /workspace)
     O->>CP: takeover(sandbox_id)  [WS]
     CP->>SB: attach to takeover tmux session
@@ -189,7 +189,7 @@ see `claude_code.py`, `codex.py`, and `opencode.py` for the pattern.
 
 ## The `HandoffAdapter` contract
 
-See `public/handoff-cli/src/boxkite_handoff/core.py`. One adapter per tool,
+See `public/handoff-cli/src/boxxkite_handoff/core.py`. One adapter per tool,
 each providing a single `locate_session(session_ref=None)` call that
 returns a `LocatedSession`:
 
@@ -219,9 +219,9 @@ backlog. To add one:
    or an API a client can point at) — if it only supports "start fresh and
    describe the task," it doesn't fit this contract; that's a different
    feature.
-2. Implement `HandoffAdapter` in `boxkite_handoff/adapters/<tool>.py`,
+2. Implement `HandoffAdapter` in `boxxkite_handoff/adapters/<tool>.py`,
    returning a `LocatedSession`.
-3. Register it in `boxkite_handoff/adapters/__init__.py`'s `ADAPTERS` dict.
+3. Register it in `boxxkite_handoff/adapters/__init__.py`'s `ADAPTERS` dict.
 4. Add unit tests covering locate-session logic against a fixture session
    file/directory — no live sandbox or network call should be needed to
    test an adapter.

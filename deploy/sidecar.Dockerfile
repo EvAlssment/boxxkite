@@ -76,23 +76,23 @@ COPY --link sidecar/*.py ./
 # Create directories for shared volumes and a non-root user.
 # The image defaults to non-root (satisfies CIS/Prisma 5041). K8s pod specs
 # override this container to UID 0 where nsenter needs it (see
-# deploy/pod-template.yaml, src/boxkite/manager.py, and src/boxkite/warm_pool.py);
+# deploy/pod-template.yaml, src/boxxkite/manager.py, and src/boxxkite/warm_pool.py);
 # nsenter then drops to UID 1001 (--setuid/--setgid) before running agent code.
-# /run/boxkite holds the takeover tmux control socket (GitHub issues
+# /run/boxxkite holds the takeover tmux control socket (GitHub issues
 # #130/#144) -- deliberately NOT under /mnt, /workspace, or any other path
 # shared with the sandbox container; see sidecar/sidecar_pty.py. Also
 # created lazily at runtime (os.makedirs(..., exist_ok=True)) so this is a
 # belt-and-suspenders step, not the only place it's ensured to exist.
-RUN mkdir -p /mnt/skills /mnt/user-data/uploads /mnt/user-data/outputs /workspace /run/boxkite \
+RUN mkdir -p /mnt/skills /mnt/user-data/uploads /mnt/user-data/outputs /workspace /run/boxxkite \
     && adduser -D -u 1001 sidecar \
-    && chown -R sidecar:sidecar /app /mnt/user-data /workspace /run/boxkite
+    && chown -R sidecar:sidecar /app /mnt/user-data /workspace /run/boxxkite
 
 # Environment defaults
 ENV RUNTIME_MODE=k8s \
     STORAGE_BACKEND=s3 \
-    S3_BUCKET=boxkite-sandbox \
+    S3_BUCKET=boxxkite-sandbox \
     AWS_REGION=us-east-1 \
-    AZURE_STORAGE_CONTAINER=boxkite-sandbox \
+    AZURE_STORAGE_CONTAINER=boxxkite-sandbox \
     PATH="/opt/venv/bin:/usr/local/bin:/usr/bin:/bin" \
     PYTHONUNBUFFERED=1
 

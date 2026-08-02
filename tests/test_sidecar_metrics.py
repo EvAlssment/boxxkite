@@ -55,7 +55,7 @@ def test_metrics_reports_request_counts(monkeypatch):
     assert response.status_code == 200
     assert "text/plain" in response.headers["content-type"]
     body = response.text
-    assert 'boxkite_sidecar_requests_total{route="/health"} 2' in body
+    assert 'boxxkite_sidecar_requests_total{route="/health"} 2' in body
 
 
 def test_metrics_collapses_path_params_into_a_stable_label():
@@ -78,8 +78,8 @@ def test_exec_increments_exec_counters(monkeypatch):
 
     response = client.get("/metrics", headers=_auth_headers())
     body = response.text
-    assert "boxkite_sidecar_exec_total 1" in body
-    assert "boxkite_sidecar_exec_errors_total 0" in body
+    assert "boxxkite_sidecar_exec_total 1" in body
+    assert "boxxkite_sidecar_exec_errors_total 0" in body
 
 
 def test_exec_failure_increments_the_error_counter(monkeypatch):
@@ -95,5 +95,5 @@ def test_exec_failure_increments_the_error_counter(monkeypatch):
 
     response = client.get("/metrics", headers=_auth_headers())
     body = response.text
-    assert "boxkite_sidecar_exec_total 1" in body
-    assert "boxkite_sidecar_exec_errors_total 1" in body
+    assert "boxxkite_sidecar_exec_total 1" in body
+    assert "boxxkite_sidecar_exec_errors_total 1" in body

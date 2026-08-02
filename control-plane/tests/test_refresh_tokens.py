@@ -1,4 +1,4 @@
-"""Refresh-token rotation (issue #79), opt-in via BOXKITE_REFRESH_TOKENS_ENABLED.
+"""Refresh-token rotation (issue #79), opt-in via BOXXKITE_REFRESH_TOKENS_ENABLED.
 
 Off by default: signup/login must keep returning `refresh_token: null` and
 POST /v1/auth/refresh must 404 until a deployment explicitly enables it --
@@ -32,7 +32,7 @@ async def test_logout_endpoint_404s_by_default(client: httpx.AsyncClient):
 async def test_signup_returns_refresh_token_when_enabled(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
 
     body = await signup(client, "with-refresh@example.com")
     assert body["refresh_token"] is not None
@@ -43,7 +43,7 @@ async def test_signup_returns_refresh_token_when_enabled(client: httpx.AsyncClie
 async def test_login_returns_refresh_token_when_enabled(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
 
     await signup(client, "with-refresh-login@example.com", password="correct-horse-1")
     resp = await client.post(
@@ -58,7 +58,7 @@ async def test_refresh_rotates_and_returns_new_access_and_refresh_token(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
 
     signup_resp = await signup(client, "rotate@example.com")
     old_refresh = signup_resp["refresh_token"]
@@ -82,7 +82,7 @@ async def test_refresh_rotates_and_returns_new_access_and_refresh_token(
 async def test_refresh_rejects_unknown_token(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
 
     resp = await client.post("/v1/auth/refresh", json={"refresh_token": "not-a-real-token"})
     assert resp.status_code == 401
@@ -97,7 +97,7 @@ async def test_refresh_token_reuse_is_detected_and_revokes_whole_account(
     other still-valid refresh token on the account too (theft response)."""
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
 
     signup_resp = await signup(client, "reuse-detect@example.com")
     first_refresh = signup_resp["refresh_token"]
@@ -124,7 +124,7 @@ async def test_refresh_token_reuse_is_detected_and_revokes_whole_account(
 async def test_logout_revokes_refresh_token(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
 
     signup_resp = await signup(client, "logout@example.com")
     refresh_token = signup_resp["refresh_token"]
@@ -139,7 +139,7 @@ async def test_logout_revokes_refresh_token(client: httpx.AsyncClient, monkeypat
 async def test_logout_with_unknown_token_is_a_silent_no_op(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
 
     resp = await client.post("/v1/auth/logout", json={"refresh_token": "never-issued"})
     assert resp.status_code == 204
@@ -148,7 +148,7 @@ async def test_logout_with_unknown_token_is_a_silent_no_op(client: httpx.AsyncCl
 async def test_refresh_rejects_expired_token(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
     # Negative TTL means the token is already expired the instant it's minted.
     monkeypatch.setattr(settings, "REFRESH_TOKEN_TTL_DAYS", -1)
 
@@ -163,8 +163,8 @@ async def test_refresh_rejects_expired_token(client: httpx.AsyncClient, monkeypa
 async def test_refresh_rate_limited_after_repeated_attempts(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_TOKENS_ENABLED", True)
-    monkeypatch.setattr(settings, "BOXKITE_REFRESH_RATE_LIMIT_PER_MINUTE", 3)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_TOKENS_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_REFRESH_RATE_LIMIT_PER_MINUTE", 3)
 
     for _ in range(3):
         await client.post("/v1/auth/refresh", json={"refresh_token": "whatever"})

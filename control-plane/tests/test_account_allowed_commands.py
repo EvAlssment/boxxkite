@@ -93,7 +93,7 @@ async def test_put_rejects_invalid_regex(client: httpx.AsyncClient):
 async def test_put_rejects_oversized_pattern(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_MAX_ALLOWLIST_PATTERN_LENGTH", 5)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_ALLOWLIST_PATTERN_LENGTH", 5)
     api_key = await signup_and_get_api_key(client, "allowlist-longpattern@example.com")
 
     resp = await client.put(
@@ -109,7 +109,7 @@ async def test_put_rejects_oversized_pattern(client: httpx.AsyncClient, monkeypa
 async def test_put_rejects_too_many_rules(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_MAX_ALLOWLIST_RULES", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_ALLOWLIST_RULES", 2)
     api_key = await signup_and_get_api_key(client, "allowlist-toomany@example.com")
 
     resp = await client.put(

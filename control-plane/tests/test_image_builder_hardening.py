@@ -1,6 +1,6 @@
 """Hardening follow-ups from the #67 security review of the declarative
-image builder (BOXKITE_IMAGE_BUILDER_ENABLED): a cluster-wide concurrent-
-build cap (mirroring BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES) and resource
+image builder (BOXXKITE_IMAGE_BUILDER_ENABLED): a cluster-wide concurrent-
+build cap (mirroring BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES) and resource
 requests/limits + a wall-clock timeout on the Kaniko build Job -- both
 called out as real gaps in the review, independent of whether the feature
 itself defaults on or stays opt-in.
@@ -20,7 +20,7 @@ from control_plane.repository import SandboxImageRepository
 
 @pytest.fixture(autouse=True)
 def _enable_image_builder(monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_BUILDER_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_BUILDER_ENABLED", True)
 
 
 async def test_count_in_flight_total_counts_only_non_terminal_statuses(client: httpx.AsyncClient):
@@ -29,7 +29,7 @@ async def test_count_in_flight_total_counts_only_non_terminal_statuses(client: h
         common = dict(
             account_id="acct-1",
             label=None,
-            base="boxkite-default",
+            base="boxxkite-default",
             python_packages=[],
             apt_packages=[],
             cache_key="k",
@@ -55,7 +55,7 @@ async def test_in_flight_count_spans_all_accounts(client: httpx.AsyncClient):
                 image_id=image_id,
                 account_id=account_id,
                 label=None,
-                base="boxkite-default",
+                base="boxxkite-default",
                 python_packages=[],
                 apt_packages=[],
                 cache_key="k",
@@ -71,14 +71,14 @@ async def test_in_flight_count_spans_all_accounts(client: httpx.AsyncClient):
 
 
 async def test_build_request_blocked_when_global_capacity_reached(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS", 0)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS", 0)
     key = await signup_and_get_api_key(client, "images-global-cap@example.com")
 
     resp = await client.post(
         "/v1/images",
         json={
             "label": "x",
-            "base": "boxkite-default",
+            "base": "boxxkite-default",
             "python_packages": ["polars==1.9.0"],
             "apt_packages": [],
             "npm_packages": [],
@@ -96,14 +96,14 @@ def test_build_job_spec_sets_resource_limits_and_timeout():
     spec = runner.build_job_spec(
         image_id="11111111",
         account_id="acct-1",
-        base="boxkite-default",
+        base="boxxkite-default",
         python_packages=["polars==1.9.0"],
         apt_packages=[],
     )
 
     container = spec["spec"]["template"]["spec"]["containers"][0]
-    assert container["resources"]["requests"]["cpu"] == settings.BOXKITE_IMAGE_BUILD_CPU_REQUEST
-    assert container["resources"]["requests"]["memory"] == settings.BOXKITE_IMAGE_BUILD_MEMORY_REQUEST
-    assert container["resources"]["limits"]["cpu"] == settings.BOXKITE_IMAGE_BUILD_CPU_LIMIT
-    assert container["resources"]["limits"]["memory"] == settings.BOXKITE_IMAGE_BUILD_MEMORY_LIMIT
-    assert spec["spec"]["activeDeadlineSeconds"] == settings.BOXKITE_IMAGE_BUILD_TIMEOUT_SECONDS
+    assert container["resources"]["requests"]["cpu"] == settings.BOXXKITE_IMAGE_BUILD_CPU_REQUEST
+    assert container["resources"]["requests"]["memory"] == settings.BOXXKITE_IMAGE_BUILD_MEMORY_REQUEST
+    assert container["resources"]["limits"]["cpu"] == settings.BOXXKITE_IMAGE_BUILD_CPU_LIMIT
+    assert container["resources"]["limits"]["memory"] == settings.BOXXKITE_IMAGE_BUILD_MEMORY_LIMIT
+    assert spec["spec"]["activeDeadlineSeconds"] == settings.BOXXKITE_IMAGE_BUILD_TIMEOUT_SECONDS

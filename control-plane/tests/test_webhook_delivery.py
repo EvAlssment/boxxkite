@@ -11,7 +11,7 @@ Covers:
   HMAC signature.
 - A receiver returning a non-2xx response schedules a retry with the
   expected exponential backoff, and after
-  BOXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS failures the delivery is marked
+  BOXXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS failures the delivery is marked
   "failed" permanently.
 - An inactive or deleted subscription's in-flight delivery is marked
   failed rather than retried forever.
@@ -20,7 +20,7 @@ Covers:
 - GitHub issue #125 (SIEM/audit-log export): an exec/file-op against a
   session enqueues an 'audit_log.entry' delivery for a matching
   subscription; a 'splunk_hec' payload_format subscription is delivered a
-  Splunk HEC-shaped body (with the boxkite envelope preserved verbatim
+  Splunk HEC-shaped body (with the boxxkite envelope preserved verbatim
   under 'event'), a stored HEC token is sent as an Authorization header,
   no HEC token means no such header, and the HMAC signature is always
   computed over the exact bytes actually sent.
@@ -189,7 +189,7 @@ async def test_worker_delivers_successfully_with_valid_signature(
     assert len(received) == 1
     request = received[0]
     body = request.content.decode("utf-8")
-    signature_header = request.headers["X-Boxkite-Webhook-Signature"]
+    signature_header = request.headers["X-Boxxkite-Webhook-Signature"]
     timestamp_str, signature = (part.split("=", 1)[1] for part in signature_header.split(","))
     expected_signature = sign_payload(secret=raw_secret, timestamp=int(timestamp_str), body=body)
     assert signature == expected_signature
@@ -225,8 +225,8 @@ async def test_build_signature_header_is_independently_reproducible():
 async def test_non_2xx_response_schedules_retry_with_backoff(
     client: httpx.AsyncClient, fake_manager: FakeSandboxManager, monkeypatch
 ):
-    monkeypatch.setattr(settings, "BOXKITE_WEBHOOK_RETRY_BASE_SECONDS", 30)
-    monkeypatch.setattr(settings, "BOXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS", 6)
+    monkeypatch.setattr(settings, "BOXXKITE_WEBHOOK_RETRY_BASE_SECONDS", 30)
+    monkeypatch.setattr(settings, "BOXXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS", 6)
 
     key = await signup_and_get_api_key(client, "webhook-retry@example.com")
     await _register_webhook(client, key, url="https://receiver.example.com/hooks")
@@ -247,7 +247,7 @@ async def test_non_2xx_response_schedules_retry_with_backoff(
     assert row.status == "pending"
     assert row.attempt_count == 1
     assert row.response_status_code == 500
-    # First retry waits ~BOXKITE_WEBHOOK_RETRY_BASE_SECONDS (30s).
+    # First retry waits ~BOXXKITE_WEBHOOK_RETRY_BASE_SECONDS (30s).
     next_attempt_at = row.next_attempt_at
     if next_attempt_at.tzinfo is None:
         next_attempt_at = next_attempt_at.replace(tzinfo=timezone.utc)
@@ -258,8 +258,8 @@ async def test_non_2xx_response_schedules_retry_with_backoff(
 async def test_exhausted_retries_mark_delivery_permanently_failed(
     client: httpx.AsyncClient, fake_manager: FakeSandboxManager, monkeypatch
 ):
-    monkeypatch.setattr(settings, "BOXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS", 2)
-    monkeypatch.setattr(settings, "BOXKITE_WEBHOOK_RETRY_BASE_SECONDS", 0)
+    monkeypatch.setattr(settings, "BOXXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_WEBHOOK_RETRY_BASE_SECONDS", 0)
 
     key = await signup_and_get_api_key(client, "webhook-exhaust@example.com")
     await _register_webhook(client, key, url="https://receiver.example.com/hooks")
@@ -442,8 +442,8 @@ async def test_splunk_hec_delivery_body_shape_and_no_auth_header_without_token(
     assert hec_body["event"]["data"]["operation"] == "exec"
 
     # Signature must be computed over the exact HEC-wrapped bytes sent, not
-    # the pre-wrap boxkite envelope.
-    signature_header = request.headers["X-Boxkite-Webhook-Signature"]
+    # the pre-wrap boxxkite envelope.
+    signature_header = request.headers["X-Boxxkite-Webhook-Signature"]
     timestamp_str, signature = (part.split("=", 1)[1] for part in signature_header.split(","))
     expected_signature = sign_payload(secret=raw_secret, timestamp=int(timestamp_str), body=body_text)
     assert signature == expected_signature
@@ -478,7 +478,7 @@ async def test_splunk_hec_delivery_sends_authorization_header_when_token_present
     assert received[0].headers["Authorization"] == "Splunk hec-abc-123"
 
 
-async def test_boxkite_v1_format_never_sends_authorization_header(
+async def test_boxxkite_v1_format_never_sends_authorization_header(
     client: httpx.AsyncClient, fake_manager: FakeSandboxManager
 ):
     """A hec_token is only meaningful alongside payload_format='splunk_hec' --
@@ -486,13 +486,13 @@ async def test_boxkite_v1_format_never_sends_authorization_header(
     caller registered a token (defense against a future regression, not a
     currently-reachable API path since hec_token is only accepted validation-
     side; this documents the delivery-side invariant directly)."""
-    key = await signup_and_get_api_key(client, "webhook-hec-boxkite-v1@example.com")
+    key = await signup_and_get_api_key(client, "webhook-hec-boxxkite-v1@example.com")
     await _register_webhook(
         client,
         key,
         url="https://receiver.example.com/hooks",
         event_types=["sandbox.created"],
-        payload_format="boxkite_v1",
+        payload_format="boxxkite_v1",
     )
 
     await _create_sandbox(client, key)

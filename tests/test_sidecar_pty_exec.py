@@ -8,7 +8,7 @@ actual PTY allocation, exec, and output-capture mechanics are exercised
 for real, against a real process -- not mocked away.
 
 Covers:
-- 404 when BOXKITE_AGENT_PTY_ENABLED is off (the default).
+- 404 when BOXXKITE_AGENT_PTY_ENABLED is off (the default).
 - Requires the same sidecar auth as every other route once enabled.
 - A real command's output, printed via a real pseudo-terminal (so
   isatty() is true), comes back in the response.
@@ -34,7 +34,7 @@ def _auth_headers() -> dict:
 
 def _enable(monkeypatch):
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", "the-real-secret")
-    monkeypatch.setattr(sidecar_main, "BOXKITE_AGENT_PTY_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_AGENT_PTY_ENABLED", True)
 
 
 def _use_real_shell(monkeypatch):

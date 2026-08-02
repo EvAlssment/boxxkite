@@ -2,7 +2,7 @@
 #
 # Foundry/Anvil smart-contract-audit sandbox (GitHub issue #137).
 #
-# Extends boxkite-minimal's own recipe (deploy/sandbox-minimal.Dockerfile:
+# Extends boxxkite-minimal's own recipe (deploy/sandbox-minimal.Dockerfile:
 # lean python+node base, no data-science/document/browser stack) with git +
 # openssh-client (so an agent can git_clone a real target repo to audit --
 # same addition deploy/sandbox-claude-code.Dockerfile makes, for the same
@@ -25,7 +25,7 @@
 # deploy/sandbox-claude-code.Dockerfile's own header documents for
 # npm-global-installing Claude Code before `npm_packages` existed.
 #
-# SECURITY NOTES (same posture as every other boxkite base image):
+# SECURITY NOTES (same posture as every other boxxkite base image):
 # - pip/npm are REMOVED after use; forge/anvil/cast/chisel need neither at
 #   runtime, and leaving a package manager in the image would reintroduce
 #   the "runtime package install" risk this project deliberately removes
@@ -40,7 +40,7 @@
 #   network-isolation section) -- if solc or forge-std had to be fetched
 #   lazily on first use instead of here, every session's first
 #   `forge build` would hang or fail closed.
-# - Runs as non-root user (UID 1001), same as every other boxkite base
+# - Runs as non-root user (UID 1001), same as every other boxxkite base
 #   image; verified directly against the pod's actual security context
 #   (readOnlyRootFilesystem, cap-drop ALL, --network none) -- see
 #   README.md's "What was verified, and how" section.
@@ -88,7 +88,7 @@ RUN rm -f /usr/bin/pip /usr/bin/pip3 /usr/bin/pip3.11 \
 # version -- binaries are still fetched over HTTPS from official GitHub
 # releases either way, but this specific pin does not get the SHA check a
 # newer release would. Binaries land under
-# /root/.foundry/bin; copied to /usr/local/bin (already on every boxkite
+# /root/.foundry/bin; copied to /usr/local/bin (already on every boxxkite
 # image's PATH) and the original directory removed, so nothing depends on
 # root's home directory surviving into the final image.
 RUN mkdir -p /usr/local/bin \
@@ -116,7 +116,7 @@ RUN cd contracts \
     && chmod -R a+rX /opt/foundry-audit-template
 
 # Create non-root user for sandbox execution (same UID/GID as every other
-# boxkite base image).
+# boxxkite base image).
 RUN adduser -D -u 1001 -s /bin/bash sandbox
 
 # Create directories (mounted as EmptyDir volumes at runtime -- see
@@ -127,7 +127,7 @@ RUN mkdir -p /workspace /mnt/skills /mnt/user-data/uploads /mnt/user-data/output
     && chmod 1777 /tmp /var/tmp
 
 # SECURITY: minimal environment variables only -- no API keys, credentials,
-# or RPC URLs. HOME=/workspace matches every other boxkite base image, and
+# or RPC URLs. HOME=/workspace matches every other boxxkite base image, and
 # is why the seed step (see README.md / run_audit_sandbox.py) copies
 # /opt/foundry-audit-template's contents -- including the pre-warmed
 # .svm/.foundry caches -- into /workspace before the first forge command:

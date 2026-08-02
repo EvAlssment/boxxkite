@@ -76,9 +76,9 @@ async def test_sandbox_create_route_is_rate_limited_separately_from_exec(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE", 2)
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 100)
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
 
     api_key = await signup_and_get_api_key(client, "rl-lifecycle-flood@example.com")
 
@@ -94,9 +94,9 @@ async def test_sandbox_create_route_is_rate_limited_separately_from_exec(
 async def test_sandbox_delete_route_is_rate_limited(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE", 3)
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 100)
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE", 3)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
 
     api_key = await signup_and_get_api_key(client, "rl-lifecycle-delete@example.com")
 

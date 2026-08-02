@@ -11,7 +11,7 @@ Ownership scoping follows routers/images.py's exact pattern: every lookup
 is scoped to `account.id` at the database layer, so a foreign `volume_id`
 404s, never distinguishing "doesn't exist" from "belongs to someone else".
 
-Gated by `BOXKITE_VOLUMES_ENABLED` (off by default) -- every route here
+Gated by `BOXXKITE_VOLUMES_ENABLED` (off by default) -- every route here
 404s if it's disabled.
 """
 
@@ -47,13 +47,13 @@ async def _enforce_volume_rate_limit(request: Request, response: Response, accou
         request,
         bucket="volume_ops",
         subject=str(account.id),
-        limit=settings.BOXKITE_IMAGE_BUILD_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_IMAGE_BUILD_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
 
 def _require_volumes_enabled() -> None:
-    if not settings.BOXKITE_VOLUMES_ENABLED:
+    if not settings.BOXXKITE_VOLUMES_ENABLED:
         raise ApiError(404, "not_found", "Independent storage volumes are not enabled on this deployment.")
 
 
@@ -85,7 +85,7 @@ async def _provision_in_background(
         "asynchronous -- returns 202 with status='queued' immediately; "
         "poll GET /v1/volumes/{id} for progress. 429 with "
         "`volume_limit_reached` if this account is already at "
-        "BOXKITE_MAX_VOLUMES_PER_ACCOUNT. 404s if volumes aren't enabled "
+        "BOXXKITE_MAX_VOLUMES_PER_ACCOUNT. 404s if volumes aren't enabled "
         "on this deployment."
     ),
 )
@@ -102,14 +102,14 @@ async def create_volume(
 
     volumes = SandboxVolumeRepository(db)
     active_count = await volumes.count_active_for_account(account.id)
-    if active_count >= settings.BOXKITE_MAX_VOLUMES_PER_ACCOUNT:
+    if active_count >= settings.BOXXKITE_MAX_VOLUMES_PER_ACCOUNT:
         raise LimitExceededError(
             code="volume_limit_reached",
             message=(
-                f"Volume limit reached ({settings.BOXKITE_MAX_VOLUMES_PER_ACCOUNT} at a time). "
+                f"Volume limit reached ({settings.BOXXKITE_MAX_VOLUMES_PER_ACCOUNT} at a time). "
                 "Delete an existing volume before creating another."
             ),
-            details={"limit": settings.BOXKITE_MAX_VOLUMES_PER_ACCOUNT, "active": active_count},
+            details={"limit": settings.BOXXKITE_MAX_VOLUMES_PER_ACCOUNT, "active": active_count},
         )
 
     volume_id = str(uuid4())

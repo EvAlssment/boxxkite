@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.lsp_tools -- the lsp_start/lsp_completion/lsp_stop
+Tests for boxxkite.tools.lsp_tools -- the lsp_start/lsp_completion/lsp_stop
 ToolSpecs and their raw-LSP-item -> agent-readable-item translation.
 
 Mirrors tests/test_node_interpreter_tool.py's pattern: mock SandboxManager,
@@ -13,7 +13,7 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.tools.lsp_tools import (
+from boxxkite.tools.lsp_tools import (
     _simplify_completion_items,
     create_lsp_completion_tool_spec,
     create_lsp_start_tool_spec,

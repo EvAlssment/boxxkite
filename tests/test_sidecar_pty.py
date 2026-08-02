@@ -436,7 +436,7 @@ def test_takeover_tmux_socket_is_unreachable_via_default_tmux_socket_resolution(
     test environment), but it exercises the actual mechanism the fix relies
     on: tmux session visibility is scoped by socket path, not merely by
     UID. That is precisely what confines the takeover session once its
-    socket lives at TAKEOVER_TMUX_SOCKET (/run/boxkite/...) -- a path
+    socket lives at TAKEOVER_TMUX_SOCKET (/run/boxxkite/...) -- a path
     neither deploy/pod-template.yaml nor deploy/docker-compose.yml mounts
     into the sandbox container at all, unlike /tmp (see
     test_takeover_tmux_socket_path_is_outside_every_sandbox_shared_volume

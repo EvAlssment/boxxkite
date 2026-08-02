@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from boxkite.manager import SandboxManager
+from boxxkite.manager import SandboxManager
 
 
 def _compose_manager_with_session(session_id: str = "session-1") -> SandboxManager:
@@ -316,8 +316,8 @@ async def test_recycle_pod_via_k8s_kills_processes_before_configure(monkeypatch)
     being taken away from."""
     manager = SandboxManager()
     manager.WARM_POOL_RECYCLE = True
-    monkeypatch.setattr("boxkite.manager.WARM_POOL_RECYCLE", True)
-    monkeypatch.setattr("boxkite.manager.WARM_POOL_MAX", 100)
+    monkeypatch.setattr("boxxkite.manager.WARM_POOL_RECYCLE", True)
+    monkeypatch.setattr("boxxkite.manager.WARM_POOL_MAX", 100)
 
     call_order = []
 
@@ -357,7 +357,7 @@ async def test_recycle_pod_via_k8s_kills_processes_before_configure(monkeypatch)
     monkeypatch.setattr(manager, "_init_k8s", _fake_init_k8s)
     monkeypatch.setattr(manager, "_auth_headers_for_pod", lambda *_a, **_k: {})
     monkeypatch.setattr(manager, "_ensure_pod_tls_cert_cached", _fake_ensure_pod_tls_cert_cached)
-    monkeypatch.setattr("boxkite.manager.httpx.AsyncClient", _FakeHttpxClient)
+    monkeypatch.setattr("boxxkite.manager.httpx.AsyncClient", _FakeHttpxClient)
 
     recycled = await manager._recycle_pod_via_k8s("sandbox-pod", "10.8.0.80")
 

@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from boxkite import resource_config
+from boxxkite import resource_config
 
 KATA_TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "deploy" / "pod-template-kata.yaml"
 VERIFY_HARNESS_PATH = Path(__file__).resolve().parent.parent / "scripts" / "verify-kata-live.sh"
@@ -122,7 +122,7 @@ def test_kata_template_probes_use_https_scheme():
 
 @pytest.fixture(autouse=True)
 def _clean_kata_env(monkeypatch):
-    monkeypatch.delenv(resource_config.BOXKITE_KATA_RUNTIME_CLASS_ENABLED_ENV, raising=False)
+    monkeypatch.delenv(resource_config.BOXXKITE_KATA_RUNTIME_CLASS_ENABLED_ENV, raising=False)
     monkeypatch.delenv(resource_config.SANDBOX_KATA_RUNTIME_CLASS_NAME_ENV, raising=False)
 
 
@@ -132,13 +132,13 @@ def test_kata_runtime_class_name_is_none_by_default():
 
 
 def test_kata_runtime_class_name_defaults_to_kata_when_enabled(monkeypatch):
-    monkeypatch.setenv(resource_config.BOXKITE_KATA_RUNTIME_CLASS_ENABLED_ENV, "true")
+    monkeypatch.setenv(resource_config.BOXXKITE_KATA_RUNTIME_CLASS_ENABLED_ENV, "true")
     assert resource_config.kata_runtime_class_enabled() is True
     assert resource_config.kata_runtime_class_name() == "kata"
 
 
 def test_kata_runtime_class_name_respects_override(monkeypatch):
-    monkeypatch.setenv(resource_config.BOXKITE_KATA_RUNTIME_CLASS_ENABLED_ENV, "true")
+    monkeypatch.setenv(resource_config.BOXXKITE_KATA_RUNTIME_CLASS_ENABLED_ENV, "true")
     monkeypatch.setenv(resource_config.SANDBOX_KATA_RUNTIME_CLASS_NAME_ENV, "kata-fc")
     assert resource_config.kata_runtime_class_name() == "kata-fc"
 
@@ -147,7 +147,7 @@ def test_manager_py_and_warm_pool_py_reference_kata_runtime_class_name():
     """Regression test for the two pod-spec-building call sites staying in
     sync with the opt-in flag -- both must set runtime_class_name from the
     same resource_config helper, not a hardcoded/independent value."""
-    manager_source = (Path(__file__).resolve().parent.parent / "src" / "boxkite" / "manager.py").read_text()
-    warm_pool_source = (Path(__file__).resolve().parent.parent / "src" / "boxkite" / "warm_pool.py").read_text()
+    manager_source = (Path(__file__).resolve().parent.parent / "src" / "boxxkite" / "manager.py").read_text()
+    warm_pool_source = (Path(__file__).resolve().parent.parent / "src" / "boxxkite" / "warm_pool.py").read_text()
     assert "runtime_class_name=kata_runtime_class_name()" in manager_source
     assert "runtime_class_name=kata_runtime_class_name()" in warm_pool_source

@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -8,14 +8,14 @@ import (
 
 // CreateImageRequest is the request body for CreateImage
 // (POST /v1/images). All fields are optional -- a zero-value
-// CreateImageRequest{} builds an unmodified "boxkite-default" image.
+// CreateImageRequest{} builds an unmodified "boxxkite-default" image.
 type CreateImageRequest struct {
 	// Label is an optional human-readable label for the image.
 	Label *string `json:"label,omitempty"`
-	// Base is one of "boxkite-default", "boxkite-minimal", "boxkite-node",
-	// "boxkite-go". Defaults to "boxkite-default" server-side when empty.
-	// "boxkite-node" drops Python entirely (no PythonPackages installable,
-	// only AptPackages/NpmPackages); "boxkite-go" drops both Python and
+	// Base is one of "boxxkite-default", "boxxkite-minimal", "boxxkite-node",
+	// "boxxkite-go". Defaults to "boxxkite-default" server-side when empty.
+	// "boxxkite-node" drops Python entirely (no PythonPackages installable,
+	// only AptPackages/NpmPackages); "boxxkite-go" drops both Python and
 	// Node entirely (no PythonPackages or NpmPackages installable, only
 	// AptPackages).
 	Base string `json:"base,omitempty"`
@@ -27,7 +27,7 @@ type CreateImageRequest struct {
 	AptPackages []string `json:"apt_packages,omitempty"`
 	// NpmPackages are exact-version-pinned npm packages ("name==version"
 	// or "@scope/name==version", no ranges) to install into the image. Not
-	// supported on Base="boxkite-go".
+	// supported on Base="boxxkite-go".
 	NpmPackages []string `json:"npm_packages,omitempty"`
 }
 
@@ -53,7 +53,7 @@ type Image struct {
 // (POST /v1/images). Always asynchronous -- returns immediately with
 // Status "queued"; poll GetImage for progress. 404s ("feature_disabled")
 // if the deployment hasn't enabled the declarative builder
-// (BOXKITE_IMAGE_BUILDER_ENABLED).
+// (BOXXKITE_IMAGE_BUILDER_ENABLED).
 func (c *Client) CreateImage(ctx context.Context, req CreateImageRequest) (*Image, error) {
 	var out Image
 	if err := c.doJSON(ctx, "POST", "/v1/images", req, &out, nil); err != nil {

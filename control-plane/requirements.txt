@@ -1,7 +1,7 @@
 # Control-plane dependencies.
 #
-# The `boxkite` package itself (SandboxManager/WarmPoolManager) is a local,
-# unpublished sibling package (../src/boxkite) — installed editable from the
+# The `boxxkite` package itself (SandboxManager/WarmPoolManager) is a local,
+# unpublished sibling package (../src/boxxkite) — installed editable from the
 # repo root, not from PyPI. Keep this line first so Docker layer caching still
 # works for the pinned third-party deps below.
 -e ..

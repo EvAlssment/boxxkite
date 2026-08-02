@@ -2,7 +2,7 @@
 (routers/scim.py, Phase 2 of issue #126, docs/ENTERPRISE-SSO-DESIGN.md).
 
 Covers:
-- The route 404s unless BOTH BOXKITE_SCIM_PROVISIONING_ENABLED and
+- The route 404s unless BOTH BOXXKITE_SCIM_PROVISIONING_ENABLED and
   WORKOS_WEBHOOK_SECRET are set (mirrors every other opt-in
   auth/provisioning surface's "simply inactive" contract).
 - WorkOS-Signature verification: a correctly signed request is accepted; a
@@ -66,7 +66,7 @@ def _signature_header(secret: str, body: bytes, *, timestamp_ms: int | None = No
 
 
 def _enable_scim(monkeypatch, secret: str = SCIM_SECRET) -> None:
-    monkeypatch.setattr(settings, "BOXKITE_SCIM_PROVISIONING_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_SCIM_PROVISIONING_ENABLED", True)
     monkeypatch.setattr(settings, "WORKOS_WEBHOOK_SECRET", secret)
 
 
@@ -106,7 +106,7 @@ async def test_scim_webhook_404s_when_disabled(client: httpx.AsyncClient):
 
 
 async def test_scim_webhook_404s_when_only_master_flag_set(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_SCIM_PROVISIONING_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_SCIM_PROVISIONING_ENABLED", True)
     # No WORKOS_WEBHOOK_SECRET configured -- still 404.
     body = _dsync_user_event(event="dsync.user.created", directory_user_id="du_1", email="a@example.com")
     header = _signature_header(SCIM_SECRET, body)
@@ -115,7 +115,7 @@ async def test_scim_webhook_404s_when_only_master_flag_set(client: httpx.AsyncCl
 
 
 def test_scim_provisioning_defaults_off():
-    assert settings.BOXKITE_SCIM_PROVISIONING_ENABLED is False
+    assert settings.BOXXKITE_SCIM_PROVISIONING_ENABLED is False
 
 
 # ── Signature verification ───────────────────────────────────────────────
@@ -364,7 +364,7 @@ async def test_scim_provisioned_account_auto_links_on_first_sso_login(
     client: httpx.AsyncClient, monkeypatch, fake_enterprise_sso_client
 ):
     _enable_scim(monkeypatch)
-    monkeypatch.setattr(settings, "BOXKITE_ENTERPRISE_SSO_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_ENTERPRISE_SSO_ENABLED", True)
     monkeypatch.setattr(settings, "WORKOS_CLIENT_ID", "workos-client-id")
     monkeypatch.setattr(settings, "WORKOS_API_KEY", "workos-api-key")
     monkeypatch.setattr(enterprise_sso, "get_enterprise_sso_client", lambda: fake_enterprise_sso_client)
@@ -424,7 +424,7 @@ async def test_scim_shell_with_different_organization_does_not_auto_link(
     SAME organization SCIM provisioned the shell account under, not email
     alone."""
     _enable_scim(monkeypatch)
-    monkeypatch.setattr(settings, "BOXKITE_ENTERPRISE_SSO_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_ENTERPRISE_SSO_ENABLED", True)
     monkeypatch.setattr(settings, "WORKOS_CLIENT_ID", "workos-client-id")
     monkeypatch.setattr(settings, "WORKOS_API_KEY", "workos-api-key")
     monkeypatch.setattr(enterprise_sso, "get_enterprise_sso_client", lambda: fake_enterprise_sso_client)

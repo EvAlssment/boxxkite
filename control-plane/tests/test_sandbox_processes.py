@@ -316,7 +316,7 @@ async def test_start_process_is_rate_limited_per_account(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE", 3)
+    monkeypatch.setattr(settings, "BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE", 3)
 
     key = await signup_and_get_api_key(client, "proc-rate-limited@example.com")
     session_id = await _create_session(client, key)

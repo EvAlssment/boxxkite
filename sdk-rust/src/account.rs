@@ -10,7 +10,7 @@ use serde::de::{self, Deserializer};
 use serde::{Deserialize, Serialize};
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 use crate::sandboxes::UsageSummary;
 
 /// The account identity for the API key in use (`GET /v1/account`).
@@ -129,27 +129,27 @@ pub struct AllowedCommandsResponse {
 
 impl Client {
     /// `GET /v1/account` -- the account identity for the API key in use.
-    pub async fn account(&self) -> Result<Account, BoxkiteError> {
+    pub async fn account(&self) -> Result<Account, BoxxkiteError> {
         let builder = self.request(Method::GET, "/v1/account");
         self.send(builder).await
     }
 
     /// `GET /v1/usage` -- current usage against this account's fair-use
     /// limits (the same shape returned inline on [`Client::create_sandbox`]).
-    pub async fn usage(&self) -> Result<UsageSummary, BoxkiteError> {
+    pub async fn usage(&self) -> Result<UsageSummary, BoxxkiteError> {
         let builder = self.request(Method::GET, "/v1/usage");
         self.send(builder).await
     }
 
     /// `POST /v1/auth/password-reset/request` -- request a password-reset
-    /// email. Opt-in server-side (`BOXKITE_PASSWORD_RESET_ENABLED`); 404s
+    /// email. Opt-in server-side (`BOXXKITE_PASSWORD_RESET_ENABLED`); 404s
     /// with code `feature_disabled` if the deployment hasn't enabled it.
     /// Always returns the same message whether or not the email is
     /// registered, so it can't be used to enumerate accounts.
     pub async fn request_password_reset(
         &self,
         email: &str,
-    ) -> Result<MessageResponse, BoxkiteError> {
+    ) -> Result<MessageResponse, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             email: &'a str,
@@ -168,7 +168,7 @@ impl Client {
         &self,
         token: &str,
         new_password: &str,
-    ) -> Result<MessageResponse, BoxkiteError> {
+    ) -> Result<MessageResponse, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             token: &'a str,
@@ -184,8 +184,8 @@ impl Client {
     }
 
     /// `POST /v1/auth/verify-email` -- consume a single-use email-verification
-    /// token. Opt-in server-side (`BOXKITE_EMAIL_VERIFICATION_ENABLED`).
-    pub async fn verify_email(&self, token: &str) -> Result<MessageResponse, BoxkiteError> {
+    /// token. Opt-in server-side (`BOXXKITE_EMAIL_VERIFICATION_ENABLED`).
+    pub async fn verify_email(&self, token: &str) -> Result<MessageResponse, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             token: &'a str,
@@ -205,7 +205,7 @@ impl Client {
     pub async fn resend_verification(
         &self,
         access_token: &str,
-    ) -> Result<MessageResponse, BoxkiteError> {
+    ) -> Result<MessageResponse, BoxxkiteError> {
         let builder =
             self.request_with_auth(Method::POST, "/v1/auth/resend-verification", access_token);
         self.send(builder).await
@@ -213,10 +213,10 @@ impl Client {
 
     /// `POST /v1/auth/refresh` -- exchange a still-valid refresh token for a
     /// brand new `access_token` + `refresh_token` pair. Opt-in server-side
-    /// (`BOXKITE_REFRESH_TOKENS_ENABLED`). Revokes the presented token in the
+    /// (`BOXXKITE_REFRESH_TOKENS_ENABLED`). Revokes the presented token in the
     /// same request (rotation, not reuse) -- store the new `refresh_token`
     /// from the response and discard the one presented here.
-    pub async fn refresh_token(&self, refresh_token: &str) -> Result<TokenPair, BoxkiteError> {
+    pub async fn refresh_token(&self, refresh_token: &str) -> Result<TokenPair, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             refresh_token: &'a str,
@@ -228,9 +228,9 @@ impl Client {
     }
 
     /// `POST /v1/auth/logout` -- revoke one refresh token immediately. Opt-in
-    /// server-side (`BOXKITE_REFRESH_TOKENS_ENABLED`). Always succeeds (204)
+    /// server-side (`BOXXKITE_REFRESH_TOKENS_ENABLED`). Always succeeds (204)
     /// whether or not the token was valid -- never leaks which.
-    pub async fn logout(&self, refresh_token: &str) -> Result<(), BoxkiteError> {
+    pub async fn logout(&self, refresh_token: &str) -> Result<(), BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             refresh_token: &'a str,
@@ -244,7 +244,7 @@ impl Client {
     /// `GET /v1/account/allowed-commands` -- the current per-account command
     /// allowlist. An empty `rules` means unrestricted (the default). This
     /// allowlist is an opt-in guardrail, not a sandbox-escape boundary.
-    pub async fn get_allowed_commands(&self) -> Result<AllowedCommandsResponse, BoxkiteError> {
+    pub async fn get_allowed_commands(&self) -> Result<AllowedCommandsResponse, BoxxkiteError> {
         let builder = self.request(Method::GET, "/v1/account/allowed-commands");
         self.send(builder).await
     }
@@ -255,7 +255,7 @@ impl Client {
     pub async fn set_allowed_commands(
         &self,
         rules: Vec<AllowedCommandRule>,
-    ) -> Result<AllowedCommandsResponse, BoxkiteError> {
+    ) -> Result<AllowedCommandsResponse, BoxxkiteError> {
         let body = AllowedCommandsResponse { rules };
         let builder = self
             .request(Method::PUT, "/v1/account/allowed-commands")
@@ -265,7 +265,7 @@ impl Client {
 
     /// `DELETE /v1/account/allowed-commands` -- remove the per-account
     /// command allowlist, back to the unrestricted default.
-    pub async fn clear_allowed_commands(&self) -> Result<(), BoxkiteError> {
+    pub async fn clear_allowed_commands(&self) -> Result<(), BoxxkiteError> {
         let builder = self.request(Method::DELETE, "/v1/account/allowed-commands");
         self.send_no_content(builder).await
     }

@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::{
+use boxxkite_client::{
     ExecOptions, FileOptions, GlobOptions, GrepOptions, LsOptions, StrReplaceOptions, ViewOptions,
 };
 use serde_json::json;

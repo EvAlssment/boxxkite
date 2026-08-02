@@ -487,7 +487,7 @@ def _enable_lsp(monkeypatch, tmp_path):
     test_sidecar_lsp.py defines -- these tests care about the exec-budget
     wiring, not real pyright/typescript-language-server behavior."""
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
-    monkeypatch.setattr(sidecar_main, "BOXKITE_LSP_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_LSP_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: 1)
     monkeypatch.setattr(
         sidecar_main, "build_k8s_exec_command", lambda pid, command: ["sh", "-c", command]

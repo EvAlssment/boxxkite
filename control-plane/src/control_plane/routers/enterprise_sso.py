@@ -40,7 +40,7 @@ router = APIRouter(prefix="/v1/auth/sso", tags=["auth"])
 # /callback. Its own cookie name and `/v1/auth/sso`-scoped `path` keep it
 # independent of social login's cookie, matching the two flows' otherwise-
 # independent state tokens.
-_STATE_NONCE_COOKIE = "boxkite_sso_state_nonce"
+_STATE_NONCE_COOKIE = "boxxkite_sso_state_nonce"
 _STATE_NONCE_COOKIE_PATH = "/v1/auth/sso"
 
 
@@ -68,7 +68,7 @@ def _verify_and_clear_state_nonce(request: Request, response: Response, *, expec
 
 
 def _require_enterprise_sso_enabled() -> None:
-    if not (settings.BOXKITE_ENTERPRISE_SSO_ENABLED and settings.enterprise_sso_configured):
+    if not (settings.BOXXKITE_ENTERPRISE_SSO_ENABLED and settings.enterprise_sso_configured):
         raise ApiError(404, "not_found", "Not found")
 
 

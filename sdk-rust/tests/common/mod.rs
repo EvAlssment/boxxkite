@@ -5,7 +5,7 @@
 
 use std::time::Duration;
 
-use boxkite_client::{Client, RetryConfig};
+use boxxkite_client::{Client, RetryConfig};
 use wiremock::MockServer;
 
 pub const TEST_API_KEY: &str = "bxk_live_test";

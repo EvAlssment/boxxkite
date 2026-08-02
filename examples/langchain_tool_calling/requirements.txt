@@ -1,6 +1,6 @@
-# Install boxkite itself from the repo root first, with the `langchain`
+# Install boxxkite itself from the repo root first, with the `langchain`
 # extra (needed for create_bash_tool()/create_file_create_tool()'s LangChain
-# adapter -- boxkite's tool surface is framework-agnostic by default):
+# adapter -- boxxkite's tool surface is framework-agnostic by default):
 #   pip install -e "../..[langchain]"
 #
 # Then this example's own deps:

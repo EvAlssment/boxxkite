@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"bufio"

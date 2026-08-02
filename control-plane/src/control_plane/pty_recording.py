@@ -56,7 +56,7 @@ structural reasons, not just a wiring gap:
      through that broker at all -- a human can `cat .env`, `echo
      $SOME_TOKEN`, or type a credential directly into a prompt, none of
      which the sidecar's secret-substitution bookkeeping ever sees.
-  Given that, this module reuses `boxkite.tools.bash_tool.sanitize_output`'s
+  Given that, this module reuses `boxxkite.tools.bash_tool.sanitize_output`'s
   SHAPE-based heuristic patterns instead (the same "high false-negative
   rate by design" patterns `bash_tool.py`'s own comments already disclose
   for ordinary command output) -- pattern-matching common credential shapes
@@ -84,7 +84,7 @@ import logging
 import time
 from typing import Protocol
 
-from boxkite.tools.bash_tool import sanitize_output
+from boxxkite.tools.bash_tool import sanitize_output
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ TAKEOVER_RECORDING_STORAGE_PREFIX = "takeover-recordings"
 # than growing unbounded for a takeover session left open for hours.
 TAKEOVER_RECORDING_MAX_BYTES = 8 * 1024 * 1024
 
-_TRUNCATION_NOTICE = "\r\n\x1b[31m[boxkite: recording truncated -- max size reached]\x1b[0m\r\n"
+_TRUNCATION_NOTICE = "\r\n\x1b[31m[boxxkite: recording truncated -- max size reached]\x1b[0m\r\n"
 
 
 def redact_pty_bytes(data: bytes) -> str:
@@ -179,7 +179,7 @@ class PtyRecordingBuffer:
             "height": 24,
             "timestamp": self.started_at_epoch_ms // 1000,
             "env": {"TERM": "xterm-256color", "SHELL": "/bin/bash"},
-            "title": f"boxkite takeover session {session_id}",
+            "title": f"boxxkite takeover session {session_id}",
         }
         lines = [json.dumps(header, separators=(",", ":"))]
         for elapsed, direction, text in self._events:

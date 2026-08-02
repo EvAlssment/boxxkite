@@ -1,4 +1,4 @@
-"""End-to-end walkthrough of boxkite's hosted control-plane API: signup ->
+"""End-to-end walkthrough of boxxkite's hosted control-plane API: signup ->
 create an API key -> create a sandbox session -> exec a command -> read a
 file -> tear the session down.
 
@@ -8,8 +8,8 @@ sits in front of `SandboxManager` and adds accounts, API keys, per-account
 usage/concurrency limits, and session ownership -- see
 `control-plane/src/control_plane/routers/sandboxes.py`.
 
-As the main README says: "there is no publicly running boxkite-hosted
-service to sign up for" -- `boxkite signup` and this script both assume
+As the main README says: "there is no publicly running boxxkite-hosted
+service to sign up for" -- `boxxkite signup` and this script both assume
 *you* have deployed `control-plane/` somewhere (or are running it locally
 for this walkthrough; see README.md in this directory for how).
 

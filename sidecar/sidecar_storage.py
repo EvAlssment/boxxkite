@@ -389,10 +389,10 @@ def build_s3fs_unmount_command(*, mount_path: str) -> list[str]:
 async def mount_bucket(req: main.MountBucketRequest):
     """Fails closed at every layer that isn't reviewed/wired yet -- see
     this section's own module-level docstring for the full list. Even
-    with BOXKITE_FUSE_MOUNT_ENABLED=true, this 501s unless /dev/fuse is
+    with BOXXKITE_FUSE_MOUNT_ENABLED=true, this 501s unless /dev/fuse is
     actually present, which it is not in any reference manifest today.
     """
-    if not main.BOXKITE_FUSE_MOUNT_ENABLED:
+    if not main.BOXXKITE_FUSE_MOUNT_ENABLED:
         raise HTTPException(status_code=404, detail="FUSE bucket mounting is not enabled on this deployment.")
 
     if not os.path.exists(main.FUSE_DEVICE_PATH):

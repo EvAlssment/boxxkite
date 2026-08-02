@@ -11,17 +11,17 @@ Endpoints:
 - POST /interpreter/reset - Kill the persistent interpreter
 - GET /interpreter/status - Report whether the interpreter is running
 - POST /node-interpreter/exec - Same as /interpreter/exec, but for a
-  persistent Node.js process (404s unless BOXKITE_NODE_INTERPRETER_ENABLED)
+  persistent Node.js process (404s unless BOXXKITE_NODE_INTERPRETER_ENABLED)
 - POST /node-interpreter/reset - Kill the persistent Node.js interpreter
 - GET /node-interpreter/status - Report whether it is running
 - POST /lsp/start - Start a persistent language server (pyright for Python,
   typescript-language-server for TypeScript/JS; 404s unless
-  BOXKITE_LSP_ENABLED)
+  BOXXKITE_LSP_ENABLED)
 - POST /lsp/{id}/open - Open or full-document-replace a file on that server
 - POST /lsp/{id}/completion - Request textDocument/completion at a position
 - POST /lsp/{id}/stop - Gracefully shut down the language server
 - POST /browser/navigate - Load a URL in the session's one headless-Chromium
-  page (404s unless BOXKITE_BROWSER_ENABLED); lazily starts the browser
+  page (404s unless BOXXKITE_BROWSER_ENABLED); lazily starts the browser
 - POST /browser/exec - Evaluate a script in the current page's JS context
 - POST /browser/screenshot - Capture the current page as a base64 PNG
 - POST /browser/close - Tear down the browser process (idempotent)
@@ -165,7 +165,7 @@ S3_ENDPOINT = os.environ.get("STORAGE_S3_ENDPOINT") or os.environ.get("S3_ENDPOI
 
 
 def _get_s3_bucket() -> str:
-    return os.environ.get("STORAGE_S3_BUCKET") or os.environ.get("S3_BUCKET", "boxkite-sandbox")
+    return os.environ.get("STORAGE_S3_BUCKET") or os.environ.get("S3_BUCKET", "boxxkite-sandbox")
 
 
 S3_BUCKET = _get_s3_bucket()
@@ -194,7 +194,7 @@ AZURE_STORAGE_AUTH_MODE = (
     or "auto"
 ).strip().lower().replace("-", "_")
 AZURE_STORAGE_CLIENT_ID = os.environ.get("STORAGE_AZURE_CLIENT_ID") or os.environ.get("AZURE_CLIENT_ID", "")
-AZURE_STORAGE_CONTAINER = os.environ.get("STORAGE_AZURE_CONTAINER") or os.environ.get("AZURE_STORAGE_CONTAINER", "boxkite-storage")
+AZURE_STORAGE_CONTAINER = os.environ.get("STORAGE_AZURE_CONTAINER") or os.environ.get("AZURE_STORAGE_CONTAINER", "boxxkite-storage")
 
 # Google Cloud Storage configuration. Auth defaults to Application Default
 # Credentials (covers GKE Workload Identity with no extra config) -- unlike
@@ -221,15 +221,15 @@ SANDBOX_EXEC_NETWORK_ISOLATION_ENABLED = _env_flag(
 # below. New attack surface (a second PTY-allocation path, now reachable
 # from agent-visible tool calls, not just an operator's own WS connection)
 # -- off by default, same "flagged off until a security review" posture as
-# BOXKITE_IMAGE_BUILDER_ENABLED.
-BOXKITE_AGENT_PTY_ENABLED = _env_flag("BOXKITE_AGENT_PTY_ENABLED", "false")
+# BOXXKITE_IMAGE_BUILDER_ENABLED.
+BOXXKITE_AGENT_PTY_ENABLED = _env_flag("BOXXKITE_AGENT_PTY_ENABLED", "false")
 
 # docs/NODE-INTERPRETER-DESIGN.md: a persistent, kept-alive Node.js process
 # per session, the Node.js counterpart to the Python /interpreter/* routes
 # below. New attack surface (a second kept-alive-interpreter code path,
 # distinct from the already-reviewed Python one) -- off by default, same
-# "flagged off until a security review" posture as BOXKITE_AGENT_PTY_ENABLED.
-BOXKITE_NODE_INTERPRETER_ENABLED = _env_flag("BOXKITE_NODE_INTERPRETER_ENABLED", "false")
+# "flagged off until a security review" posture as BOXXKITE_AGENT_PTY_ENABLED.
+BOXXKITE_NODE_INTERPRETER_ENABLED = _env_flag("BOXXKITE_NODE_INTERPRETER_ENABLED", "false")
 
 # docs/LSP-SUPPORT-SCOPING.md, GitHub issue #183: agent-invokable
 # textDocument/completion (plus the handshake methods to get there) against
@@ -237,14 +237,14 @@ BOXKITE_NODE_INTERPRETER_ENABLED = _env_flag("BOXKITE_NODE_INTERPRETER_ENABLED",
 # typescript-language-server for TypeScript/JS). New attack surface (a
 # second family of kept-alive, agent-reachable subprocesses) -- off by
 # default, same "flagged off until a security review" posture as
-# BOXKITE_AGENT_PTY_ENABLED/BOXKITE_NODE_INTERPRETER_ENABLED.
-BOXKITE_LSP_ENABLED = _env_flag("BOXKITE_LSP_ENABLED", "false")
+# BOXXKITE_AGENT_PTY_ENABLED/BOXXKITE_NODE_INTERPRETER_ENABLED.
+BOXXKITE_LSP_ENABLED = _env_flag("BOXXKITE_LSP_ENABLED", "false")
 
 # docs/BROWSER-EXEC-DESIGN.md: headless Chromium (Playwright/CDP) driven by
 # one lazily-started, kept-alive browser process per session
 # (/browser/navigate, /browser/exec, /browser/screenshot, /browser/close --
 # GitHub issue #119). Off by default, same "flagged off until a security
-# review" posture as BOXKITE_AGENT_PTY_ENABLED/BOXKITE_NODE_INTERPRETER_ENABLED
+# review" posture as BOXXKITE_AGENT_PTY_ENABLED/BOXXKITE_NODE_INTERPRETER_ENABLED
 # -- but this one deserves MORE scrutiny than either before ever being turned
 # on for a real multi-tenant deployment (design doc §5): unlike every other
 # egress-needing tool in this file, the browser process resolves DNS and
@@ -252,17 +252,17 @@ BOXKITE_LSP_ENABLED = _env_flag("BOXKITE_LSP_ENABLED", "false")
 # destination check in the path (Chromium *is* the HTTP client here, not a
 # caller going through one this file already instruments). See
 # docs/BROWSER-EXEC-DESIGN.md §3 for the NetworkPolicy shape this requires
-# and src/boxkite/browser_network_policy.py for its implementation.
-BOXKITE_BROWSER_ENABLED = _env_flag("BOXKITE_BROWSER_ENABLED", "false")
+# and src/boxxkite/browser_network_policy.py for its implementation.
+BOXXKITE_BROWSER_ENABLED = _env_flag("BOXXKITE_BROWSER_ENABLED", "false")
 
 # docs/GUI-COMPUTER-USE-SCOPING.md: human-facing GUI/remote-desktop takeover
 # (WS /desktop -- Xvfb + a window manager + x11vnc, GitHub issue #184). Off
 # by default, same "flagged off until a security review" posture as
-# BOXKITE_AGENT_PTY_ENABLED/BOXKITE_BROWSER_ENABLED. This is the human-
+# BOXXKITE_AGENT_PTY_ENABLED/BOXXKITE_BROWSER_ENABLED. This is the human-
 # takeover slice only -- agent-programmatic GUI tool calls are explicitly
 # out of scope, see the scoping doc's own "Deliberately out of scope"
 # section.
-BOXKITE_DESKTOP_ENABLED = _env_flag("BOXKITE_DESKTOP_ENABLED", "false")
+BOXXKITE_DESKTOP_ENABLED = _env_flag("BOXXKITE_DESKTOP_ENABLED", "false")
 
 # docs/EXTERNAL-STORAGE-MOUNTING-DESIGN.md: read-only S3 FUSE bucket
 # mounting. Off by default, and even when true the /mount-bucket route
@@ -270,7 +270,7 @@ BOXKITE_DESKTOP_ENABLED = _env_flag("BOXKITE_DESKTOP_ENABLED", "false")
 # present in this container -- see build_s3fs_mount_command's own
 # docstring for exactly why granting that device access is a separate,
 # not-yet-made decision this flag alone does not make.
-BOXKITE_FUSE_MOUNT_ENABLED = _env_flag("BOXKITE_FUSE_MOUNT_ENABLED", "false")
+BOXXKITE_FUSE_MOUNT_ENABLED = _env_flag("BOXXKITE_FUSE_MOUNT_ENABLED", "false")
 
 # ---------------------------------------------------------------------------
 # Sidecar HTTP API authentication (defense in depth on top of NetworkPolicy).
@@ -283,11 +283,11 @@ BOXKITE_FUSE_MOUNT_ENABLED = _env_flag("BOXKITE_FUSE_MOUNT_ENABLED", "false")
 # a pod share one network namespace.
 #
 # SIDECAR_AUTH_TOKEN is generated fresh per-pod at pod-creation time by
-# SandboxManager/WarmPoolManager (src/boxkite/sidecar_auth.py) — never a
+# SandboxManager/WarmPoolManager (src/boxxkite/sidecar_auth.py) — never a
 # static, repo-wide secret — and injected here as an env var. The manager
 # sends it back on every request via the SIDECAR_AUTH_HEADER header.
 #
-# These two names must stay in sync with src/boxkite/sidecar_auth.py; see
+# These two names must stay in sync with src/boxxkite/sidecar_auth.py; see
 # tests/test_sidecar_auth_parity.py.
 # ---------------------------------------------------------------------------
 SIDECAR_AUTH_TOKEN_ENV = "SIDECAR_AUTH_TOKEN"
@@ -296,7 +296,7 @@ SIDECAR_AUTH_HEADER = "X-Sidecar-Auth-Token"
 # copies that template verbatim (skipping the comment above it) would
 # otherwise get a plausible-looking token that "just works" as a shared,
 # guessable secret across every pod. Must match
-# src/boxkite/sidecar_auth.py's SIDECAR_AUTH_TOKEN_TEMPLATE_PLACEHOLDER (see
+# src/boxxkite/sidecar_auth.py's SIDECAR_AUTH_TOKEN_TEMPLATE_PLACEHOLDER (see
 # tests/test_sidecar_auth_parity.py) and deploy/pod-template.yaml's literal
 # value (see tests/test_pod_template_parity.py).
 SIDECAR_AUTH_TOKEN_TEMPLATE_PLACEHOLDER = "CHANGEME-generate-a-random-per-pod-secret-see-comment-above"
@@ -313,12 +313,12 @@ def _normalize_sidecar_auth_token(raw: str) -> str:
 SIDECAR_AUTH_TOKEN = _normalize_sidecar_auth_token(os.environ.get(SIDECAR_AUTH_TOKEN_ENV, ""))
 
 # ---------------------------------------------------------------------------
-# Manager-to-sidecar TLS (see src/boxkite/tls.py,
+# Manager-to-sidecar TLS (see src/boxxkite/tls.py,
 # docs/SIDECAR-TRANSPORT-TLS-DESIGN.md). Same intentional duplication
 # pattern as SIDECAR_AUTH_TOKEN_ENV/SIDECAR_AUTH_HEADER above: this process
-# doesn't depend on the `boxkite` package, so these names/paths are
+# doesn't depend on the `boxxkite` package, so these names/paths are
 # re-declared as local constants rather than imported. Must stay in sync
-# with src/boxkite/tls.py -- see tests/test_sidecar_tls_parity.py.
+# with src/boxxkite/tls.py -- see tests/test_sidecar_tls_parity.py.
 #
 # SandboxManager/WarmPoolManager generate a fresh, short-lived, self-signed
 # cert/key per pod at pod-creation time and mount it into this container at
@@ -329,7 +329,7 @@ SIDECAR_AUTH_TOKEN = _normalize_sidecar_auth_token(os.environ.get(SIDECAR_AUTH_T
 # left over from a recycled pod).
 # ---------------------------------------------------------------------------
 SIDECAR_TLS_DISABLED_ENV = "SIDECAR_TLS_DISABLED"
-SIDECAR_TLS_MOUNT_PATH = "/etc/boxkite/tls"
+SIDECAR_TLS_MOUNT_PATH = "/etc/boxxkite/tls"
 SIDECAR_TLS_CERT_FILENAME = "tls.crt"
 SIDECAR_TLS_KEY_FILENAME = "tls.key"
 
@@ -656,7 +656,7 @@ async def _record_session_exec_duration_or_raise(duration_seconds: float, source
 #     fix using capabilities the sidecar already holds (root, CAP_SYS_PTRACE
 #     in K8s mode), not new attack surface, but stays configurable in case
 #     an operator's environment makes the /proc scan itself undesirable.
-BACKGROUND_PROCESS_MARKER_ENV = "_BOXKITE_BACKGROUND_PROCESS"
+BACKGROUND_PROCESS_MARKER_ENV = "_BOXXKITE_BACKGROUND_PROCESS"
 BACKGROUND_PROCESS_MARKER_VALUE = "1"
 SANDBOX_PROCESS_STARTUP_SWEEP_ENABLED = os.environ.get(
     "SANDBOX_PROCESS_STARTUP_SWEEP_ENABLED", "true"
@@ -1117,24 +1117,24 @@ async def metrics() -> Response:
     detail, not something to expose to an unauthenticated caller by default.
     """
     lines = [
-        "# HELP boxkite_sidecar_uptime_seconds Seconds since this sidecar process started.",
-        "# TYPE boxkite_sidecar_uptime_seconds gauge",
-        f"boxkite_sidecar_uptime_seconds {_time.monotonic() - _METRICS_START_TIME:.3f}",
-        "# HELP boxkite_sidecar_requests_total Requests handled, by route.",
-        "# TYPE boxkite_sidecar_requests_total counter",
+        "# HELP boxxkite_sidecar_uptime_seconds Seconds since this sidecar process started.",
+        "# TYPE boxxkite_sidecar_uptime_seconds gauge",
+        f"boxxkite_sidecar_uptime_seconds {_time.monotonic() - _METRICS_START_TIME:.3f}",
+        "# HELP boxxkite_sidecar_requests_total Requests handled, by route.",
+        "# TYPE boxxkite_sidecar_requests_total counter",
     ]
     for route, count in sorted(_metrics_request_counts.items()):
-        lines.append(f'boxkite_sidecar_requests_total{{route="{route}"}} {count}')
-    lines.append("# HELP boxkite_sidecar_request_errors_total Requests with a 4xx/5xx response, by route.")
-    lines.append("# TYPE boxkite_sidecar_request_errors_total counter")
+        lines.append(f'boxxkite_sidecar_requests_total{{route="{route}"}} {count}')
+    lines.append("# HELP boxxkite_sidecar_request_errors_total Requests with a 4xx/5xx response, by route.")
+    lines.append("# TYPE boxxkite_sidecar_request_errors_total counter")
     for route, count in sorted(_metrics_request_errors.items()):
-        lines.append(f'boxkite_sidecar_request_errors_total{{route="{route}"}} {count}')
-    lines.append("# HELP boxkite_sidecar_exec_total Commands executed via /exec.")
-    lines.append("# TYPE boxkite_sidecar_exec_total counter")
-    lines.append(f"boxkite_sidecar_exec_total {_metrics_exec_count}")
-    lines.append("# HELP boxkite_sidecar_exec_errors_total /exec calls that returned a non-zero exit code.")
-    lines.append("# TYPE boxkite_sidecar_exec_errors_total counter")
-    lines.append(f"boxkite_sidecar_exec_errors_total {_metrics_exec_errors}")
+        lines.append(f'boxxkite_sidecar_request_errors_total{{route="{route}"}} {count}')
+    lines.append("# HELP boxxkite_sidecar_exec_total Commands executed via /exec.")
+    lines.append("# TYPE boxxkite_sidecar_exec_total counter")
+    lines.append(f"boxxkite_sidecar_exec_total {_metrics_exec_count}")
+    lines.append("# HELP boxxkite_sidecar_exec_errors_total /exec calls that returned a non-zero exit code.")
+    lines.append("# TYPE boxxkite_sidecar_exec_errors_total counter")
+    lines.append(f"boxxkite_sidecar_exec_errors_total {_metrics_exec_errors}")
     return Response(content="\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 

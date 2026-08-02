@@ -1,6 +1,6 @@
 """Tests for wiring outbound-MCP connection grants (GitHub issues #116/#117,
 docs/OUTBOUND-MCP-DESIGN.md §3) into the EXISTING per-session secrets-egress
-NetworkPolicy machinery (issue #74, src/boxkite/secrets_network_policy.py) --
+NetworkPolicy machinery (issue #74, src/boxxkite/secrets_network_policy.py) --
 mechanical reuse only, no parallel NetworkPolicy-building path.
 
 `mcp_connection_grants` has the exact same shape as `secret_grants`
@@ -17,7 +17,7 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.secrets_network_policy import secrets_egress_policy_name
+from boxxkite.secrets_network_policy import secrets_egress_policy_name
 from test_manager import _FakeCoreApi
 from test_manager_secrets_network_policy import _manager_with_fake_networking
 
@@ -178,7 +178,7 @@ async def test_recycled_pod_across_tenants_mcp_grants_are_session_scoped_not_add
     # mocked address would let a real union bug pass this test undetected.
     host_ips = {"mcp.slack.com": "10.10.10.10", "mcp.linear.app": "20.20.20.20"}
     monkeypatch.setattr(
-        "boxkite.secrets_network_policy.default_resolve_host_ips",
+        "boxxkite.secrets_network_policy.default_resolve_host_ips",
         lambda host: [host_ips[host]],
     )
 

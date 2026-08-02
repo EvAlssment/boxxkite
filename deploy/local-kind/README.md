@@ -13,9 +13,9 @@ want to try the sandbox quickly without a Kubernetes cluster.
 
 ## Known limitations
 
-**The `boxkite-sandbox` image cannot be built natively on Apple Silicon / arm64
+**The `boxxkite-sandbox` image cannot be built natively on Apple Silicon / arm64
 hosts.** `./deploy/local-kind/setup.sh` (and `setup.sh reload`) build
-`boxkite-sandbox` from `../sandbox.Dockerfile`, which intentionally `exit 1`s on
+`boxxkite-sandbox` from `../sandbox.Dockerfile`, which intentionally `exit 1`s on
 `arm64` during the Chrome-for-Testing install step
 (`deploy/sandbox.Dockerfile` lines ~112-122 and ~132-138). This is **not a
 bug and not a stale version pin** — it's a deliberate security control, and it
@@ -36,10 +36,10 @@ should not be "fixed" by relaxing it:
   fails the build instead, on purpose.
 
 If you're on an Apple Silicon Mac (or any arm64 host), `setup.sh` will fail
-when it tries to build `boxkite-sandbox`. Workarounds, in order of
+when it tries to build `boxxkite-sandbox`. Workarounds, in order of
 preference:
 
-1. **Build the `boxkite-sandbox` image on an amd64 CI runner or an amd64
+1. **Build the `boxxkite-sandbox` image on an amd64 CI runner or an amd64
    cloud/remote Docker host**, then push it to a registry your kind cluster
    can pull from (`docker buildx build --platform linux/amd64 ...` from that
    amd64 host, `docker push`, then point `setup.sh`/`k8s-resources.yaml` at
@@ -55,7 +55,7 @@ instead.
 
 Once pre-built images are published to GHCR (see the top-level README's
 "Self-hosting" section), this will mostly go away for local-kind users — you
-won't need to build `boxkite-sandbox` locally at all on any architecture.
+won't need to build `boxxkite-sandbox` locally at all on any architecture.
 
 ## Setup
 
@@ -63,8 +63,8 @@ won't need to build `boxkite-sandbox` locally at all on any architecture.
 ./deploy/local-kind/setup.sh
 ```
 
-This creates a `boxkite-dev` kind cluster, builds the `boxkite-sandbox` and
-`boxkite-sidecar` images from `../sandbox.Dockerfile` / `../sidecar.Dockerfile`,
+This creates a `boxxkite-dev` kind cluster, builds the `boxxkite-sandbox` and
+`boxxkite-sidecar` images from `../sandbox.Dockerfile` / `../sidecar.Dockerfile`,
 loads them into the cluster, and applies `k8s-resources.yaml` (ServiceAccount,
 ConfigMap, Secret, RBAC, PriorityClasses).
 
@@ -73,31 +73,31 @@ kind cluster's Docker network aren't reachable directly from the host on macOS,
 so the sandbox package routes sidecar HTTP through the K8s API proxy instead:
 
 ```bash
-kubectl proxy --context kind-boxkite-dev --reject-paths='' &
+kubectl proxy --context kind-boxxkite-dev --reject-paths='' &
 ```
 
 `--reject-paths=''` is required because the default kubectl proxy blocks any URL
 matching `/exec` or `/attach` — the sidecar's `/exec` endpoint URL matches that
 pattern by coincidence.
 
-Then, wherever you're using `boxkite.SandboxManager` (see the top-level README's
+Then, wherever you're using `boxxkite.SandboxManager` (see the top-level README's
 quickstart), set:
 
 ```bash
-export SANDBOX_IMAGE=boxkite-sandbox:local
-export SIDECAR_IMAGE=boxkite-sidecar:local
+export SANDBOX_IMAGE=boxxkite-sandbox:local
+export SIDECAR_IMAGE=boxxkite-sidecar:local
 export SANDBOX_USE_K8S_PROXY=true
 export RUNTIME_MODE=k8s
 ```
 
-Warm pool pods should appear shortly after: `kubectl get pods -l app=sandbox --context kind-boxkite-dev`.
+Warm pool pods should appear shortly after: `kubectl get pods -l app=sandbox --context kind-boxxkite-dev`.
 
 Unlike `../docker-compose.yml`, you do **not** need to generate or set a
 `SIDECAR_AUTH_TOKEN` yourself here — in K8s mode, `SandboxManager`/
 `WarmPoolManager` generate a fresh random secret per pod automatically at
 pod-creation time and both inject it into the sidecar container and record
 it on the pod's own annotation, so the same process (or a different one,
-after a restart) can recover it. See `src/boxkite/sidecar_auth.py` and the
+after a restart) can recover it. See `src/boxxkite/sidecar_auth.py` and the
 top-level README's "Security" section.
 
 ## Reload after code/image changes
@@ -113,7 +113,7 @@ recreating it.
 
 ```bash
 # Should list one or more warm pods once the pool replenishes:
-kubectl get pods -l app=sandbox,pool=warm --context kind-boxkite-dev
+kubectl get pods -l app=sandbox,pool=warm --context kind-boxxkite-dev
 ```
 
 See the top-level README's quickstart for driving `bash_tool`/`file_create`
@@ -157,15 +157,15 @@ production-cluster equivalents.
 `k8s-resources.yaml` above is deliberately a stripped-down, kind-friendly
 subset. For a real cluster (or to smoke-test the production shape locally,
 NetworkPolicy included, on a kind cluster whose CNI actually enforces it),
-`../helm/boxkite/` packages `../rbac.yaml`, `../network-policy.yaml`,
+`../helm/boxxkite/` packages `../rbac.yaml`, `../network-policy.yaml`,
 `../pod-security-policy.yaml`, and the opt-in image-builder RBAC/
 NetworkPolicy as a Helm chart instead of a hand-applied manifest:
 
 ```bash
-helm install boxkite ../helm/boxkite --namespace boxkite --create-namespace
+helm install boxxkite ../helm/boxxkite --namespace boxxkite --create-namespace
 ```
 
-See `../helm/boxkite/README.md` for the full set of values worth reviewing
+See `../helm/boxxkite/README.md` for the full set of values worth reviewing
 before installing (storage egress mode, storage credentials, image-builder
 opt-in). This does not replace `setup.sh` above -- it's the RBAC/
 NetworkPolicy layer only, not the sandbox/sidecar images or a running

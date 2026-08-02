@@ -5,9 +5,9 @@ docker-compose flow (`../raw_api`): accounts, API keys, session ownership,
 and per-account fair-use limits, all in front of the same `SandboxManager`
 the other examples use directly.
 
-As the main README says, boxkite has **no publicly running hosted
+As the main README says, boxxkite has **no publicly running hosted
 service** -- `control-plane/` is something you deploy yourself. This
-example (and `boxkite signup`) work against whatever `CONTROL_PLANE_URL`
+example (and `boxxkite signup`) work against whatever `CONTROL_PLANE_URL`
 you point them at, including a local instance you spin up for this
 walkthrough (below).
 
@@ -27,19 +27,19 @@ walkthrough (below).
 7. `DELETE /v1/sandboxes/{id}` -- tear the session down.
 
 Every `/v1/sandboxes/*` call here is the exact HTTP-level equivalent of
-`boxkite session create` / `boxkite exec` / `boxkite files *` / `boxkite
-session rm` in hosted mode (see `src/boxkite/cli/cmd_session.py`,
+`boxxkite session create` / `boxxkite exec` / `boxxkite files *` / `boxxkite
+session rm` in hosted mode (see `src/boxxkite/cli/cmd_session.py`,
 `cmd_exec.py`, `cmd_files.py`) -- this script just shows the raw requests
 without the CLI wrapper.
 
 ## How this differs from local docker-compose mode
 
-| | Local (`../raw_api`, `boxkite up`) | Hosted (`control-plane/`) |
+| | Local (`../raw_api`, `boxxkite up`) | Hosted (`control-plane/`) |
 |---|---|---|
 | Auth | One shared `SIDECAR_AUTH_TOKEN` | Per-account API keys, dashboard JWT for key management |
 | Sessions | One implicit session (the compose sidecar itself) | Explicit `POST /v1/sandboxes` per session, multiple concurrent sessions per account |
 | Ownership | N/A (single tenant) | Every route scoped to `account.id`; a foreign session_id 404s |
-| Limits | None | `BOXKITE_MAX_CONCURRENT_SANDBOXES`, `BOXKITE_FREE_MONTHLY_SANDBOX_HOURS`, `BOXKITE_MAX_SESSION_MINUTES` reaper |
+| Limits | None | `BOXXKITE_MAX_CONCURRENT_SANDBOXES`, `BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS`, `BOXXKITE_MAX_SESSION_MINUTES` reaper |
 | Runtime | Docker Compose only | Whatever `SandboxManager`'s own `RUNTIME_MODE` is configured for (compose or real K8s) |
 
 ## Running a control-plane locally for this walkthrough
@@ -47,11 +47,11 @@ without the CLI wrapper.
 The control-plane defaults to SQLite for local dev (no separate Postgres
 needed) and reuses `SandboxManager`'s own `RUNTIME_MODE`/`SIDECAR_URL`/
 `SIDECAR_AUTH_TOKEN` env vars -- point it at the same local docker-compose
-sidecar `boxkite up` already starts:
+sidecar `boxxkite up` already starts:
 
 ```bash
 # 1. Start the sandbox runtime the control-plane will delegate to
-boxkite up   # from the repo root
+boxxkite up   # from the repo root
 
 # 2. Set up the control-plane's own venv (from control-plane/)
 cd control-plane
@@ -65,8 +65,8 @@ python3 -m venv .venv
 cp .env.example .env
 sed -i.bak "s/^JWT_SECRET=.*/JWT_SECRET=$(openssl rand -hex 32)/" .env && rm -f .env.bak
 
-# 4. Point it at the sidecar boxkite up started
-export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxkite/local.env | cut -d= -f2)
+# 4. Point it at the sidecar boxxkite up started
+export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxxkite/local.env | cut -d= -f2)
 export RUNTIME_MODE=compose
 export SIDECAR_URL=http://localhost:8080
 set -a; source .env; set +a
@@ -90,7 +90,7 @@ just point `CONTROL_PLANE_URL` at it.
 ## What's verified
 
 This entire flow was run end-to-end for real in this environment: a local
-docker-compose sidecar (`boxkite up`'s underlying compose stack), a local
+docker-compose sidecar (`boxxkite up`'s underlying compose stack), a local
 control-plane instance (SQLite backend, steps above), and `hosted_flow.py`
 against it. Every step succeeded exactly as documented -- signup, API key
 creation, sandbox creation (with a real `usage` block back), exec, file

@@ -1,6 +1,6 @@
 """Tests for SandboxManager's per-session browser-egress NetworkPolicy
 wiring (docs/BROWSER-EXEC-DESIGN.md §3, GitHub issue #119):
-BOXKITE_BROWSER_NETWORK_POLICY_ENABLED gating, provisioning at
+BOXXKITE_BROWSER_NETWORK_POLICY_ENABLED gating, provisioning at
 session-configure time, and teardown at session-end (recycle-to-warm or
 hard delete) so a reused pod never inherits a previous tenant's broad
 browser-egress rule.
@@ -15,8 +15,8 @@ from uuid import uuid4
 import pytest
 from kubernetes_asyncio.client.exceptions import ApiException
 
-from boxkite.manager import SandboxManager
-from boxkite.browser_network_policy import browser_egress_policy_name
+from boxxkite.manager import SandboxManager
+from boxxkite.browser_network_policy import browser_egress_policy_name
 from test_manager import _FakeCoreApi
 
 pytestmark = pytest.mark.pr
@@ -61,7 +61,7 @@ def _manager_with_fake_networking(monkeypatch, *, replace_raises=None) -> tuple[
     # own helper comments -- the flag is read as a bare name inside
     # TlsAuthMixin's methods (_manager_tls_auth.py), which get their own
     # copy of it via that module's own `from ._manager_config import *`.
-    monkeypatch.setattr("boxkite._manager_tls_auth.BOXKITE_BROWSER_NETWORK_POLICY_ENABLED", True)
+    monkeypatch.setattr("boxxkite._manager_tls_auth.BOXXKITE_BROWSER_NETWORK_POLICY_ENABLED", True)
     return manager, fake_networking
 
 
@@ -70,7 +70,7 @@ async def test_sync_is_a_true_noop_when_feature_disabled(monkeypatch):
     """Default-off: this method must not touch K8s at all when the flag is
     unset, not even when browser_enabled=True."""
     manager = SandboxManager()
-    monkeypatch.setattr("boxkite._manager_tls_auth.BOXKITE_BROWSER_NETWORK_POLICY_ENABLED", False)
+    monkeypatch.setattr("boxxkite._manager_tls_auth.BOXXKITE_BROWSER_NETWORK_POLICY_ENABLED", False)
 
     async def _fail_if_called():
         raise AssertionError("_init_k8s must not be called when the feature flag is off")
@@ -83,7 +83,7 @@ async def test_sync_is_a_true_noop_when_feature_disabled(monkeypatch):
 @pytest.mark.asyncio
 async def test_delete_is_a_true_noop_when_feature_disabled(monkeypatch):
     manager = SandboxManager()
-    monkeypatch.setattr("boxkite._manager_tls_auth.BOXKITE_BROWSER_NETWORK_POLICY_ENABLED", False)
+    monkeypatch.setattr("boxxkite._manager_tls_auth.BOXXKITE_BROWSER_NETWORK_POLICY_ENABLED", False)
 
     async def _fail_if_called():
         raise AssertionError("_init_k8s must not be called when the feature flag is off")
@@ -161,7 +161,7 @@ async def test_sync_swallows_replace_error_without_raising(monkeypatch):
 @pytest.mark.asyncio
 async def test_sync_noop_when_networking_api_unavailable(monkeypatch):
     manager = SandboxManager()
-    monkeypatch.setattr("boxkite._manager_tls_auth.BOXKITE_BROWSER_NETWORK_POLICY_ENABLED", True)
+    monkeypatch.setattr("boxxkite._manager_tls_auth.BOXXKITE_BROWSER_NETWORK_POLICY_ENABLED", True)
 
     async def fake_init_k8s():
         manager._k8s_networking_api = None

@@ -54,14 +54,14 @@ WEBHOOK_EVENT_TYPES: tuple[str, ...] = ("sandbox.created", "sandbox.destroyed", 
 
 # `WebhookSubscription.payload_format` values -- see this module's
 # docstring and `build_splunk_hec_payload` below.
-PAYLOAD_FORMAT_BOXKITE_V1 = "boxkite_v1"
+PAYLOAD_FORMAT_BOXXKITE_V1 = "boxxkite_v1"
 PAYLOAD_FORMAT_SPLUNK_HEC = "splunk_hec"
-WEBHOOK_PAYLOAD_FORMATS: tuple[str, ...] = (PAYLOAD_FORMAT_BOXKITE_V1, PAYLOAD_FORMAT_SPLUNK_HEC)
+WEBHOOK_PAYLOAD_FORMATS: tuple[str, ...] = (PAYLOAD_FORMAT_BOXXKITE_V1, PAYLOAD_FORMAT_SPLUNK_HEC)
 
 # Splunk HEC's own field names -- fixed by Splunk's ingestion contract, not
-# a boxkite convention. See docs/WEBHOOKS-DESIGN.md's audit-log-export
+# a boxxkite convention. See docs/WEBHOOKS-DESIGN.md's audit-log-export
 # addendum for the full field mapping this mirrors.
-_SPLUNK_HEC_SOURCE = "boxkite"
+_SPLUNK_HEC_SOURCE = "boxxkite"
 _SPLUNK_HEC_SOURCETYPE = "_json"
 
 # Signed data is "{timestamp}.{body}", not the body alone -- mirrors the
@@ -71,9 +71,9 @@ _SPLUNK_HEC_SOURCETYPE = "_json"
 # timestamp itself. This module only produces the signature; enforcing a
 # freshness window is the receiver's own responsibility, documented in the
 # design doc's verification snippet.
-SIGNATURE_HEADER = "X-Boxkite-Webhook-Signature"
-EVENT_TYPE_HEADER = "X-Boxkite-Webhook-Event"
-DELIVERY_ID_HEADER = "X-Boxkite-Webhook-Id"
+SIGNATURE_HEADER = "X-Boxxkite-Webhook-Signature"
+EVENT_TYPE_HEADER = "X-Boxxkite-Webhook-Event"
+DELIVERY_ID_HEADER = "X-Boxxkite-Webhook-Id"
 
 
 def _utcnow() -> datetime:
@@ -146,7 +146,7 @@ def decrypt_hec_token(subscription) -> str | None:
 
 
 def build_splunk_hec_payload(event_payload: dict[str, Any]) -> dict[str, Any]:
-    """Wraps a boxkite event envelope (`build_event_payload`'s output) in a
+    """Wraps a boxxkite event envelope (`build_event_payload`'s output) in a
     Splunk HTTP Event Collector-shaped body, so a subscription with
     `payload_format="splunk_hec"` can be POSTed directly at a Splunk HEC
     endpoint (`https://<host>:8088/services/collector/event`) with no
@@ -155,13 +155,13 @@ def build_splunk_hec_payload(event_payload: dict[str, Any]) -> dict[str, Any]:
 
     - `time`: HEC's required epoch-seconds field, parsed from the
       envelope's own `created_at` (always present, always UTC).
-    - `host`/`source`: fixed to identify boxkite as the origin, mirroring
-      how every other boxkite-issued credential/header is prefixed for
+    - `host`/`source`: fixed to identify boxxkite as the origin, mirroring
+      how every other boxxkite-issued credential/header is prefixed for
       greppability.
     - `sourcetype`: `_json`, Splunk's built-in JSON-parsing sourcetype --
       correct for this body without requiring the receiver to pre-register
       a custom sourcetype.
-    - `event`: the FULL, unmodified boxkite envelope (`event_id`, `event`,
+    - `event`: the FULL, unmodified boxxkite envelope (`event_id`, `event`,
       `created_at`, `account_id`, `data`) -- nothing is dropped, so a
       receiver gets the exact same fields either payload_format sends, just
       wrapped differently.

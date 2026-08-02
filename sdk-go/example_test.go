@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -73,7 +73,7 @@ func ExampleClient_WithSandbox() {
 	})
 	mux.HandleFunc("POST /v1/sandboxes/{id}/files/view", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"content":"hello from boxkite-client (go)\n","lines":1,"is_directory":false}`)
+		fmt.Fprint(w, `{"content":"hello from boxxkite-client (go)\n","lines":1,"is_directory":false}`)
 	})
 	mux.HandleFunc("DELETE /v1/sandboxes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -89,7 +89,7 @@ func ExampleClient_WithSandbox() {
 		}
 		fmt.Println(strings.TrimSpace(result.Stdout))
 
-		if _, err := sb.FileCreate(ctx, "hello.txt", "hello from boxkite-client (go)\n", nil); err != nil {
+		if _, err := sb.FileCreate(ctx, "hello.txt", "hello from boxxkite-client (go)\n", nil); err != nil {
 			return err
 		}
 		viewed, err := sb.View(ctx, "hello.txt", nil)
@@ -105,5 +105,5 @@ func ExampleClient_WithSandbox() {
 	}
 	// Output:
 	// 2
-	// hello from boxkite-client (go)
+	// hello from boxxkite-client (go)
 }

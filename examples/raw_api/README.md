@@ -1,8 +1,8 @@
-# Raw sidecar HTTP API (no LangChain, no boxkite Python package)
+# Raw sidecar HTTP API (no LangChain, no boxxkite Python package)
 
 For integrating with a different agent framework, or writing your own
 tool-calling layer from scratch. These scripts talk directly to the
-sidecar's HTTP API (`sidecar/main.py`) with no Python `boxkite` package and
+sidecar's HTTP API (`sidecar/main.py`) with no Python `boxxkite` package and
 no LangChain involved at all.
 
 This is the local docker-compose sidecar (single sandbox, one shared
@@ -20,7 +20,7 @@ secret). For the multi-tenant, session-scoped hosted API, see
 ## The routes (as of `sidecar/main.py`)
 
 Every route except `/health` requires the `X-Sidecar-Auth-Token` header
-with the value `boxkite up` generated (or the one you put in `.env`
+with the value `boxxkite up` generated (or the one you put in `.env`
 manually).
 
 | Route | Request body | Response body |
@@ -38,7 +38,7 @@ manually).
 ## Prerequisites
 
 ```bash
-boxkite up   # from the repo root
+boxxkite up   # from the repo root
 ```
 
 ## Run
@@ -53,7 +53,7 @@ python requests_example.py
 ## What's verified
 
 Both scripts were run against a real local docker-compose sidecar started
-with `boxkite up`'s underlying `docker compose -f deploy/docker-compose.yml
+with `boxxkite up`'s underlying `docker compose -f deploy/docker-compose.yml
 up -d --build` in this environment. No LLM is involved in this example, so
 there's no API-key dependency -- this is the one example in this
 directory that was actually exercised end-to-end here, not just

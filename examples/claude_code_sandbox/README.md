@@ -1,7 +1,7 @@
-# Claude Code, headless, inside a boxkite sandbox
+# Claude Code, headless, inside a boxxkite sandbox
 
 Closes the gap `docs/E2B-COMPARISON.md` §4.2 named directly: E2B ships a
-dedicated `claude` sandbox template and docs page; this is boxkite's
+dedicated `claude` sandbox template and docs page; this is boxxkite's
 equivalent quickstart. Full write-up, including why this needs a custom
 image and the security caveat on the API key, lives in
 [`docs/CLAUDE-CODE-SANDBOX-QUICKSTART.md`](../../docs/CLAUDE-CODE-SANDBOX-QUICKSTART.md)
@@ -19,12 +19,12 @@ json --dangerously-skip-permissions`) via `bash_tool` to summarize the repo.
 
 1. Build the Claude-Code-enabled sandbox image:
    ```bash
-   docker build -f ../../deploy/sandbox-claude-code.Dockerfile -t boxkite-sandbox-claude-code ../..
+   docker build -f ../../deploy/sandbox-claude-code.Dockerfile -t boxxkite-sandbox-claude-code ../..
    ```
-2. A running boxkite stack pointed at that image: `SANDBOX_IMAGE=boxkite-sandbox-claude-code
-   boxkite up` (or the equivalent `docker-compose`/Kubernetes env var, see
+2. A running boxxkite stack pointed at that image: `SANDBOX_IMAGE=boxxkite-sandbox-claude-code
+   boxxkite up` (or the equivalent `docker-compose`/Kubernetes env var, see
    `docs/CONFIGURATION.md`).
-3. `pip install -e ../..` (boxkite itself -- no extra needed).
+3. `pip install -e ../..` (boxxkite itself -- no extra needed).
 4. `ANTHROPIC_API_KEY` set in the process running this script (not baked
    into the image -- see the quickstart doc's security note on exactly how
    and why it's passed).
@@ -33,7 +33,7 @@ json --dangerously-skip-permissions`) via `bash_tool` to summarize the repo.
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxkite/local.env | cut -d= -f2)
+export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxxkite/local.env | cut -d= -f2)
 export RUNTIME_MODE=compose
 export SIDECAR_URL=http://localhost:8080
 
@@ -46,7 +46,7 @@ python run_claude_code.py
 environment: `claude --version` reports `2.0.1 (Claude Code)` both during
 the image build and when invoked as the non-root `sandbox` user afterward,
 and `npm`/`npx` were confirmed absent post-build (same hardening posture as
-every other boxkite base image). This script's own tool wiring
+every other boxxkite base image). This script's own tool wiring
 (`create_bash_tool_spec`, `create_git_tool_specs`, the `git_clone` handler's
 parameter names) was verified against a fake sandbox manager -- no import
 errors, no signature mismatches. The end-to-end run against a real sandbox

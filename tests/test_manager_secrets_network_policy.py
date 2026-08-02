@@ -1,5 +1,5 @@
 """Tests for SandboxManager's per-session secrets-egress NetworkPolicy
-wiring (issue #74): BOXKITE_SECRETS_NETWORK_POLICY_ENABLED gating,
+wiring (issue #74): BOXXKITE_SECRETS_NETWORK_POLICY_ENABLED gating,
 provisioning at session-configure time, and teardown at session-end
 (recycle-to-warm or hard delete) so a reused pod never inherits a previous
 tenant's egress rule.
@@ -12,8 +12,8 @@ from uuid import uuid4
 import pytest
 from kubernetes_asyncio.client.exceptions import ApiException
 
-from boxkite.manager import SandboxManager
-from boxkite.secrets_network_policy import secrets_egress_policy_name
+from boxxkite.manager import SandboxManager
+from boxxkite.secrets_network_policy import secrets_egress_policy_name
 from test_manager import _FakeCoreApi
 
 
@@ -55,11 +55,11 @@ def _manager_with_fake_networking(monkeypatch, *, replace_raises=None) -> tuple[
     # The flag is read as a bare name inside TlsAuthMixin's methods, which
     # live in _manager_tls_auth.py and get their own copy of it via that
     # module's own `from ._manager_config import *` -- patching
-    # boxkite.manager's copy (a separate binding from the same mechanical
+    # boxxkite.manager's copy (a separate binding from the same mechanical
     # split) would not be visible there.
-    monkeypatch.setattr("boxkite._manager_tls_auth.BOXKITE_SECRETS_NETWORK_POLICY_ENABLED", True)
+    monkeypatch.setattr("boxxkite._manager_tls_auth.BOXXKITE_SECRETS_NETWORK_POLICY_ENABLED", True)
     monkeypatch.setattr(
-        "boxkite.secrets_network_policy.default_resolve_host_ips",
+        "boxxkite.secrets_network_policy.default_resolve_host_ips",
         lambda host: ["93.184.216.40"],
     )
     return manager, fake_networking
@@ -73,7 +73,7 @@ async def test_sync_is_a_true_noop_when_feature_disabled(monkeypatch):
     """Default-off: this method must not touch K8s at all when the flag is
     unset, not even to check secret_grants."""
     manager = SandboxManager()
-    monkeypatch.setattr("boxkite._manager_tls_auth.BOXKITE_SECRETS_NETWORK_POLICY_ENABLED", False)
+    monkeypatch.setattr("boxxkite._manager_tls_auth.BOXXKITE_SECRETS_NETWORK_POLICY_ENABLED", False)
 
     async def _fail_if_called():
         raise AssertionError("_init_k8s must not be called when the feature flag is off")
@@ -88,7 +88,7 @@ async def test_sync_is_a_true_noop_when_feature_disabled(monkeypatch):
 @pytest.mark.asyncio
 async def test_delete_is_a_true_noop_when_feature_disabled(monkeypatch):
     manager = SandboxManager()
-    monkeypatch.setattr("boxkite._manager_tls_auth.BOXKITE_SECRETS_NETWORK_POLICY_ENABLED", False)
+    monkeypatch.setattr("boxxkite._manager_tls_auth.BOXXKITE_SECRETS_NETWORK_POLICY_ENABLED", False)
 
     async def _fail_if_called():
         raise AssertionError("_init_k8s must not be called when the feature flag is off")
@@ -164,7 +164,7 @@ async def test_sync_swallows_replace_error_without_raising(monkeypatch):
 @pytest.mark.asyncio
 async def test_sync_noop_when_networking_api_unavailable(monkeypatch):
     manager = SandboxManager()
-    monkeypatch.setattr("boxkite._manager_tls_auth.BOXKITE_SECRETS_NETWORK_POLICY_ENABLED", True)
+    monkeypatch.setattr("boxxkite._manager_tls_auth.BOXXKITE_SECRETS_NETWORK_POLICY_ENABLED", True)
 
     async def fake_init_k8s():
         manager._k8s_networking_api = None
@@ -190,8 +190,8 @@ async def test_recycle_pod_via_k8s_deletes_secrets_egress_policy_on_success(monk
     secrets-egress policy must not survive its pod being recycled back to
     the warm pool for a different tenant to claim next."""
     manager = SandboxManager()
-    monkeypatch.setattr("boxkite.manager.WARM_POOL_RECYCLE", True)
-    monkeypatch.setattr("boxkite.manager.WARM_POOL_MAX", 100)
+    monkeypatch.setattr("boxxkite.manager.WARM_POOL_RECYCLE", True)
+    monkeypatch.setattr("boxxkite.manager.WARM_POOL_MAX", 100)
 
     async def fake_init_k8s():
         manager._k8s_core_api = SimpleNamespace(
@@ -230,7 +230,7 @@ async def test_recycle_pod_via_k8s_deletes_secrets_egress_policy_on_success(monk
     monkeypatch.setattr(
         manager, "_delete_secrets_egress_network_policy", fake_delete_secrets_egress_network_policy
     )
-    monkeypatch.setattr("boxkite.manager.httpx.AsyncClient", _FakeHttpxClient)
+    monkeypatch.setattr("boxxkite.manager.httpx.AsyncClient", _FakeHttpxClient)
 
     recycled = await manager._recycle_pod_via_k8s("sandbox-pod-recycle", "10.8.0.80")
 

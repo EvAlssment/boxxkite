@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.audit import NoOpAuditSink, SQLiteAuditSink, safe_call
+from boxxkite.audit import NoOpAuditSink, SQLiteAuditSink, safe_call
 
 
 @pytest.mark.asyncio

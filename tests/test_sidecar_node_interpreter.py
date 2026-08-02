@@ -3,9 +3,9 @@
 Mirrors tests/test_sidecar_interpreter.py's coverage for the Python
 interpreter (see docs/NODE-INTERPRETER-DESIGN.md), plus the
 enabled/disabled gating tests tests/test_sidecar_pty_exec.py uses for
-BOXKITE_AGENT_PTY_ENABLED -- this feature is gated the same way:
+BOXXKITE_AGENT_PTY_ENABLED -- this feature is gated the same way:
 
-- 404 when BOXKITE_NODE_INTERPRETER_ENABLED is off (the default).
+- 404 when BOXXKITE_NODE_INTERPRETER_ENABLED is off (the default).
 - Requires the same sidecar auth as every other route once enabled.
 - State (variables/functions) persists across separate calls.
 - stdout and the last expression's value (via util.inspect) are returned.
@@ -37,7 +37,7 @@ def _auth_headers() -> dict:
 
 def _enable(monkeypatch):
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", "the-real-secret")
-    monkeypatch.setattr(sidecar_main, "BOXKITE_NODE_INTERPRETER_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_NODE_INTERPRETER_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: 1)
     monkeypatch.setattr(
         sidecar_main, "build_k8s_exec_command", lambda pid, command: ["sh", "-c", command]
@@ -299,7 +299,7 @@ def test_spawn_node_interpreter_fails_when_sandbox_process_is_missing(monkeypatc
     """K8s mode: if get_sandbox_pid() can't find the sandbox process,
     /node-interpreter/exec must fail loudly (502), not hang or silently no-op."""
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", "the-real-secret")
-    monkeypatch.setattr(sidecar_main, "BOXKITE_NODE_INTERPRETER_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_NODE_INTERPRETER_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: None)
 
     with TestClient(sidecar_main.app) as client:

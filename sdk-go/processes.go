@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"bufio"
@@ -182,7 +182,7 @@ func (s *ProcessStream) Next() bool {
 			joined := strings.Join(dataLines, "\n")
 			var ev ProcessStreamEvent
 			if err := json.Unmarshal([]byte(joined), &ev); err != nil {
-				s.err = fmt.Errorf("boxkite: decoding SSE event: %w", err)
+				s.err = fmt.Errorf("boxxkite: decoding SSE event: %w", err)
 				return false
 			}
 			s.current = ev

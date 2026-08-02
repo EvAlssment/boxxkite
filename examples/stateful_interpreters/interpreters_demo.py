@@ -1,10 +1,10 @@
-"""Demonstrates boxkite's two persistent, kept-alive interpreter tools --
+"""Demonstrates boxxkite's two persistent, kept-alive interpreter tools --
 `python_interpreter` (always on) and `node_interpreter` (opt-in) -- side by
 side, against a real sandbox pod.
 
 No LangChain/LangGraph and no LLM in the loop, same style as `../raw_api`
 and `../hosted_control_plane`: this calls each tool's framework-agnostic
-`ToolSpec.handler` directly (see `boxkite.tools.create_sandbox_tool_specs`)
+`ToolSpec.handler` directly (see `boxxkite.tools.create_sandbox_tool_specs`)
 rather than routing through an agent's reasoning loop, because the point
 here is the *statefulness* itself, not tool-calling plumbing already shown
 by the other examples.
@@ -18,19 +18,19 @@ session itself is torn down. See docs/NODE-INTERPRETER-DESIGN.md and
 python_interpreter_tool.py's own docstring for the full design.
 
 Prerequisites:
-  - `boxkite up` running (docker-compose sidecar reachable at localhost:8080),
-    with the token it wrote to ~/.boxkite/local.env.
+  - `boxxkite up` running (docker-compose sidecar reachable at localhost:8080),
+    with the token it wrote to ~/.boxxkite/local.env.
   - To see node_interpreter actually run (rather than the "disabled"
     message this script prints instead of failing): the sidecar process
-    also needs BOXKITE_NODE_INTERPRETER_ENABLED=true set in its own
-    environment before `boxkite up` -- this is new, off-by-default attack
+    also needs BOXXKITE_NODE_INTERPRETER_ENABLED=true set in its own
+    environment before `boxxkite up` -- this is new, off-by-default attack
     surface (see docs/NODE-INTERPRETER-DESIGN.md), not something this
     example script can turn on for you from the outside.
-  - `pip install -r requirements.txt` (this repo's `boxkite` package only --
+  - `pip install -r requirements.txt` (this repo's `boxxkite` package only --
     no agent framework, no LLM API key needed).
 
 Run:
-    export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxkite/local.env | cut -d= -f2)
+    export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxxkite/local.env | cut -d= -f2)
     export RUNTIME_MODE=compose SIDECAR_URL=http://localhost:8080
     python interpreters_demo.py
 """
@@ -40,8 +40,8 @@ from __future__ import annotations
 import asyncio
 from uuid import uuid4
 
-from boxkite import SandboxManager
-from boxkite.tools import create_sandbox_tool_specs
+from boxxkite import SandboxManager
+from boxxkite.tools import create_sandbox_tool_specs
 
 # The sidecar 404s every /node-interpreter/* route unless this env var is
 # set on it -- when that happens, node_interpreter_exec() raises here. This
@@ -83,7 +83,7 @@ async def _demo_node_interpreter(specs: list) -> None:
     if _NODE_INTERPRETER_DISABLED_MARKER in first and "Error" in first:
         print(
             f"node_interpreter call failed: {first}\n"
-            "This almost always means BOXKITE_NODE_INTERPRETER_ENABLED=true "
+            "This almost always means BOXXKITE_NODE_INTERPRETER_ENABLED=true "
             "isn't set on the sidecar process itself -- see this file's "
             "module docstring. Skipping the rest of the Node demo.\n"
         )
@@ -100,7 +100,7 @@ async def _demo_node_interpreter(specs: list) -> None:
     print("Confirmed: `orders` from call 1 was still there in call 2.\n")
 
     print("Re-declaring `const orders` in a THIRD call is a real JS error, ")
-    print("not a boxkite bug -- same as typing the same `const` twice into ")
+    print("not a boxxkite bug -- same as typing the same `const` twice into ")
     print("a real Node REPL:")
     redeclare = await spec.handler(code="const orders = [];")
     print(f"call 3 (`const orders = [];` again) -> {redeclare}\n")
@@ -120,7 +120,7 @@ async def main() -> None:
             organization_id=organization_id,
             session_id=session_id,
             # Off by default at two layers (this factory flag, AND the
-            # sidecar's own BOXKITE_NODE_INTERPRETER_ENABLED env var) -- see
+            # sidecar's own BOXXKITE_NODE_INTERPRETER_ENABLED env var) -- see
             # create_sandbox_tool_specs's enable_node_interpreter docstring.
             enable_node_interpreter=True,
         )

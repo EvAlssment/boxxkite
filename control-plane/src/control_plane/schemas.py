@@ -11,7 +11,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
-from boxkite.manager import REQUEST_TIMEOUT as _MANAGER_SIDECAR_REQUEST_TIMEOUT
+from boxxkite.manager import REQUEST_TIMEOUT as _MANAGER_SIDECAR_REQUEST_TIMEOUT
 
 # SandboxManager's HTTP client to the sidecar (REQUEST_TIMEOUT) applies to
 # every call, including /exec. An exec `timeout` above that ceiling would
@@ -58,7 +58,7 @@ class AccountOut(BaseModel):
         description=(
             "Set once the account has confirmed its email via POST /v1/auth/verify-email. "
             "NULL for every account created before email verification existed, and for any "
-            "account created while BOXKITE_EMAIL_VERIFICATION_ENABLED is false. Informational "
+            "account created while BOXXKITE_EMAIL_VERIFICATION_ENABLED is false. Informational "
             "only today -- no route currently requires this to be set."
         ),
     )
@@ -78,7 +78,7 @@ class AccountLinkStartResponse(BaseModel):
 
 
 class AllowedCommandRule(BaseModel):
-    """One constrained allowlist entry -- see boxkite.command_whitelist's
+    """One constrained allowlist entry -- see boxxkite.command_whitelist's
     module docstring for the full semantics (args_allow/args_deny are
     Python regexes matched against the joined argument string)."""
 
@@ -92,7 +92,7 @@ class AllowedCommandsRequest(BaseModel):
 
     Each entry is either a plain command-name string (unconstrained) or an
     AllowedCommandRule (command name plus optional arg regexes) -- the same
-    format boxkite.command_whitelist.validate_command_whitelist already
+    format boxxkite.command_whitelist.validate_command_whitelist already
     accepts. An empty list clears the account back to unrestricted -- use
     DELETE for that instead, this is rejected to avoid an easy-to-miss no-op
     PUT (see routers/account.py).
@@ -111,7 +111,7 @@ class TokenResponse(BaseModel):
     This token authenticates as a *user*, not an API key — it is never
     accepted by the /v1/sandboxes routes, which require an API key (see
     deps.py). `refresh_token` is only populated when
-    `BOXKITE_REFRESH_TOKENS_ENABLED` is true (see routers/auth.py) --
+    `BOXXKITE_REFRESH_TOKENS_ENABLED` is true (see routers/auth.py) --
     otherwise it's null and the caller must re-authenticate via
     /v1/auth/login once `access_token` expires, same as before issue #79.
     """
@@ -124,7 +124,7 @@ class TokenResponse(BaseModel):
         description=(
             "Opt-in, long-lived rotating credential -- exchange it via POST /v1/auth/refresh "
             "for a new access_token + refresh_token pair. Null unless "
-            "BOXKITE_REFRESH_TOKENS_ENABLED is true."
+            "BOXXKITE_REFRESH_TOKENS_ENABLED is true."
         ),
     )
     account: AccountOut
@@ -213,7 +213,7 @@ class SandboxCreateRequest(BaseModel):
         default="small",
         description=(
             "Sandbox CPU/memory size preset. Capped per-account by "
-            "BOXKITE_MAX_SANDBOX_SIZE -- requesting a larger size than the "
+            "BOXXKITE_MAX_SANDBOX_SIZE -- requesting a larger size than the "
             "account is allowed returns a 429."
         ),
     )
@@ -221,7 +221,7 @@ class SandboxCreateRequest(BaseModel):
         default=None,
         description=(
             "Optional override for the workspace/uploads/outputs/skills volume "
-            "size limit (Gi), capped by BOXKITE_MAX_SANDBOX_STORAGE_GB."
+            "size limit (Gi), capped by BOXXKITE_MAX_SANDBOX_STORAGE_GB."
         ),
     )
     lifetime_minutes: int | None = Field(
@@ -296,10 +296,10 @@ class SandboxCreateRequest(BaseModel):
             "Opt-in, experimental (docs/GPU-SUPPORT-SCOPING.md) -- requests "
             "this many GPUs as a Kubernetes extended-resource limit on the "
             "sandbox container. 422s (gpu_support_disabled) unless the "
-            "deployment has BOXKITE_GPU_ENABLED set and a GPU-equipped node "
+            "deployment has BOXXKITE_GPU_ENABLED set and a GPU-equipped node "
             "pool with a device plugin provisioned; not verified against "
             "real GPU hardware in this codebase. Bounded by "
-            "BOXKITE_MAX_GPU_COUNT_PER_SESSION."
+            "BOXXKITE_MAX_GPU_COUNT_PER_SESSION."
         ),
     )
 
@@ -338,7 +338,7 @@ class SandboxSessionOut(BaseModel):
     created_at: datetime
     destroyed_at: datetime | None = None
     expires_at: datetime = Field(
-        description="created_at + BOXKITE_MAX_SESSION_MINUTES; the reaper destroys the session at this point."
+        description="created_at + BOXXKITE_MAX_SESSION_MINUTES; the reaper destroys the session at this point."
     )
     connect: SandboxConnectInfo | None = None
 
@@ -772,7 +772,7 @@ class ExecLogEntryOut(BaseModel):
             "or null for legacy rows written before hash-chaining was added. "
             "Exposed so an external auditor can independently verify an exported "
             "copy of these entries without trusting this service's own "
-            "verification of itself -- see boxkite.audit.verify_chain_rows."
+            "verification of itself -- see boxxkite.audit.verify_chain_rows."
         ),
     )
     prev_hash: str | None = Field(
@@ -872,19 +872,19 @@ class SnapshotCreatedResponse(SnapshotOut):
 # `value` is write-only: accepted on create, never returned by any route
 # below (list/get/the create response itself all omit it). See §3 of the
 # design doc.
-BOXKITE_SECRET_NAME_MAX_LENGTH = 200
-BOXKITE_SECRET_VALUE_MAX_LENGTH = 65536
+BOXXKITE_SECRET_NAME_MAX_LENGTH = 200
+BOXXKITE_SECRET_VALUE_MAX_LENGTH = 65536
 
 
 class SecretCreateRequest(BaseModel):
     name: str = Field(
         min_length=1,
-        max_length=BOXKITE_SECRET_NAME_MAX_LENGTH,
+        max_length=BOXXKITE_SECRET_NAME_MAX_LENGTH,
         description="Unique (per-account) name used to reference this secret from secret_names and {{secret:name}}.",
     )
     value: str = Field(
         min_length=1,
-        max_length=BOXKITE_SECRET_VALUE_MAX_LENGTH,
+        max_length=BOXXKITE_SECRET_VALUE_MAX_LENGTH,
         description="The real credential value. Write-only -- never returned by any route.",
     )
     allowed_hosts: list[str] = Field(
@@ -940,7 +940,7 @@ class SecretCreatedResponse(SecretOut):
 # named row a session can request access to by label (SandboxCreateRequest.
 # mcp_connection_names, mirroring secret_names exactly). The destination
 # host is never caller-supplied -- catalog_id must resolve against the
-# curated allowlist in config.py's BOXKITE_MCP_CATALOG (see mcp_catalog.py).
+# curated allowlist in config.py's BOXXKITE_MCP_CATALOG (see mcp_catalog.py).
 #
 # Scope note: this pass wires the resolved catalog host into the existing
 # per-session NetworkPolicy egress allowlist only (issue #74's mechanism,
@@ -948,7 +948,7 @@ class SecretCreatedResponse(SecretOut):
 # third-party OAuth credential handling yet (both explicitly flagged as
 # needing their own follow-on design pass in docs/OUTBOUND-MCP-DESIGN.md
 # §6/§7), so this model deliberately has no credential field of any kind.
-BOXKITE_MCP_CONNECTION_LABEL_MAX_LENGTH = 200
+BOXXKITE_MCP_CONNECTION_LABEL_MAX_LENGTH = 200
 
 McpCatalogId = Literal["slack", "notion", "linear", "github"]
 
@@ -956,14 +956,14 @@ McpCatalogId = Literal["slack", "notion", "linear", "github"]
 class McpConnectionCreateRequest(BaseModel):
     label: str = Field(
         min_length=1,
-        max_length=BOXKITE_MCP_CONNECTION_LABEL_MAX_LENGTH,
+        max_length=BOXXKITE_MCP_CONNECTION_LABEL_MAX_LENGTH,
         description="Unique (per-account) name used to reference this connection from mcp_connection_names.",
     )
     catalog_id: McpCatalogId = Field(
         description=(
             "Which curated MCP catalog entry (GitHub issue #117) this "
-            "connection grants network egress to. Restricted to boxkite's "
-            "own reviewed allowlist (config.py's BOXKITE_MCP_CATALOG) -- "
+            "connection grants network egress to. Restricted to boxxkite's "
+            "own reviewed allowlist (config.py's BOXXKITE_MCP_CATALOG) -- "
             "never a caller-supplied hostname."
         )
     )
@@ -992,8 +992,8 @@ class McpConnectionCreatedResponse(McpConnectionOut):
 # Distinct from Secrets above: this is push (the control plane calls a URL
 # the caller registered), not pull (an agent's own request). See
 # docs/WEBHOOKS-DESIGN.md's "vs. AuditSink" section for the full contrast.
-BOXKITE_WEBHOOK_DESCRIPTION_MAX_LENGTH = 200
-BOXKITE_WEBHOOK_URL_MAX_LENGTH = 2048
+BOXXKITE_WEBHOOK_DESCRIPTION_MAX_LENGTH = 200
+BOXXKITE_WEBHOOK_URL_MAX_LENGTH = 2048
 
 # Literal kept in lockstep with webhooks.WEBHOOK_EVENT_TYPES -- see that
 # module's module docstring. "audit_log.entry" added per GitHub issue #125
@@ -1001,18 +1001,18 @@ BOXKITE_WEBHOOK_URL_MAX_LENGTH = 2048
 WebhookEventType = Literal["sandbox.created", "sandbox.destroyed", "audit_log.entry"]
 
 # Literal kept in lockstep with webhooks.WEBHOOK_PAYLOAD_FORMATS.
-# "boxkite_v1" is this API's own envelope (default, unchanged from the
+# "boxxkite_v1" is this API's own envelope (default, unchanged from the
 # original design); "splunk_hec" wraps that same envelope in a Splunk HTTP
 # Event Collector-shaped body -- see webhooks.build_splunk_hec_payload.
-WebhookPayloadFormat = Literal["boxkite_v1", "splunk_hec"]
+WebhookPayloadFormat = Literal["boxxkite_v1", "splunk_hec"]
 
-BOXKITE_WEBHOOK_HEC_TOKEN_MAX_LENGTH = 500
+BOXXKITE_WEBHOOK_HEC_TOKEN_MAX_LENGTH = 500
 
 
 class WebhookCreateRequest(BaseModel):
     url: str = Field(
         min_length=1,
-        max_length=BOXKITE_WEBHOOK_URL_MAX_LENGTH,
+        max_length=BOXXKITE_WEBHOOK_URL_MAX_LENGTH,
         description="HTTPS (or HTTP, for local testing) URL the control plane will POST events to.",
     )
     event_types: list[WebhookEventType] = Field(
@@ -1021,13 +1021,13 @@ class WebhookCreateRequest(BaseModel):
     )
     description: str | None = Field(
         default=None,
-        max_length=BOXKITE_WEBHOOK_DESCRIPTION_MAX_LENGTH,
+        max_length=BOXXKITE_WEBHOOK_DESCRIPTION_MAX_LENGTH,
         description="Optional caller-supplied label for this subscription (e.g. 'Slack notifier').",
     )
     payload_format: WebhookPayloadFormat = Field(
-        default="boxkite_v1",
+        default="boxxkite_v1",
         description=(
-            "Body shape for deliveries to this subscription. 'boxkite_v1' "
+            "Body shape for deliveries to this subscription. 'boxxkite_v1' "
             "(default) is this API's own JSON envelope. 'splunk_hec' wraps "
             "the same envelope in a Splunk HTTP Event Collector-shaped body "
             "so it can be POSTed directly at a Splunk HEC endpoint -- see "
@@ -1036,7 +1036,7 @@ class WebhookCreateRequest(BaseModel):
     )
     hec_token: str | None = Field(
         default=None,
-        max_length=BOXKITE_WEBHOOK_HEC_TOKEN_MAX_LENGTH,
+        max_length=BOXXKITE_WEBHOOK_HEC_TOKEN_MAX_LENGTH,
         description=(
             "Optional Splunk HEC token for the destination endpoint, sent "
             "as 'Authorization: Splunk <token>' on every delivery when set. "
@@ -1080,7 +1080,7 @@ class WebhookOut(BaseModel):
     event_types: list[str]
     description: str | None = None
     is_active: bool
-    payload_format: str = "boxkite_v1"
+    payload_format: str = "boxxkite_v1"
     created_at: datetime
     last_triggered_at: datetime | None = None
 
@@ -1089,7 +1089,7 @@ class WebhookCreatedResponse(WebhookOut):
     secret: str = Field(
         description=(
             "The raw signing secret, shown exactly once. Use it to verify "
-            "the X-Boxkite-Webhook-Signature header on every delivery -- "
+            "the X-Boxxkite-Webhook-Signature header on every delivery -- "
             "it cannot be retrieved again after this response; register a "
             "new subscription if it's lost."
         )
@@ -1169,35 +1169,35 @@ def _validate_npm_pinned_packages(packages: list[str]) -> list[str]:
 class SandboxImageBuildRequest(BaseModel):
     label: str | None = Field(default=None, max_length=200, description="Caller-supplied label for reference.")
     base: Literal[
-        "boxkite-default", "boxkite-minimal", "boxkite-node", "boxkite-go", "boxkite-nextjs", "boxkite-rust"
+        "boxxkite-default", "boxxkite-minimal", "boxxkite-node", "boxxkite-go", "boxxkite-nextjs", "boxxkite-rust"
     ] = Field(
-        default="boxkite-default",
+        default="boxxkite-default",
         description=(
             "Pre-approved base image. Each legal value is itself a "
-            "separate, boxkite-maintained hardened image (see "
+            "separate, boxxkite-maintained hardened image (see "
             "deploy/sandbox.Dockerfile, deploy/sandbox-minimal.Dockerfile, "
             "deploy/sandbox-node.Dockerfile, deploy/sandbox-go.Dockerfile, "
             "deploy/sandbox-nextjs.Dockerfile, and deploy/sandbox-rust.Dockerfile) "
-            "-- 'boxkite-default' is the full data-science/document/browser "
-            "stack, 'boxkite-minimal' is a lean python+node base with none of "
-            "that preinstalled, 'boxkite-node' drops Python entirely for "
+            "-- 'boxxkite-default' is the full data-science/document/browser "
+            "stack, 'boxxkite-minimal' is a lean python+node base with none of "
+            "that preinstalled, 'boxxkite-node' drops Python entirely for "
             "callers whose workload is purely JS/TS (no python_packages are "
             "installable on this base -- only apt_packages/npm_packages), "
-            "'boxkite-go' drops both Python and Node entirely for callers "
+            "'boxxkite-go' drops both Python and Node entirely for callers "
             "whose workload is purely Go (no python_packages or npm_packages "
             "are installable on this base -- only apt_packages), "
-            "'boxkite-nextjs' is 'boxkite-node' plus a pre-installed, "
+            "'boxxkite-nextjs' is 'boxxkite-node' plus a pre-installed, "
             "dependency-resolved Next.js (App Router) starter vendored at "
             "/opt/nextjs-template (copy it into /workspace to start from it "
             "-- see deploy/sandbox-nextjs.Dockerfile) -- same Python-free "
-            "restriction as 'boxkite-node' (no python_packages), since it is "
-            "the same Node-only runtime underneath, and 'boxkite-rust' drops "
+            "restriction as 'boxxkite-node' (no python_packages), since it is "
+            "the same Node-only runtime underneath, and 'boxxkite-rust' drops "
             "both Python and Node entirely for callers whose workload is "
             "purely Rust (no python_packages or npm_packages are installable "
             "on this base -- only apt_packages), for a genuinely smaller "
             "footprint than carrying an unused runtime. "
             "NOT a free-form image reference: a caller can never supply an "
-            "arbitrary base OS unrelated to boxkite's own hardening work."
+            "arbitrary base OS unrelated to boxxkite's own hardening work."
         ),
     )
     python_packages: list[str] = Field(
@@ -1234,59 +1234,59 @@ class SandboxImageBuildRequest(BaseModel):
 
     @model_validator(mode="after")
     def _no_python_packages_on_node_only_bases(self) -> "SandboxImageBuildRequest":
-        # 'boxkite-node' (deploy/sandbox-node.Dockerfile) and 'boxkite-nextjs'
+        # 'boxxkite-node' (deploy/sandbox-node.Dockerfile) and 'boxxkite-nextjs'
         # (deploy/sandbox-nextjs.Dockerfile -- the same Node-only runtime,
         # plus a pre-installed Next.js starter) have no Python interpreter
         # at all -- `apk add py3.11-pip` would silently pull python-3.11 back
         # in as a transitive apk dependency, quietly defeating the whole
         # point of a Python-free base rather than failing loudly. Reject at
         # the API boundary instead.
-        if self.base in ("boxkite-node", "boxkite-nextjs") and self.python_packages:
+        if self.base in ("boxxkite-node", "boxxkite-nextjs") and self.python_packages:
             raise ValueError(
                 f"python_packages is not supported on base={self.base!r} (no Python interpreter "
-                "on this base) -- use 'boxkite-minimal' or 'boxkite-default' if you need pip packages"
+                "on this base) -- use 'boxxkite-minimal' or 'boxxkite-default' if you need pip packages"
             )
         return self
 
     @model_validator(mode="after")
     def _no_python_or_npm_packages_on_go_base(self) -> "SandboxImageBuildRequest":
-        # 'boxkite-go' (deploy/sandbox-go.Dockerfile) has neither a Python
+        # 'boxxkite-go' (deploy/sandbox-go.Dockerfile) has neither a Python
         # interpreter nor a Node runtime -- same reasoning as
         # _no_python_packages_on_node_base above, but for both runtimes at
         # once: `apk add py3.11-pip` or `apk add npm` would silently pull
         # python/node back in as transitive apk dependencies, quietly
         # defeating the whole point of a lean Go-only base rather than
         # failing loudly. Reject at the API boundary instead.
-        if self.base == "boxkite-go" and self.python_packages:
+        if self.base == "boxxkite-go" and self.python_packages:
             raise ValueError(
-                "python_packages is not supported on base='boxkite-go' (no Python interpreter "
-                "on this base) -- use 'boxkite-minimal' or 'boxkite-default' if you need pip packages"
+                "python_packages is not supported on base='boxxkite-go' (no Python interpreter "
+                "on this base) -- use 'boxxkite-minimal' or 'boxxkite-default' if you need pip packages"
             )
-        if self.base == "boxkite-go" and self.npm_packages:
+        if self.base == "boxxkite-go" and self.npm_packages:
             raise ValueError(
-                "npm_packages is not supported on base='boxkite-go' (no Node runtime on this base) "
-                "-- use 'boxkite-minimal' or 'boxkite-node' if you need npm packages"
+                "npm_packages is not supported on base='boxxkite-go' (no Node runtime on this base) "
+                "-- use 'boxxkite-minimal' or 'boxxkite-node' if you need npm packages"
             )
         return self
 
     @model_validator(mode="after")
     def _no_python_or_npm_packages_on_rust_base(self) -> "SandboxImageBuildRequest":
-        # 'boxkite-rust' (deploy/sandbox-rust.Dockerfile) has neither a
+        # 'boxxkite-rust' (deploy/sandbox-rust.Dockerfile) has neither a
         # Python interpreter nor a Node runtime -- identical reasoning to
         # _no_python_or_npm_packages_on_go_base above, for the same two
         # runtimes: `apk add py3.11-pip` or `apk add npm` would silently
         # pull python/node back in as transitive apk dependencies, quietly
         # defeating the whole point of a lean Rust-only base rather than
         # failing loudly. Reject at the API boundary instead.
-        if self.base == "boxkite-rust" and self.python_packages:
+        if self.base == "boxxkite-rust" and self.python_packages:
             raise ValueError(
-                "python_packages is not supported on base='boxkite-rust' (no Python interpreter "
-                "on this base) -- use 'boxkite-minimal' or 'boxkite-default' if you need pip packages"
+                "python_packages is not supported on base='boxxkite-rust' (no Python interpreter "
+                "on this base) -- use 'boxxkite-minimal' or 'boxxkite-default' if you need pip packages"
             )
-        if self.base == "boxkite-rust" and self.npm_packages:
+        if self.base == "boxxkite-rust" and self.npm_packages:
             raise ValueError(
-                "npm_packages is not supported on base='boxkite-rust' (no Node runtime on this base) "
-                "-- use 'boxkite-minimal' or 'boxkite-node' if you need npm packages"
+                "npm_packages is not supported on base='boxxkite-rust' (no Node runtime on this base) "
+                "-- use 'boxxkite-minimal' or 'boxxkite-node' if you need npm packages"
             )
         return self
 
@@ -1424,7 +1424,7 @@ class DemoSandboxCreateRequest(BaseModel):
         le=60,
         description=(
             "Requested sandbox lifetime in minutes. Always clamped down to "
-            "BOXKITE_DEMO_LIFETIME_MINUTES regardless of what's requested "
+            "BOXXKITE_DEMO_LIFETIME_MINUTES regardless of what's requested "
             "here -- a caller can only ever ask for a SHORTER lifetime than "
             "the demo default, never a longer one."
         ),

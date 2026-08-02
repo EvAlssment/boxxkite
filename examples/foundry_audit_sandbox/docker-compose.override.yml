@@ -7,12 +7,12 @@
 #
 # Why an override file, not a SANDBOX_IMAGE env var: verified directly
 # against the actual code, not assumed -- in RUNTIME_MODE=compose,
-# `SandboxManager` (src/boxkite/manager.py) never creates a per-session
+# `SandboxManager` (src/boxxkite/manager.py) never creates a per-session
 # container at all; every session reuses the single, already-running
 # `sandbox` container `docker compose up --build` started. There is no
 # per-session image swap in compose mode (that's a RUNTIME_MODE=k8s-only
 # concept, via `SANDBOX_IMAGE`/a declarative-builder `image_id` --
-# see src/boxkite/manager.py's `_create_pod`). The only way to change which
+# see src/boxxkite/manager.py's `_create_pod`). The only way to change which
 # image the compose stack's `sandbox` container runs is to change what
 # `docker compose up --build` builds for that service, which is exactly
 # what this override file does.

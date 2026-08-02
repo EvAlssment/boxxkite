@@ -12,8 +12,8 @@ Addresses issue #233 (follow-up to the #178 cold-start profiling).
 | Scenario | time-to-usable |
 |---|---|
 | Cold start on a **fresh node** (full image pull) | **~74.7 s** |
-| — pulling `boxkite-sandbox` (~1.32 GB) | 47.7–62.9 s |
-| — pulling `boxkite-sidecar` (~123 MB) | ~10 s |
+| — pulling `boxxkite-sandbox` (~1.32 GB) | 47.7–62.9 s |
+| — pulling `boxxkite-sidecar` (~123 MB) | ~10 s |
 | Cold start, node **already has the image cached** | 0.85–1.16 s |
 | Warm-pool claim (pod pre-pulled + pre-started) | ~1.0 s |
 
@@ -43,7 +43,7 @@ move for any GKE deployment.
 ## Lever 2 — pick a smaller sandbox image via `SANDBOX_IMAGE`
 
 The sandbox image is selected by the `SANDBOX_IMAGE` env var (read by both the
-manager and the warm pool; defaults to `boxkite-sandbox:latest`). The bulk of
+manager and the warm pool; defaults to `boxxkite-sandbox:latest`). The bulk of
 the default image is Chrome-for-Testing, pandoc, and the bundled language
 runtimes. Workloads that don't drive a browser (the `browser_*` tools) or
 render documents can run a much smaller image:
@@ -51,7 +51,7 @@ render documents can run a much smaller image:
 ```bash
 # Build/publish the minimal variant (already in this repo):
 #   deploy/sandbox-minimal.Dockerfile
-export SANDBOX_IMAGE=<your-registry>/boxkite-sandbox-minimal:<tag>
+export SANDBOX_IMAGE=<your-registry>/boxxkite-sandbox-minimal:<tag>
 ```
 
 Prebuilt variants in `deploy/` for common stacks (each smaller than the

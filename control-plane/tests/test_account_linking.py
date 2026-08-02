@@ -21,13 +21,13 @@ from control_plane.routers import social_login
 
 
 def _enable_github(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "BOXKITE_SOCIAL_LOGIN_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_SOCIAL_LOGIN_ENABLED", True)
     monkeypatch.setattr(settings, "GITHUB_OAUTH_CLIENT_ID", "gh-client-id")
     monkeypatch.setattr(settings, "GITHUB_OAUTH_CLIENT_SECRET", "gh-client-secret")
 
 
 def _enable_google(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "BOXKITE_SOCIAL_LOGIN_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_SOCIAL_LOGIN_ENABLED", True)
     monkeypatch.setattr(settings, "GOOGLE_OAUTH_CLIENT_ID", "google-client-id")
     monkeypatch.setattr(settings, "GOOGLE_OAUTH_CLIENT_SECRET", "google-client-secret")
 

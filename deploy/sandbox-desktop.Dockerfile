@@ -9,7 +9,7 @@
 # on purpose, mirroring the sandbox/sandbox-minimal split's own rationale:
 # Xvfb/x11vnc must not become mandatory attack surface for every deployment
 # that only wants the existing shell/tool sandbox -- an operator opts into
-# this image (and BOXKITE_DESKTOP_ENABLED) explicitly, rather than getting
+# this image (and BOXXKITE_DESKTOP_ENABLED) explicitly, rather than getting
 # a bigger attack surface by default.
 #
 # Package names below were verified against the actual Wolfi package

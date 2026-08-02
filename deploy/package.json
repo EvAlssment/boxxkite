@@ -1,5 +1,5 @@
 {
-  "name": "boxkite-sandbox-skills",
+  "name": "boxxkite-sandbox-skills",
   "version": "1.0.0",
   "private": true,
   "description": "Pre-installed JS libraries for the sandbox runtime. Network is disabled at runtime, so all transitive deps must be pinned via overrides here.",

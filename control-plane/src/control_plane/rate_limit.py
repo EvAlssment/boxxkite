@@ -1,7 +1,7 @@
 """Rate limiting for the control-plane's auth, sandbox, image, and snapshot
 routes, to blunt brute-force, account-enumeration, and abuse-volume attempts.
 
-Two backends, selected by `settings.BOXKITE_RATE_LIMIT_BACKEND`:
+Two backends, selected by `settings.BOXXKITE_RATE_LIMIT_BACKEND`:
 
 - "memory" (default): an in-memory, per-process sliding-window limiter (an
   `OrderedDict` of timestamps per key). Correct and fully self-contained for
@@ -14,7 +14,7 @@ Two backends, selected by `settings.BOXKITE_RATE_LIMIT_BACKEND`:
   service's own database (`models_orm.RateLimitWindow`) -- reuses
   DATABASE_URL, no new infra (e.g. Redis) to run. Any deployment running
   more than one control-plane replica MUST set
-  `BOXKITE_RATE_LIMIT_BACKEND=postgres`; it is not auto-detected, since a
+  `BOXXKITE_RATE_LIMIT_BACKEND=postgres`; it is not auto-detected, since a
   single process has no way to know how many replicas exist.
 
 Both backends are exposed through the same `enforce_rate_limit` entry point
@@ -150,20 +150,20 @@ async def enforce_rate_limit(
     response: Response | None = None,
 ) -> None:
     """Raise 429 if the caller has exceeded `limit` (default
-    BOXKITE_AUTH_RATE_LIMIT_PER_MINUTE) requests to this bucket in the last
+    BOXXKITE_AUTH_RATE_LIMIT_PER_MINUTE) requests to this bucket in the last
     60 seconds; otherwise record this request.
 
     Dispatches to the in-memory or Postgres-backed limiter per
-    `settings.BOXKITE_RATE_LIMIT_BACKEND` -- see module docstring.
+    `settings.BOXXKITE_RATE_LIMIT_BACKEND` -- see module docstring.
 
     When `response` is given, sets X-RateLimit-Limit/-Remaining on it so
     callers can back off intelligently instead of parsing 429 bodies. A 429
     also gets Retry-After, via HTTPException's own `headers` param since
     there's no successful Response to mutate at that point."""
     key = _client_key(request, bucket=bucket, subject=subject)
-    max_allowed = limit if limit is not None else settings.BOXKITE_AUTH_RATE_LIMIT_PER_MINUTE
+    max_allowed = limit if limit is not None else settings.BOXXKITE_AUTH_RATE_LIMIT_PER_MINUTE
 
-    if settings.BOXKITE_RATE_LIMIT_BACKEND == "postgres":
+    if settings.BOXXKITE_RATE_LIMIT_BACKEND == "postgres":
         count = await _postgres_limiter.hit_and_count(key)
         # The Postgres backend increments unconditionally (it can't cheaply
         # "peek" without an extra round trip), so a request that turns out

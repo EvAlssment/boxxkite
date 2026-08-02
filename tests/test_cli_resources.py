@@ -1,4 +1,4 @@
-"""Tests for `boxkite secrets/images/volumes/webhooks` — hosted-mode CRUD
+"""Tests for `boxxkite secrets/images/volumes/webhooks` — hosted-mode CRUD
 CLI commands backed by the account API key (same auth as `session`/`exec`).
 Same mocking pattern as test_cli.py: httpx is monkeypatched, no real
 control-plane."""
@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from typer.testing import CliRunner
 
-from boxkite.cli import app
-from boxkite.cli import client as client_module
-from boxkite.cli import config_store
+from boxxkite.cli import app
+from boxxkite.cli import client as client_module
+from boxxkite.cli import config_store
 
 runner = CliRunner()
 
@@ -31,7 +31,7 @@ import pytest  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _isolated_config(tmp_path, monkeypatch):
-    config_dir = tmp_path / ".boxkite"
+    config_dir = tmp_path / ".boxxkite"
     monkeypatch.setattr(config_store, "CONFIG_DIR", config_dir)
     monkeypatch.setattr(config_store, "CONFIG_FILE", config_dir / "config.toml")
     monkeypatch.setattr(config_store, "LOCAL_ENV_FILE", config_dir / "local.env")
@@ -229,7 +229,7 @@ def test_images_build_sends_pinned_packages(monkeypatch):
             "images",
             "build",
             "--base",
-            "boxkite-minimal",
+            "boxxkite-minimal",
             "--python-package",
             "polars==1.9.0",
         ],
@@ -239,7 +239,7 @@ def test_images_build_sends_pinned_packages(monkeypatch):
     assert "img-1" in result.output
     assert captured["method"] == "POST"
     assert captured["url"] == "https://cp.example.com/v1/images"
-    assert captured["json"]["base"] == "boxkite-minimal"
+    assert captured["json"]["base"] == "boxxkite-minimal"
     assert captured["json"]["python_packages"] == ["polars==1.9.0"]
 
 
@@ -254,7 +254,7 @@ def test_images_ls_lists_images(monkeypatch):
                 {
                     "id": "img-1",
                     "label": None,
-                    "base": "boxkite-default",
+                    "base": "boxxkite-default",
                     "python_packages": [],
                     "apt_packages": [],
                     "npm_packages": [],

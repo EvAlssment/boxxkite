@@ -468,7 +468,7 @@ async def test_high_volume_redelivery_stays_idempotent(client: httpx.AsyncClient
     rate-limit bucket since this alone would otherwise trip the default
     per-minute cap within a single test."""
     _enable_scim(monkeypatch)
-    monkeypatch.setattr(settings, "BOXKITE_SCIM_WEBHOOK_RATE_LIMIT_PER_MINUTE", 1000)
+    monkeypatch.setattr(settings, "BOXXKITE_SCIM_WEBHOOK_RATE_LIMIT_PER_MINUTE", 1000)
     directory_user_id = "du_redelivery_storm"
     payload = {
         "id": "event_1",

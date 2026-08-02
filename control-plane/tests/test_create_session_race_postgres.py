@@ -6,7 +6,7 @@ asyncio.Lock) correctly serializes concurrent create_session calls WITHIN
 one process. That says nothing about multiple control-plane replicas,
 because an asyncio.Lock is module-level but PROCESS-local -- a second
 replica gets its own, entirely independent lock instance. Reproducing the
-real bug (and proving BOXKITE_USAGE_LOCK_BACKEND=postgres fixes it) requires
+real bug (and proving BOXXKITE_USAGE_LOCK_BACKEND=postgres fixes it) requires
 literally separate OS processes hitting the same account concurrently, via
 _pg_lock_race_worker.py, against a real Postgres (advisory locks have no
 SQLite equivalent -- see PostgresSessionLock's docstring).
@@ -16,8 +16,8 @@ fail the suite) if one isn't available, per this project's own convention
 for tests against an external toolchain (see the root pyproject.toml's
 `integration` marker).
 
-Set BOXKITE_TEST_POSTGRES_URL to point at a specific instance; defaults to
-`postgresql+asyncpg://localhost:5432/boxkite_test_scratch` (a local
+Set BOXXKITE_TEST_POSTGRES_URL to point at a specific instance; defaults to
+`postgresql+asyncpg://localhost:5432/boxxkite_test_scratch` (a local
 Postgres on the default port, database created ahead of time -- this test
 does NOT create the database itself, only the tables inside it).
 """
@@ -41,7 +41,7 @@ from control_plane.repository import AccountRepository
 
 pytestmark = pytest.mark.integration
 
-_DEFAULT_TEST_POSTGRES_URL = "postgresql://localhost:5432/boxkite_test_scratch"
+_DEFAULT_TEST_POSTGRES_URL = "postgresql://localhost:5432/boxxkite_test_scratch"
 _WORKER_SCRIPT = Path(__file__).parent / "_pg_lock_race_worker.py"
 
 
@@ -58,7 +58,7 @@ async def postgres_url() -> str:
     environment/infra check, not something this test suite should ever
     fail the whole run over."""
     raw_url = os.environ.get(
-        "BOXKITE_TEST_POSTGRES_URL", _DEFAULT_TEST_POSTGRES_URL
+        "BOXXKITE_TEST_POSTGRES_URL", _DEFAULT_TEST_POSTGRES_URL
     )
     sqlalchemy_url = (
         raw_url
@@ -139,9 +139,9 @@ async def _run_replica(
     env = {
         **os.environ,
         "DATABASE_URL": database_url,
-        "BOXKITE_USAGE_LOCK_BACKEND": lock_backend,
-        "BOXKITE_MAX_CONCURRENT_SANDBOXES": str(max_concurrent_sandboxes),
-        "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES": str(global_max_concurrent_sandboxes),
+        "BOXXKITE_USAGE_LOCK_BACKEND": lock_backend,
+        "BOXXKITE_MAX_CONCURRENT_SANDBOXES": str(max_concurrent_sandboxes),
+        "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES": str(global_max_concurrent_sandboxes),
     }
     proc = await asyncio.create_subprocess_exec(
         sys.executable,
@@ -163,10 +163,10 @@ async def _run_replica(
 async def test_postgres_backend_caps_concurrent_creates_across_two_replica_processes(
     postgres_account_id: str, postgres_url: str
 ):
-    """The actual fix: with BOXKITE_USAGE_LOCK_BACKEND=postgres, two
+    """The actual fix: with BOXXKITE_USAGE_LOCK_BACKEND=postgres, two
     SEPARATE OS processes (simulating two control-plane replicas) racing to
     create sessions for the same account must never collectively exceed
-    BOXKITE_MAX_CONCURRENT_SANDBOXES, even though each process has its own,
+    BOXXKITE_MAX_CONCURRENT_SANDBOXES, even though each process has its own,
     entirely independent in-memory lock."""
     start_at = time.time() + 1.5
     created_a, created_b = await asyncio.gather(
@@ -202,7 +202,7 @@ async def test_memory_backend_can_overshoot_the_cap_across_two_replica_processes
     """Characterization test for the bug this feature fixes: with the
     DEFAULT "memory" backend, two separate replica processes each enforce
     their own independent asyncio.Lock, so the combined total created across
-    both can exceed BOXKITE_MAX_CONCURRENT_SANDBOXES. This is deliberately
+    both can exceed BOXXKITE_MAX_CONCURRENT_SANDBOXES. This is deliberately
     asserted (not just described in a comment) so a future change that
     silently made `_run_replica`/the worker script stop exercising real
     cross-process concurrency would be caught here, rather than only

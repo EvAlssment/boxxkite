@@ -31,8 +31,8 @@ import httpx
 import pytest
 from kubernetes_asyncio.client.exceptions import ApiException
 
-from boxkite.manager import SandboxManager
-from boxkite.sidecar_auth import sidecar_auth_secret_name
+from boxxkite.manager import SandboxManager
+from boxxkite.sidecar_auth import sidecar_auth_secret_name
 from test_manager import _FakeCoreApi
 
 pytestmark = pytest.mark.pr

@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::{CreateSandboxOptions, ExecOptions};
+use boxxkite_client::{CreateSandboxOptions, ExecOptions};
 use serde_json::json;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -78,7 +78,7 @@ async fn with_sandbox_destroys_even_when_closure_errors() {
 
     let result: Result<(), _> = client
         .with_sandbox(CreateSandboxOptions::new(), |_sb| async move {
-            Err(boxkite_client::BoxkiteError::Config("boom".to_string()))
+            Err(boxxkite_client::BoxxkiteError::Config("boom".to_string()))
         })
         .await;
 

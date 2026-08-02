@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::AllowedCommandRule;
+use boxxkite_client::AllowedCommandRule;
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, ResponseTemplate};

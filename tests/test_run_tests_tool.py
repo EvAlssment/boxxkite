@@ -1,10 +1,10 @@
 """
-Tests for boxkite.tools.run_tests_tool (run_tests LangChain tool).
+Tests for boxxkite.tools.run_tests_tool (run_tests LangChain tool).
 
 Mirrors tests/test_bash_tool.py's/tests/test_process_tools.py's pattern:
 mock SandboxManager, assert the tool calls the right manager method, and
 assert the response is the structured JSON schema from
-boxkite.tools.test_parsers.schema.TestRunResult -- covering a passing run,
+boxxkite.tools.test_parsers.schema.TestRunResult -- covering a passing run,
 a failing run with specific failure details parsed out, and a malformed/
 unparseable-output fallback that must not crash.
 """
@@ -13,7 +13,7 @@ import json
 
 import pytest
 
-from boxkite.tools.run_tests_tool import create_run_tests_tool
+from boxxkite.tools.run_tests_tool import create_run_tests_tool
 
 pytestmark = pytest.mark.pr
 

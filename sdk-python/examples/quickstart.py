@@ -1,6 +1,6 @@
 """Runnable end-to-end example against a real hosted control-plane.
 
-    BOXKITE_BASE_URL=https://your-control-plane BOXKITE_API_KEY=bxk_live_... \
+    BOXXKITE_BASE_URL=https://your-control-plane BOXXKITE_API_KEY=bxk_live_... \
         python examples/quickstart.py
 """
 
@@ -9,17 +9,17 @@ from __future__ import annotations
 import os
 import sys
 
-from boxkite_client import BoxkiteApiError, BoxkiteClient
+from boxxkite_client import BoxxkiteApiError, BoxxkiteClient
 
 
 def main() -> None:
-    base_url = os.environ.get("BOXKITE_BASE_URL")
-    api_key = os.environ.get("BOXKITE_API_KEY")
+    base_url = os.environ.get("BOXXKITE_BASE_URL")
+    api_key = os.environ.get("BOXXKITE_API_KEY")
     if not base_url or not api_key:
-        print("Set BOXKITE_BASE_URL and BOXKITE_API_KEY first.", file=sys.stderr)
+        print("Set BOXXKITE_BASE_URL and BOXXKITE_API_KEY first.", file=sys.stderr)
         raise SystemExit(1)
 
-    client = BoxkiteClient(base_url=base_url, api_key=api_key)
+    client = BoxxkiteClient(base_url=base_url, api_key=api_key)
 
     account = client.account()
     print(f"Signed in as {account['email']}")
@@ -37,11 +37,11 @@ def main() -> None:
             result = sb.exec("python3 -c 'print(1 + 1)'")
             print(f"exec result: {result['stdout'].strip()}")
 
-            sb.file_create("hello.txt", "hello from boxkite-client\n")
+            sb.file_create("hello.txt", "hello from boxxkite-client\n")
             viewed = sb.view("hello.txt")
             print(f"file contents: {viewed['content'].strip()}")
         print("Sandbox destroyed.")
-    except BoxkiteApiError as exc:
+    except BoxxkiteApiError as exc:
         print(f"API error: {exc.message} [{exc.code}]", file=sys.stderr)
         raise SystemExit(1) from exc
 

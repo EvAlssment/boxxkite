@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 
 from kubernetes_asyncio import client
 
-from boxkite.k8s_auth import (
+from boxxkite.k8s_auth import (
     RotatingServiceAccountToken,
     _enable_external_token_rotation,
 )
@@ -41,7 +41,7 @@ def _fake_token_request_result(token: str, expires_in: timedelta) -> object:
 async def test_first_call_mints_a_token_and_applies_it(monkeypatch):
     configuration = _make_configuration()
     hook = RotatingServiceAccountToken(
-        service_account_name="boxkite-control-plane", namespace="sandbox", expiration_seconds=3600
+        service_account_name="boxxkite-control-plane", namespace="sandbox", expiration_seconds=3600
     )
 
     call_count = 0
@@ -49,7 +49,7 @@ async def test_first_call_mints_a_token_and_applies_it(monkeypatch):
     async def fake_create_token(self, **kwargs):
         nonlocal call_count
         call_count += 1
-        assert kwargs["name"] == "boxkite-control-plane"
+        assert kwargs["name"] == "boxxkite-control-plane"
         assert kwargs["namespace"] == "sandbox"
         return _fake_token_request_result("minted-token-1", timedelta(hours=1))
 
@@ -67,7 +67,7 @@ async def test_first_call_mints_a_token_and_applies_it(monkeypatch):
 async def test_second_call_within_margin_does_not_re_mint(monkeypatch):
     configuration = _make_configuration()
     hook = RotatingServiceAccountToken(
-        service_account_name="boxkite-control-plane", namespace="sandbox", expiration_seconds=3600
+        service_account_name="boxxkite-control-plane", namespace="sandbox", expiration_seconds=3600
     )
 
     call_count = 0
@@ -92,7 +92,7 @@ async def test_second_call_within_margin_does_not_re_mint(monkeypatch):
 async def test_re_mints_once_expiry_margin_is_reached(monkeypatch):
     configuration = _make_configuration()
     hook = RotatingServiceAccountToken(
-        service_account_name="boxkite-control-plane", namespace="sandbox", expiration_seconds=3600
+        service_account_name="boxxkite-control-plane", namespace="sandbox", expiration_seconds=3600
     )
 
     call_count = 0
@@ -121,7 +121,7 @@ async def test_re_mints_once_expiry_margin_is_reached(monkeypatch):
 async def test_mint_failure_is_swallowed_and_old_token_kept(monkeypatch, caplog):
     configuration = _make_configuration(initial_token="still-the-old-token")
     hook = RotatingServiceAccountToken(
-        service_account_name="boxkite-control-plane", namespace="sandbox", expiration_seconds=3600
+        service_account_name="boxxkite-control-plane", namespace="sandbox", expiration_seconds=3600
     )
 
     async def failing_create_token(self, **kwargs):
@@ -148,7 +148,7 @@ async def test_does_not_deadlock_when_the_mint_call_itself_triggers_the_hook(mon
     deadlock fails this test instead of hanging the suite."""
     configuration = _make_configuration()
     hook = RotatingServiceAccountToken(
-        service_account_name="boxkite-control-plane", namespace="sandbox", expiration_seconds=3600
+        service_account_name="boxxkite-control-plane", namespace="sandbox", expiration_seconds=3600
     )
     configuration.refresh_api_key_hook = hook
 
@@ -193,7 +193,7 @@ async def test_enable_external_token_rotation_respects_opt_out(monkeypatch):
 
 async def test_expiration_seconds_floored_to_kubernetes_minimum():
     hook = RotatingServiceAccountToken(
-        service_account_name="boxkite-control-plane", namespace="sandbox", expiration_seconds=60
+        service_account_name="boxxkite-control-plane", namespace="sandbox", expiration_seconds=60
     )
     assert hook._expiration_seconds == 600
 
@@ -203,7 +203,7 @@ async def test_mint_call_is_bounded_by_a_timeout(monkeypatch):
     every outgoing K8s request in the process via the refresh hook."""
     configuration = _make_configuration(initial_token="still-the-old-token")
     hook = RotatingServiceAccountToken(
-        service_account_name="boxkite-control-plane", namespace="sandbox", expiration_seconds=3600
+        service_account_name="boxxkite-control-plane", namespace="sandbox", expiration_seconds=3600
     )
     monkeypatch.setattr(RotatingServiceAccountToken, "_MINT_TIMEOUT_SECONDS", 0.05)
 
@@ -228,7 +228,7 @@ async def test_repeated_calls_during_failure_cooldown_do_not_re_attempt_the_mint
     slow) calls for as long as an outage lasts."""
     configuration = _make_configuration(initial_token="still-the-old-token")
     hook = RotatingServiceAccountToken(
-        service_account_name="boxkite-control-plane", namespace="sandbox", expiration_seconds=3600
+        service_account_name="boxxkite-control-plane", namespace="sandbox", expiration_seconds=3600
     )
 
     call_count = 0
@@ -254,7 +254,7 @@ async def test_repeated_calls_during_failure_cooldown_do_not_re_attempt_the_mint
 async def test_mint_retries_again_after_the_cooldown_window_elapses(monkeypatch):
     configuration = _make_configuration(initial_token="still-the-old-token")
     hook = RotatingServiceAccountToken(
-        service_account_name="boxkite-control-plane", namespace="sandbox", expiration_seconds=3600
+        service_account_name="boxxkite-control-plane", namespace="sandbox", expiration_seconds=3600
     )
 
     call_count = 0

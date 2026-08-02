@@ -1,14 +1,14 @@
-"""An actual end-to-end exercise of the real BoxkiteClient + a real adapter
+"""An actual end-to-end exercise of the real BoxxkiteClient + a real adapter
 against `create_handoff_sandbox` -- not the fully-faked client used by
 test_orchestrator.py's unit tests. This is the closest thing to "run it for
 real" available in this environment: no live control-plane, sidecar, or
 Kubernetes cluster is reachable here, so this substitutes an
 `httpx.MockTransport` for HTTP and a fake `ws_connect` for the takeover
-websocket -- both officially-supported BoxkiteClient test-injection points
+websocket -- both officially-supported BoxxkiteClient test-injection points
 (see client.py's own docstring: "`transport` is exposed on both
 constructors purely for testing"), not a private/undocumented hack.
 
-What this proves that the unit tests don't: the real `BoxkiteClient` builds
+What this proves that the unit tests don't: the real `BoxxkiteClient` builds
 correct request URLs/JSON bodies/Authorization headers, a real adapter
 (`ClaudeCodeAdapter`) reads real local fixture files from disk, and the
 real `create_handoff_sandbox` orchestration wires all of that together
@@ -31,11 +31,11 @@ from typing import Any
 import httpx
 import pytest
 
-from boxkite_client import BoxkiteClient
-from boxkite_handoff.adapters.claude_code import ClaudeCodeAdapter, encode_project_dir
-from boxkite_handoff.orchestrator import create_handoff_sandbox
+from boxxkite_client import BoxxkiteClient
+from boxxkite_handoff.adapters.claude_code import ClaudeCodeAdapter, encode_project_dir
+from boxxkite_handoff.orchestrator import create_handoff_sandbox
 
-BASE_URL = "https://boxkite.example.test"
+BASE_URL = "https://boxxkite.example.test"
 API_KEY = "test-api-key-123"
 
 
@@ -53,7 +53,7 @@ class FakeTakeoverWebsocket:
 
 
 class FakeHttpAndWs:
-    """Records every real HTTP request BoxkiteClient makes (via
+    """Records every real HTTP request BoxxkiteClient makes (via
     httpx.MockTransport) and every websocket it opens (via a fake
     ws_connect), so the test can assert on the exact wire-level traffic a
     real handoff run produces."""
@@ -94,9 +94,9 @@ def fake_server() -> FakeHttpAndWs:
 
 
 @pytest.fixture
-def real_client(fake_server: FakeHttpAndWs) -> BoxkiteClient:
+def real_client(fake_server: FakeHttpAndWs) -> BoxxkiteClient:
     transport = httpx.MockTransport(fake_server.handle_request)
-    return BoxkiteClient(
+    return BoxxkiteClient(
         base_url=BASE_URL,
         api_key=API_KEY,
         transport=transport,
@@ -120,7 +120,7 @@ def claude_code_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_real_client_creates_a_sandbox_via_a_real_http_request(
-    real_client: BoxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
+    real_client: BoxxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
 ) -> None:
     create_handoff_sandbox(real_client, claude_code_session)
 
@@ -130,7 +130,7 @@ def test_real_client_creates_a_sandbox_via_a_real_http_request(
 
 
 def test_real_client_pushes_the_real_session_file_content(
-    real_client: BoxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
+    real_client: BoxxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
 ) -> None:
     create_handoff_sandbox(real_client, claude_code_session)
 
@@ -141,7 +141,7 @@ def test_real_client_pushes_the_real_session_file_content(
 
 
 def test_real_client_pushes_the_credential_as_a_separate_tmp_file_not_the_session_content(
-    real_client: BoxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
+    real_client: BoxxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
 ) -> None:
     create_handoff_sandbox(real_client, claude_code_session)
 
@@ -154,18 +154,18 @@ def test_real_client_pushes_the_credential_as_a_separate_tmp_file_not_the_sessio
 
 
 def test_real_client_opens_exactly_one_takeover_websocket_for_the_new_sandbox(
-    real_client: BoxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
+    real_client: BoxxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
 ) -> None:
     result = create_handoff_sandbox(real_client, claude_code_session)
 
     assert len(fake_server.websockets) == 1
     ws = fake_server.websockets[0]
-    assert ws.url == f"wss://boxkite.example.test/v1/sandboxes/{result.sandbox_id}/takeover"
+    assert ws.url == f"wss://boxxkite.example.test/v1/sandboxes/{result.sandbox_id}/takeover"
     assert ws.headers["Authorization"] == f"Bearer {API_KEY}"
 
 
 def test_real_client_never_types_the_credential_value_and_types_the_real_resume_command(
-    real_client: BoxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
+    real_client: BoxxkiteClient, fake_server: FakeHttpAndWs, claude_code_session
 ) -> None:
     create_handoff_sandbox(real_client, claude_code_session)
 

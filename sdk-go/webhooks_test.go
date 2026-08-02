@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -16,7 +16,7 @@ func TestCreateWebhook_SendsURLEventTypesAndDescription(t *testing.T) {
 		raw, _ := io.ReadAll(r.Body)
 		var body map[string]any
 		_ = json.Unmarshal(raw, &body)
-		if body["url"] != "https://example.com/hooks/boxkite" {
+		if body["url"] != "https://example.com/hooks/boxxkite" {
 			t.Errorf("unexpected url: %v", body["url"])
 		}
 		eventTypes, _ := body["event_types"].([]any)
@@ -27,7 +27,7 @@ func TestCreateWebhook_SendsURLEventTypesAndDescription(t *testing.T) {
 			t.Errorf("unexpected description: %v", body["description"])
 		}
 		writeJSON(t, w, 201, `{
-			"id": "wh-1", "url": "https://example.com/hooks/boxkite",
+			"id": "wh-1", "url": "https://example.com/hooks/boxxkite",
 			"event_types": ["sandbox.created", "sandbox.destroyed"], "description": "Slack notifier",
 			"is_active": true, "created_at": "2026-01-01T00:00:00Z", "last_triggered_at": null,
 			"secret": "whsec_abc123"
@@ -36,7 +36,7 @@ func TestCreateWebhook_SendsURLEventTypesAndDescription(t *testing.T) {
 	defer closeServer()
 
 	webhook, err := client.CreateWebhook(context.Background(), CreateWebhookRequest{
-		URL:         "https://example.com/hooks/boxkite",
+		URL:         "https://example.com/hooks/boxxkite",
 		EventTypes:  []string{"sandbox.created", "sandbox.destroyed"},
 		Description: Ptr("Slack notifier"),
 	})
@@ -61,7 +61,7 @@ func TestCreateWebhook_AcceptsAuditLogEntryEventType(t *testing.T) {
 			t.Errorf("unexpected event_types: %v", body["event_types"])
 		}
 		writeJSON(t, w, 201, `{
-			"id": "wh-2", "url": "https://example.com/hooks/boxkite",
+			"id": "wh-2", "url": "https://example.com/hooks/boxxkite",
 			"event_types": ["audit_log.entry"], "description": null,
 			"is_active": true, "created_at": "2026-01-01T00:00:00Z", "last_triggered_at": null,
 			"secret": "whsec_def456"
@@ -70,7 +70,7 @@ func TestCreateWebhook_AcceptsAuditLogEntryEventType(t *testing.T) {
 	defer closeServer()
 
 	webhook, err := client.CreateWebhook(context.Background(), CreateWebhookRequest{
-		URL:        "https://example.com/hooks/boxkite",
+		URL:        "https://example.com/hooks/boxxkite",
 		EventTypes: []string{"audit_log.entry"},
 	})
 	if err != nil {

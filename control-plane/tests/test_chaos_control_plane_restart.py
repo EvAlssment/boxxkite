@@ -2,7 +2,7 @@
 control-plane process restart lose or corrupt anything for a sandbox session
 that was already running before the restart?
 
-Per this repo's own design (see `boxkite/manager.py`'s module docstring --
+Per this repo's own design (see `boxxkite/manager.py`'s module docstring --
 "K8s pod labels/annotations as session store (survives backend restarts)"),
 a `SandboxManager`'s real state lives in the Kubernetes cluster, not the
 control-plane process -- restarting the control plane doesn't touch a
@@ -113,11 +113,11 @@ async def test_in_memory_rate_limit_counter_does_not_survive_a_restart(
     before a control-plane restart is let back in immediately after,
     identically to how a multi-replica deployment already isn't protected
     by this backend either (the module's own docstring calls that out too;
-    BOXKITE_RATE_LIMIT_BACKEND=postgres is the fix for both cases, not
+    BOXXKITE_RATE_LIMIT_BACKEND=postgres is the fix for both cases, not
     exercised here since it has its own dedicated test file,
     test_rate_limit_postgres_backend.py).
     """
-    monkeypatch.setattr(settings, "BOXKITE_AUTH_RATE_LIMIT_PER_MINUTE", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_AUTH_RATE_LIMIT_PER_MINUTE", 1)
 
     first = await client.post(
         "/v1/auth/login", json={"email": "restart-rate-limit@example.com", "password": "wrong"}

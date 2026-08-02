@@ -7,7 +7,7 @@ _validate_browser_resource_floor.
 
 import pytest
 
-from boxkite._manager_config import _validate_desktop_resource_floor
+from boxxkite._manager_config import _validate_desktop_resource_floor
 
 
 def test_validate_desktop_resource_floor_allows_small_when_desktop_disabled():

@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.lazy_runtime import LazySandboxRuntime
+from boxxkite.lazy_runtime import LazySandboxRuntime
 
 
 pytestmark = pytest.mark.pr

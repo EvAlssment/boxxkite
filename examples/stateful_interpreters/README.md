@@ -1,10 +1,10 @@
 # Stateful interpreters: `python_interpreter` and `node_interpreter`
 
-Demonstrates boxkite's two **persistent, kept-alive** code-execution tools
+Demonstrates boxxkite's two **persistent, kept-alive** code-execution tools
 side by side, with no agent framework and no LLM in the loop -- same style
 as [`../raw_api`](../raw_api) and [`../hosted_control_plane`](../hosted_control_plane):
 this calls each tool's framework-agnostic `ToolSpec.handler` directly
-(`boxkite.tools.create_sandbox_tool_specs`) instead of routing through an
+(`boxxkite.tools.create_sandbox_tool_specs`) instead of routing through an
 agent's reasoning loop, since the point here is the *statefulness* itself,
 not tool-calling plumbing already covered by the other examples.
 
@@ -28,15 +28,15 @@ large file once, then run several separate queries against it).
 
 ## Prerequisites
 
-- `boxkite up` running (docker-compose sidecar reachable at `localhost:8080`),
-  with the token it wrote to `~/.boxkite/local.env` -- see the main
+- `boxxkite up` running (docker-compose sidecar reachable at `localhost:8080`),
+  with the token it wrote to `~/.boxxkite/local.env` -- see the main
   [README](../../README.md)'s quickstart.
 - `pip install -e ../..` from the repo root (or `pip install -r
   requirements.txt`) -- no extras, no LLM API key needed.
 - To see `node_interpreter` actually execute (rather than this script
   printing a "disabled" message and skipping that half of the demo): the
-  **sidecar process itself** needs `BOXKITE_NODE_INTERPRETER_ENABLED=true`
-  set in its environment before `boxkite up` / `docker compose up` starts
+  **sidecar process itself** needs `BOXXKITE_NODE_INTERPRETER_ENABLED=true`
+  set in its environment before `boxxkite up` / `docker compose up` starts
   it. This is new, off-by-default attack surface
   (`docs/NODE-INTERPRETER-DESIGN.md`) -- there is no way for this example
   script to turn it on for you from the outside, by design (the same
@@ -48,12 +48,12 @@ always on, unlike `node_interpreter`.
 ## Run
 
 ```bash
-export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxkite/local.env | cut -d= -f2)
+export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxxkite/local.env | cut -d= -f2)
 export RUNTIME_MODE=compose SIDECAR_URL=http://localhost:8080
 python interpreters_demo.py
 ```
 
-Expected output shape (Node half assumes `BOXKITE_NODE_INTERPRETER_ENABLED=true`
+Expected output shape (Node half assumes `BOXXKITE_NODE_INTERPRETER_ENABLED=true`
 was set on the sidecar):
 
 ```
@@ -86,8 +86,8 @@ both handlers' call signatures and return shapes) was exercised against
 local `node` binary (see `tests/test_sidecar_node_interpreter.py` and
 `tests/test_node_interpreter_tool.py`, which cover exactly the
 persistence/redeclaration/error behavior this script demonstrates). This
-script itself was **not** run against a live `boxkite up` docker-compose
-stack with `BOXKITE_NODE_INTERPRETER_ENABLED=true` set in this environment
+script itself was **not** run against a live `boxxkite up` docker-compose
+stack with `BOXXKITE_NODE_INTERPRETER_ENABLED=true` set in this environment
 -- the same scope boundary already disclosed in
 `docs/NODE-INTERPRETER-DESIGN.md`'s status header and
 `docs/DAYTONA-COMPARISON.md` (tested against a real local `node` binary,

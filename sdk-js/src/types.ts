@@ -1,5 +1,5 @@
 /**
- * Response shapes for the boxkite control-plane v1 HTTP API. Field names
+ * Response shapes for the boxxkite control-plane v1 HTTP API. Field names
  * mirror the JSON the control-plane emits (snake_case), matching sdk-go's
  * structs and sdk-python's return values. Nullable fields use `T | null`
  * (the JSON is `null`, not absent); genuinely optional fields (present on

@@ -1,4 +1,4 @@
-"""Tests for the opt-in fast warm-pod claim path (BOXKITE_FAST_CLAIM_ENABLED).
+"""Tests for the opt-in fast warm-pod claim path (BOXXKITE_FAST_CLAIM_ENABLED).
 
 The fast path pops a claim-ready pod from WarmPoolManager's in-memory ready
 index (populated off the existing background scan) and claims it via the same
@@ -21,12 +21,12 @@ from types import SimpleNamespace
 import pytest
 from kubernetes_asyncio.client.exceptions import ApiException
 
-import boxkite.warm_pool as warm_pool_module
-from boxkite.manager import SandboxManager
-from boxkite.resource_config import BOXKITE_FAST_CLAIM_ENABLED_ENV
-from boxkite.sidecar_auth import SIDECAR_AUTH_SECRET_KEY, sidecar_auth_secret_name
-from boxkite.tls import SIDECAR_TLS_CERT_SECRET_KEY
-from boxkite.warm_pool import ReadyPod, WarmPoolManager
+import boxxkite.warm_pool as warm_pool_module
+from boxxkite.manager import SandboxManager
+from boxxkite.resource_config import BOXXKITE_FAST_CLAIM_ENABLED_ENV
+from boxxkite.sidecar_auth import SIDECAR_AUTH_SECRET_KEY, sidecar_auth_secret_name
+from boxxkite.tls import SIDECAR_TLS_CERT_SECRET_KEY
+from boxxkite.warm_pool import ReadyPod, WarmPoolManager
 
 from test_manager import _FakeCoreApi
 
@@ -51,8 +51,8 @@ def _make_warm_pod(
             labels={
                 "app": "sandbox",
                 "pool": "warm",
-                "sandbox.boxkite.dev/status": "warm",
-                "sandbox.boxkite.dev/size": size,
+                "sandbox.boxxkite.dev/status": "warm",
+                "sandbox.boxxkite.dev/size": size,
             },
         ),
         status=SimpleNamespace(
@@ -190,7 +190,7 @@ class _CASFakeCoreApi(_FakeCoreApi):
 
 @pytest.mark.asyncio
 async def test_fast_claim_success_returns_popped_pod_without_list_or_secret_read(monkeypatch):
-    monkeypatch.setenv(BOXKITE_FAST_CLAIM_ENABLED_ENV, "true")
+    monkeypatch.setenv(BOXXKITE_FAST_CLAIM_ENABLED_ENV, "true")
     manager = SandboxManager()
     manager._k8s_core_api = _CASFakeCoreApi()
     ready = ReadyPod(
@@ -220,7 +220,7 @@ async def test_fast_claim_success_returns_popped_pod_without_list_or_secret_read
 
 @pytest.mark.asyncio
 async def test_fast_claim_retries_next_candidate_on_cas_conflict(monkeypatch):
-    monkeypatch.setenv(BOXKITE_FAST_CLAIM_ENABLED_ENV, "true")
+    monkeypatch.setenv(BOXXKITE_FAST_CLAIM_ENABLED_ENV, "true")
     manager = SandboxManager()
     # First candidate loses the CAS race (409); second wins.
     manager._k8s_core_api = _CASFakeCoreApi(fail_cas_for=["sandbox-warm-lost"])
@@ -240,7 +240,7 @@ async def test_fast_claim_retries_next_candidate_on_cas_conflict(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_fast_claim_falls_back_to_list_when_index_empty(monkeypatch):
-    monkeypatch.setenv(BOXKITE_FAST_CLAIM_ENABLED_ENV, "true")
+    monkeypatch.setenv(BOXXKITE_FAST_CLAIM_ENABLED_ENV, "true")
     manager = SandboxManager()
     pod_name = "sandbox-warm-listed"
     secret_name, secret = _secret_for(pod_name, "list-tok")
@@ -267,7 +267,7 @@ async def test_fast_claim_falls_back_to_list_when_index_empty(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_flag_off_uses_list_path_and_never_touches_index(monkeypatch):
-    monkeypatch.delenv(BOXKITE_FAST_CLAIM_ENABLED_ENV, raising=False)
+    monkeypatch.delenv(BOXXKITE_FAST_CLAIM_ENABLED_ENV, raising=False)
     manager = SandboxManager()
     pod_name = "sandbox-warm-default"
     secret_name, secret = _secret_for(pod_name, "default-tok")

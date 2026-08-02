@@ -9,7 +9,7 @@ Two layers, mirroring test_social_login.py's own split:
   account-resolution logic (auto-registration, already-linked login, the
   email-collision anti-takeover refusal) tested by monkeypatching
   enterprise_sso_client.get_enterprise_sso_client to return a
-  FakeEnterpriseSsoClient (conftest.py), so these tests assert boxkite's
+  FakeEnterpriseSsoClient (conftest.py), so these tests assert boxxkite's
   own behavior rather than re-mocking WorkOS's HTTP shape a second time.
 """
 
@@ -133,7 +133,7 @@ async def test_sso_routes_404_when_disabled(client: httpx.AsyncClient):
 
 
 async def test_sso_routes_404_when_only_master_flag_set(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_ENTERPRISE_SSO_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_ENTERPRISE_SSO_ENABLED", True)
     # No WorkOS credentials configured -- still 404, mirrors
     # github_oauth_configured/google_oauth_configured's "both must be set" contract.
     resp = await client.get("/v1/auth/sso/start", params={"connection": "conn_1"})
@@ -141,7 +141,7 @@ async def test_sso_routes_404_when_only_master_flag_set(client: httpx.AsyncClien
 
 
 def _enable_sso(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "BOXKITE_ENTERPRISE_SSO_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_ENTERPRISE_SSO_ENABLED", True)
     monkeypatch.setattr(settings, "WORKOS_CLIENT_ID", "workos-client-id")
     monkeypatch.setattr(settings, "WORKOS_API_KEY", "workos-api-key")
 
@@ -264,7 +264,7 @@ async def test_sso_callback_with_dashboard_next_redirects_error_on_email_collisi
     control-plane's raw JSON response."""
     _enable_sso(monkeypatch)
     monkeypatch.setattr(enterprise_sso, "get_enterprise_sso_client", lambda: fake_enterprise_sso_client)
-    monkeypatch.setattr(settings, "BOXKITE_DASHBOARD_URL", "https://dashboard.example.com")
+    monkeypatch.setattr(settings, "BOXXKITE_DASHBOARD_URL", "https://dashboard.example.com")
     dashboard_next = "https://dashboard.example.com/dashboard/oauth-callback"
     await signup(client, "ssodashcollision@enterprise.example.com", password="hunter2pass")
 
@@ -330,7 +330,7 @@ async def test_sso_callback_resumes_into_oauth_authorize_via_cookie(
     )
     assert resp.status_code == 303
     assert resp.headers["location"] == next_path
-    assert "boxkite_oauth_session" in resp.cookies
+    assert "boxxkite_oauth_session" in resp.cookies
 
 
 # ── Negative-path coverage for the login-CSRF nonce fix ─────────────────
@@ -360,7 +360,7 @@ async def test_sso_callback_rejects_state_with_no_nonce_cookie(
     from control_plane.security import create_enterprise_sso_state_token
 
     state, _nonce = create_enterprise_sso_state_token(connection="conn_1", next_path=None)
-    # Deliberately do NOT set the boxkite_sso_state_nonce cookie -- this
+    # Deliberately do NOT set the boxxkite_sso_state_nonce cookie -- this
     # client never called /v1/auth/sso/start, so it never received one.
     resp = await client.get("/v1/auth/sso/callback", params={"code": "auth-code-csrf", "state": state})
     assert resp.status_code == 400

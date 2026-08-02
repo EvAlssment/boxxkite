@@ -12,8 +12,8 @@ account, ...) works completely unmodified for demo traffic too.
 Kept in its own tiny module rather than inside routers/demo_playground.py:
 reaper.py (a background task module, not a router) also needs this exact
 identity to reap demo sessions on their own much shorter
-BOXKITE_DEMO_LIFETIME_MINUTES cutoff instead of the far longer
-BOXKITE_MAX_SESSION_MINUTES every real account gets -- importing a router
+BOXXKITE_DEMO_LIFETIME_MINUTES cutoff instead of the far longer
+BOXXKITE_MAX_SESSION_MINUTES every real account gets -- importing a router
 module from a background-task module would invert this codebase's normal
 dependency direction (routers depend on core modules, not vice versa).
 """
@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .models_orm import Account
 from .repository import AccountRepository
 
-DEMO_ACCOUNT_EMAIL = "demo-playground@boxkite.internal"
+DEMO_ACCOUNT_EMAIL = "demo-playground@boxxkite.internal"
 
 
 async def get_or_create_demo_account(db: AsyncSession) -> Account:

@@ -7,7 +7,7 @@ labels: enhancement
 
 ## Problem
 
-What are you trying to do that boxkite doesn't support today?
+What are you trying to do that boxxkite doesn't support today?
 
 ## Proposed solution
 

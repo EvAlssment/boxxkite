@@ -1,5 +1,5 @@
-# Install boxkite itself from the repo root first (no extra needed -- like
-# the OpenAI example, this one only needs boxkite.tools.adapters.to_openai_functions,
+# Install boxxkite itself from the repo root first (no extra needed -- like
+# the OpenAI example, this one only needs boxxkite.tools.adapters.to_openai_functions,
 # which is pure stdlib):
 #   pip install -e ../..
 #

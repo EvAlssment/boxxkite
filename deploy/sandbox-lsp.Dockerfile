@@ -3,11 +3,11 @@
 # LSP-enabled Sandbox Container (docs/LSP-SUPPORT-SCOPING.md, GitHub issue #183)
 # Identical to sandbox.Dockerfile (same data science/file processing library
 # set) PLUS two language servers -- pyright (Python) and
-# typescript-language-server (TypeScript/JS) -- for BOXKITE_LSP_ENABLED's
+# typescript-language-server (TypeScript/JS) -- for BOXXKITE_LSP_ENABLED's
 # /lsp/* routes (sidecar/sidecar_lsp.py). A new, separate, opt-in image
 # variant, NOT a change to sandbox.Dockerfile itself -- every existing image
 # stays exactly as it is today. This directly addresses #81 point (5)
-# (image bloat/attack surface for a UX class boxkite doesn't serve by
+# (image bloat/attack surface for a UX class boxxkite doesn't serve by
 # default): callers who don't need LSP completions keep the smaller,
 # unmodified default image; only callers who explicitly opt in build/pull
 # this one instead. Mirrors sandbox-node.Dockerfile's own framing as "a
@@ -127,7 +127,7 @@ RUN set -eux; \
 # Resolved modules live under /usr/local/lib/node_modules; NODE_PATH (set below)
 # points scripts there so `require('docx')` etc. continues to work.
 #
-# The two language servers for /lsp/* (BOXKITE_LSP_ENABLED,
+# The two language servers for /lsp/* (BOXXKITE_LSP_ENABLED,
 # docs/LSP-SUPPORT-SCOPING.md) are installed globally INSIDE this same RUN,
 # AFTER `npm ci` and BEFORE npm is removed below -- NOT in an earlier,
 # separate RUN step. Confirmed directly, the hard way: npm's global

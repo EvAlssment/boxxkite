@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -50,7 +50,7 @@ func (c *Client) Usage(ctx context.Context) (*Usage, error) {
 
 // RequestPasswordReset requests a password-reset email
 // (POST /v1/auth/password-reset/request). Opt-in on the control-plane
-// (BOXKITE_PASSWORD_RESET_ENABLED); returns an *APIError with
+// (BOXXKITE_PASSWORD_RESET_ENABLED); returns an *APIError with
 // StatusCode 404 and Code "feature_disabled" if the deployment hasn't
 // enabled it. Always returns the same message whether or not the email is
 // registered, so this call can never be used to enumerate accounts.
@@ -79,7 +79,7 @@ func (c *Client) ConfirmPasswordReset(ctx context.Context, token, newPassword st
 
 // VerifyEmail consumes a single-use email-verification token
 // (POST /v1/auth/verify-email), opt-in
-// (BOXKITE_EMAIL_VERIFICATION_ENABLED).
+// (BOXXKITE_EMAIL_VERIFICATION_ENABLED).
 func (c *Client) VerifyEmail(ctx context.Context, token string) (*MessageResponse, error) {
 	var out MessageResponse
 	body := map[string]string{"token": token}
@@ -116,7 +116,7 @@ type TokenPair struct {
 
 // RefreshToken exchanges a still-valid refresh token for a brand new
 // access_token + refresh_token pair (POST /v1/auth/refresh), opt-in
-// (BOXKITE_REFRESH_TOKENS_ENABLED). Revokes the presented token in the
+// (BOXXKITE_REFRESH_TOKENS_ENABLED). Revokes the presented token in the
 // same request (rotation, not reuse) -- store the new RefreshToken from
 // the response and discard the one presented here.
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
@@ -129,7 +129,7 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenP
 }
 
 // Logout revokes one refresh token immediately (POST /v1/auth/logout),
-// opt-in (BOXKITE_REFRESH_TOKENS_ENABLED). Always succeeds (204) whether
+// opt-in (BOXXKITE_REFRESH_TOKENS_ENABLED). Always succeeds (204) whether
 // or not the token was valid -- never leaks which.
 func (c *Client) Logout(ctx context.Context, refreshToken string) error {
 	body := map[string]string{"refresh_token": refreshToken}

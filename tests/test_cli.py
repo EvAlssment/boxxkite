@@ -1,4 +1,4 @@
-"""Tests for the `boxkite` CLI (src/boxkite/cli/). All HTTP calls are
+"""Tests for the `boxxkite` CLI (src/boxxkite/cli/). All HTTP calls are
 mocked at the httpx level — no real control-plane or sidecar is required.
 """
 
@@ -11,11 +11,11 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
-from boxkite.cli import app
-from boxkite.cli import client as client_module
-from boxkite.cli import config_store
-from boxkite.cli.context import Context
-from boxkite.cli.errors import CliError
+from boxxkite.cli import app
+from boxxkite.cli import client as client_module
+from boxxkite.cli import config_store
+from boxxkite.cli.context import Context
+from boxxkite.cli.errors import CliError
 
 runner = CliRunner()
 
@@ -54,8 +54,8 @@ class FakeResponse:
 @pytest.fixture(autouse=True)
 def _isolated_config(tmp_path, monkeypatch):
     """Point config_store's file paths at a scratch directory so no test
-    reads or writes the real ~/.boxkite."""
-    config_dir = tmp_path / ".boxkite"
+    reads or writes the real ~/.boxxkite."""
+    config_dir = tmp_path / ".boxxkite"
     monkeypatch.setattr(config_store, "CONFIG_DIR", config_dir)
     monkeypatch.setattr(config_store, "CONFIG_FILE", config_dir / "config.toml")
     monkeypatch.setattr(config_store, "LOCAL_ENV_FILE", config_dir / "local.env")
@@ -103,7 +103,7 @@ def test_local_env_missing_file_returns_none():
     assert config_store.read_local_env() is None
 
 
-# ── boxkite config CLI commands ──────────────────────────────────────────
+# ── boxxkite config CLI commands ──────────────────────────────────────────
 def test_config_set_key_and_show_masks_value():
     set_result = runner.invoke(app, ["config", "set-key", "bxk_live_1234567890abcdef"])
     assert set_result.exit_code == 0
@@ -125,7 +125,7 @@ def test_config_set_url_strips_trailing_slash():
 def test_config_set_url_rejects_plain_http_to_a_remote_host():
     """A bxk_live_... API key is a full-privilege, long-lived credential --
     sent as `Authorization: Bearer` on every hosted request
-    (src/boxkite/cli/client.py's hosted_request). An http:// URL to
+    (src/boxxkite/cli/client.py's hosted_request). An http:// URL to
     anything other than localhost would put it on the wire in cleartext."""
     result = runner.invoke(app, ["config", "set-url", "http://cp.example.com"])
 
@@ -306,7 +306,7 @@ def test_exec_with_no_target_configured_fails_clearly():
     result = runner.invoke(app, ["exec", "echo hi"])
 
     assert result.exit_code == 1
-    assert "No boxkite target configured" in result.output
+    assert "No boxxkite target configured" in result.output
 
 
 # ── session command: hosted-only, honest local-mode error ────────────────
@@ -568,17 +568,17 @@ def test_help_output_contains_no_pricing_language(command_path):
     result = runner.invoke(app, [*command_path, "--help"])
 
     assert result.exit_code == 0
-    assert "$" not in result.output, f"'$' found in `boxkite {' '.join(command_path)} --help`"
+    assert "$" not in result.output, f"'$' found in `boxxkite {' '.join(command_path)} --help`"
     clean_output = _ANSI_ESCAPE_PATTERN.sub("", result.output)
     match = BANNED_WORD_PATTERN.search(clean_output)
-    assert match is None, f"banned word {match.group(0)!r} found in `boxkite {' '.join(command_path)} --help`"
+    assert match is None, f"banned word {match.group(0)!r} found in `boxxkite {' '.join(command_path)} --help`"
 
 
 def test_no_banned_words_in_cli_source():
     """Static grep sweep over the CLI source itself (not just --help text),
     mirroring how control-plane/tests/test_usage_limits.py holds its own
     error strings to the same bar."""
-    cli_dir = Path(__file__).resolve().parent.parent / "src" / "boxkite" / "cli"
+    cli_dir = Path(__file__).resolve().parent.parent / "src" / "boxxkite" / "cli"
     pattern = re.compile(r"\$|dollar|pricing|subscription|billing", re.IGNORECASE)
     offenders = []
     for py_file in cli_dir.glob("*.py"):
@@ -590,7 +590,7 @@ def test_no_banned_words_in_cli_source():
     assert not offenders, "banned pricing language found:\n" + "\n".join(offenders)
 
 
-# ── docker compose file discovery for `boxkite up` ───────────────────────
+# ── docker compose file discovery for `boxxkite up` ───────────────────────
 def test_up_fails_clearly_when_compose_file_missing(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 

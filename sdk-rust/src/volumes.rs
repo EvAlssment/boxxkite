@@ -6,7 +6,7 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
 /// Builder for `POST /v1/volumes`'s optional fields.
 #[derive(Debug, Clone, Default, Serialize)]
@@ -54,7 +54,7 @@ impl Client {
         &self,
         size_gb: f64,
         options: CreateVolumeOptions,
-    ) -> Result<Volume, BoxkiteError> {
+    ) -> Result<Volume, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             size_gb: f64,
@@ -70,19 +70,19 @@ impl Client {
     }
 
     /// `GET /v1/volumes/{id}` -- a storage volume's status and details.
-    pub async fn get_volume(&self, volume_id: &str) -> Result<Volume, BoxkiteError> {
+    pub async fn get_volume(&self, volume_id: &str) -> Result<Volume, BoxxkiteError> {
         let builder = self.request(Method::GET, &format!("/v1/volumes/{volume_id}"));
         self.send(builder).await
     }
 
     /// `GET /v1/volumes` -- every storage volume created for this account.
-    pub async fn list_volumes(&self) -> Result<Vec<Volume>, BoxkiteError> {
+    pub async fn list_volumes(&self) -> Result<Vec<Volume>, BoxxkiteError> {
         let builder = self.request(Method::GET, "/v1/volumes");
         self.send_or_default(builder).await
     }
 
     /// `DELETE /v1/volumes/{id}` -- delete a storage volume.
-    pub async fn delete_volume(&self, volume_id: &str) -> Result<(), BoxkiteError> {
+    pub async fn delete_volume(&self, volume_id: &str) -> Result<(), BoxxkiteError> {
         let builder = self.request(Method::DELETE, &format!("/v1/volumes/{volume_id}"));
         self.send_no_content(builder).await
     }

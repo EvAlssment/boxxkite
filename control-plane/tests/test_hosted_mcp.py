@@ -155,7 +155,7 @@ async def test_valid_api_key_completes_initialize_handshake(client: httpx.AsyncC
         resp = await session.initialize()
 
     assert resp.status_code == 200
-    assert "boxkite" in resp.text
+    assert "boxxkite" in resp.text
 
 
 async def test_create_and_list_sandbox_round_trips(
@@ -221,7 +221,7 @@ async def test_exec_tool_is_rate_limited(client: httpx.AsyncClient, fake_manager
     from control_plane.config import settings
 
     monkeypatch.setattr(hosted_mcp, "get_manager", lambda: fake_manager)
-    monkeypatch.setattr(settings, "BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE", 2)
     api_key = await signup_and_get_api_key(client, "mcp-exec-rl@example.com")
 
     async with _mcp_test_client() as http_client:
@@ -245,9 +245,9 @@ async def test_create_sandbox_tool_is_rate_limited(client: httpx.AsyncClient, fa
     from control_plane.config import settings
 
     monkeypatch.setattr(hosted_mcp, "get_manager", lambda: fake_manager)
-    monkeypatch.setattr(settings, "BOXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE", 2)
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 100)
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
     api_key = await signup_and_get_api_key(client, "mcp-lifecycle-rl@example.com")
 
     async with _mcp_test_client() as http_client:
@@ -294,7 +294,7 @@ async def test_create_sandbox_count_creates_multiple_and_returns_one_line_each(
     client: httpx.AsyncClient, fake_manager, monkeypatch
 ):
     monkeypatch.setattr(hosted_mcp, "get_manager", lambda: fake_manager)
-    # BOXKITE_MAX_CONCURRENT_SANDBOXES defaults to 2 -- request exactly that
+    # BOXXKITE_MAX_CONCURRENT_SANDBOXES defaults to 2 -- request exactly that
     # many so this test exercises the "multiple, all succeed" path without
     # tripping the cap (see the dedicated cap test below for that path).
     api_key = await signup_and_get_api_key(client, "mcp-count@example.com")
@@ -315,7 +315,7 @@ async def test_create_sandbox_count_partial_success_when_capacity_limit_hit(
     client: httpx.AsyncClient, fake_manager, monkeypatch
 ):
     monkeypatch.setattr(hosted_mcp, "get_manager", lambda: fake_manager)
-    # BOXKITE_MAX_CONCURRENT_SANDBOXES defaults to 2 -- requesting 3 should
+    # BOXXKITE_MAX_CONCURRENT_SANDBOXES defaults to 2 -- requesting 3 should
     # create the first 2 then report the capacity error for the 3rd,
     # mirroring the REST route's "a later item can still fail" behavior.
     api_key = await signup_and_get_api_key(client, "mcp-count-cap@example.com")
@@ -355,7 +355,7 @@ async def test_sandbox_image_tools_return_disabled_message_by_default(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_BUILDER_ENABLED", False)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_BUILDER_ENABLED", False)
     api_key = await signup_and_get_api_key(client, "mcp-image-disabled@example.com")
 
     async with _mcp_test_client() as http_client:
@@ -372,7 +372,7 @@ async def test_sandbox_image_tools_return_disabled_message_by_default(
 async def test_sandbox_image_lifecycle_round_trips(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_BUILDER_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_BUILDER_ENABLED", True)
     api_key = await signup_and_get_api_key(client, "mcp-image-lifecycle@example.com")
 
     async with _mcp_test_client() as http_client:
@@ -401,7 +401,7 @@ async def test_sandbox_image_lifecycle_round_trips(client: httpx.AsyncClient, mo
 async def test_sandbox_image_cross_account_id_not_found(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_IMAGE_BUILDER_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_BUILDER_ENABLED", True)
     owner_key = await signup_and_get_api_key(client, "mcp-image-owner@example.com")
     other_key = await signup_and_get_api_key(client, "mcp-image-other@example.com")
 
@@ -424,7 +424,7 @@ async def test_sandbox_volume_tools_return_disabled_message_by_default(
 ):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_VOLUMES_ENABLED", False)
+    monkeypatch.setattr(settings, "BOXXKITE_VOLUMES_ENABLED", False)
     api_key = await signup_and_get_api_key(client, "mcp-volume-disabled@example.com")
 
     async with _mcp_test_client() as http_client:
@@ -441,7 +441,7 @@ async def test_sandbox_volume_tools_return_disabled_message_by_default(
 async def test_sandbox_volume_lifecycle_round_trips(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_VOLUMES_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_VOLUMES_ENABLED", True)
     api_key = await signup_and_get_api_key(client, "mcp-volume-lifecycle@example.com")
 
     async with _mcp_test_client() as http_client:
@@ -470,7 +470,7 @@ async def test_sandbox_volume_lifecycle_round_trips(client: httpx.AsyncClient, m
 async def test_sandbox_volume_cross_account_id_not_found(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_VOLUMES_ENABLED", True)
+    monkeypatch.setattr(settings, "BOXXKITE_VOLUMES_ENABLED", True)
     owner_key = await signup_and_get_api_key(client, "mcp-volume-owner@example.com")
     other_key = await signup_and_get_api_key(client, "mcp-volume-other@example.com")
 

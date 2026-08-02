@@ -3,12 +3,12 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "boxkite-control-plane"
+name = "boxxkite-control-plane"
 version = "0.1.0"
-description = "Multi-tenant control-plane API for boxkite: accounts, API keys, and fair-use-limited sandbox session management on top of SandboxManager/WarmPoolManager."
+description = "Multi-tenant control-plane API for boxxkite: accounts, API keys, and fair-use-limited sandbox session management on top of SandboxManager/WarmPoolManager."
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
-authors = [{ name = "boxkite contributors" }]
+authors = [{ name = "boxxkite contributors" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -17,8 +17,8 @@ classifiers = [
 ]
 
 dependencies = [
-    # NOTE: `boxkite` itself (SandboxManager/WarmPoolManager) is a local,
-    # unpublished sibling package in this monorepo (../src/boxkite), not on
+    # NOTE: `boxxkite` itself (SandboxManager/WarmPoolManager) is a local,
+    # unpublished sibling package in this monorepo (../src/boxxkite), not on
     # PyPI. PEP 508 direct references only accept absolute file:// URLs, so it
     # can't be pinned relatively here — install it explicitly first (see
     # requirements.txt / README "Local development"):
@@ -51,7 +51,7 @@ dependencies = [
     "httpx>=0.27,<1",
     # Model Context Protocol SDK -- backs hosted_mcp.py's Streamable HTTP
     # /mcp endpoint (docs/HOSTED-MCP-DESIGN.md). Distinct from mcp-server/'s
-    # own use of this same SDK for the local stdio boxkite-mcp package --
+    # own use of this same SDK for the local stdio boxxkite-mcp package --
     # the two share no code, they just both build on the same upstream SDK.
     "mcp>=1.2",
     # Outbound calls to GitHub's/Google's OAuth token and userinfo endpoints

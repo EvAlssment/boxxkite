@@ -38,19 +38,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: boxkite-bastion
+  name: boxxkite-bastion
   namespace: default  # Change to your namespace
   labels:
-    app: boxkite-bastion
+    app: boxxkite-bastion
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: boxkite-bastion
+      app: boxxkite-bastion
   template:
     metadata:
       labels:
-        app: boxkite-bastion
+        app: boxxkite-bastion
     spec:
       # No Kubernetes API access whatsoever. The bastion's only outbound
       # dependency is control-plane's public WS route — it never lists pods,
@@ -70,10 +70,10 @@ spec:
       containers:
       - name: bastion
         # CHANGEME: build (bastion/Dockerfile) and pin a real tag. There is
-        # no published boxkite-bastion image yet — this is intentionally not
+        # no published boxxkite-bastion image yet — this is intentionally not
         # a valid reference so an unedited apply fails fast rather than
         # silently pulling the wrong image.
-        image: boxkite-bastion:CHANGEME
+        image: boxxkite-bastion:CHANGEME
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -90,24 +90,24 @@ spec:
         # The ONLY network destination this process talks to. Point at your
         # control-plane's public base URL (http(s):// or ws(s)://). Must be
         # reachable from the egress allowlist in the NetworkPolicy below.
-        - name: BOXKITE_BASTION_CONTROL_PLANE_URL
+        - name: BOXXKITE_BASTION_CONTROL_PLANE_URL
           value: "https://your-control-plane.example.com"  # CHANGEME
-        - name: BOXKITE_BASTION_LISTEN_PORT
+        - name: BOXXKITE_BASTION_LISTEN_PORT
           value: "2222"
         # Persistent SSH host key. If unset, the bastion generates a fresh
         # ephemeral key per process start, which changes across restarts and
         # trips every client's known_hosts check — set this in production.
         # Mount a Secret at this path (a key generated once with
         # `ssh-keygen -t ed25519`), and add a matching volume/volumeMount.
-        - name: BOXKITE_BASTION_HOST_KEY_PATH
+        - name: BOXXKITE_BASTION_HOST_KEY_PATH
           value: "/etc/bastion/host_key"  # CHANGEME: mount a Secret here
         # Resource-exhaustion guards (see rate_limit.py). NOTE: per-host
         # limiting keys on the SOURCE IP the bastion actually observes — see
         # the Service note below about externalTrafficPolicy, or this cap
         # collapses to a per-node-IP bucket behind a SNAT'ing load balancer.
-        - name: BOXKITE_BASTION_MAX_CONNECTIONS_PER_HOST
+        - name: BOXXKITE_BASTION_MAX_CONNECTIONS_PER_HOST
           value: "10"
-        - name: BOXKITE_BASTION_LOGIN_TIMEOUT_SECONDS
+        - name: BOXXKITE_BASTION_LOGIN_TIMEOUT_SECONDS
           value: "30"
         readinessProbe:
           tcpSocket:
@@ -129,14 +129,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: boxkite-bastion
+  name: boxxkite-bastion
   namespace: default  # Change to your namespace
   labels:
-    app: boxkite-bastion
+    app: boxxkite-bastion
 spec:
   type: LoadBalancer  # public by design — this is the whole point of a bastion
   selector:
-    app: boxkite-bastion
+    app: boxxkite-bastion
   # externalTrafficPolicy: Local preserves the client's real source IP.
   # WITHOUT this (the "Cluster" default), kube-proxy SNATs incoming
   # connections to a node IP, so the bastion's per-host connection limiter
@@ -165,12 +165,12 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: boxkite-bastion-network-policy
+  name: boxxkite-bastion-network-policy
   namespace: default  # Change to your namespace
 spec:
   podSelector:
     matchLabels:
-      app: boxkite-bastion
+      app: boxxkite-bastion
   policyTypes:
   - Ingress
   - Egress

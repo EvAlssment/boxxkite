@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.search_tools (ls, glob, grep LangChain tools).
+Tests for boxxkite.tools.search_tools (ls, glob, grep LangChain tools).
 
 Mirrors tests/test_tool_factory.py's pattern: mock SandboxManager, assert
 the tool calls the right manager method with the right args, and assert
@@ -8,7 +8,7 @@ error paths return a string instead of raising.
 
 import pytest
 
-from boxkite.tools.search_tools import (
+from boxxkite.tools.search_tools import (
     create_glob_tool,
     create_grep_tool,
     create_ls_tool,

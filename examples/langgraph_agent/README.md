@@ -1,8 +1,8 @@
-# LangGraph agent with boxkite's 5 sandbox tools
+# LangGraph agent with boxxkite's 5 sandbox tools
 
-The headline example: `boxkite.tools.create_sandbox_tools(...)` returns
+The headline example: `boxxkite.tools.create_sandbox_tools(...)` returns
 plain LangChain `@tool`-decorated functions, handed directly to LangGraph's
-prebuilt `create_react_agent`. No adapter layer, no boxkite-specific graph
+prebuilt `create_react_agent`. No adapter layer, no boxxkite-specific graph
 nodes -- this is exactly the "hand these tools to any LangChain/LangGraph
 agent" pitch from the main README, made concrete.
 
@@ -23,15 +23,15 @@ works -- not just that the LLM claimed it did.
 
 ## Prerequisites
 
-1. **A running boxkite stack.** Either:
-   - Local docker-compose: `boxkite up` (or `docker compose -f
+1. **A running boxxkite stack.** Either:
+   - Local docker-compose: `boxxkite up` (or `docker compose -f
      ../../deploy/docker-compose.yml up -d --build`), from the repo root.
    - Or a real Kubernetes cluster (see the main README's "Quickstart: real
      Kubernetes, via kind" section) -- set `RUNTIME_MODE=k8s` instead of
      `compose` and the corresponding `SANDBOX_IMAGE`/`SIDECAR_IMAGE`/proxy
      env vars.
 
-2. **boxkite itself installed**, from the repo root:
+2. **boxxkite itself installed**, from the repo root:
    ```bash
    pip install -e ../..
    ```
@@ -44,18 +44,18 @@ works -- not just that the LLM claimed it did.
 4. **An LLM API key.** Defaults to Anthropic's Claude
    (`ANTHROPIC_API_KEY`). To use a different provider, install its
    LangChain integration package (e.g. `langchain-openai`) and set
-   `BOXKITE_EXAMPLE_MODEL` to a provider-prefixed model string that
+   `BOXXKITE_EXAMPLE_MODEL` to a provider-prefixed model string that
    [`init_chat_model`](https://docs.langchain.com/oss/python/langchain/models)
    understands, e.g. `openai:gpt-4o`.
 
 ## Run
 
 ```bash
-# 1. Start boxkite (from the repo root)
-boxkite up
+# 1. Start boxxkite (from the repo root)
+boxxkite up
 
-# 2. Point this example at it -- boxkite up writes the token to ~/.boxkite/local.env
-export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxkite/local.env | cut -d= -f2)
+# 2. Point this example at it -- boxxkite up writes the token to ~/.boxxkite/local.env
+export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxxkite/local.env | cut -d= -f2)
 export RUNTIME_MODE=compose
 export SIDECAR_URL=http://localhost:8080
 
@@ -94,13 +94,13 @@ prose framing around them is not, since it's still a live model call.
 ## Notes on the tool wiring
 
 - `SandboxManager()` auto-detects compose vs. Kubernetes mode from
-  `RUNTIME_MODE`/`SIDECAR_URL` env vars -- see `src/boxkite/manager.py`.
+  `RUNTIME_MODE`/`SIDECAR_URL` env vars -- see `src/boxxkite/manager.py`.
 - `create_session(organization_id, session_id, ...)` claims a warm pod (K8s
   mode) or configures the single compose sidecar, and returns
   `{"pod_name": ...}`.
 - `create_sandbox_tools(sandbox_manager=manager, organization_id=..., session_id=...)`
   is the one factory call that produces all 8 tools
-  (`src/boxkite/tools/factory.py`); `audit_sink` and `work_item_id` are
+  (`src/boxxkite/tools/factory.py`); `audit_sink` and `work_item_id` are
   optional and omitted here since this example has no external system of
   record to mirror writes into.
 - Always call `manager.destroy_session(session_id)` when done (see the
@@ -110,7 +110,7 @@ prose framing around them is not, since it's still a live model call.
 ## What's verified vs. what needs a live run
 
 This example's imports and tool wiring were verified against the actual
-installed `boxkite`/`langgraph`/`langchain`/`langchain-anthropic` versions
+installed `boxxkite`/`langgraph`/`langchain`/`langchain-anthropic` versions
 in this repo's `.venv` (no import errors, no signature mismatches).
 Separately, the original 5 tools this example wires up (`bash_tool`,
 `file_create`, `view`, `str_replace`, `present_files`) were exercised

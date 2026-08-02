@@ -4,15 +4,15 @@
 
 set -euo pipefail
 
-CLUSTER_NAME="boxkite-dev"
+CLUSTER_NAME="boxxkite-dev"
 
 echo "[+] Deleting kind cluster '${CLUSTER_NAME}'..."
 kind delete cluster --name "$CLUSTER_NAME" 2>/dev/null || true
 
 echo "[+] Cleaning up local images (optional)..."
-read -rp "    Remove local boxkite-sandbox:local and boxkite-sidecar:local images? [y/N] " answer
+read -rp "    Remove local boxxkite-sandbox:local and boxxkite-sidecar:local images? [y/N] " answer
 if [[ "${answer,,}" == "y" ]]; then
-    docker rmi boxkite-sandbox:local boxkite-sidecar:local 2>/dev/null || true
+    docker rmi boxxkite-sandbox:local boxxkite-sidecar:local 2>/dev/null || true
     echo "    Images removed."
 else
     echo "    Keeping images (faster rebuild next time)."

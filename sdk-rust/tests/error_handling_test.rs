@@ -1,4 +1,4 @@
-use boxkite_client::{BoxkiteError, Client, ExecOptions};
+use boxxkite_client::{BoxxkiteError, Client, ExecOptions};
 
 #[tokio::test]
 async fn unreachable_server_yields_connection_error() {
@@ -11,7 +11,7 @@ async fn unreachable_server_yields_connection_error() {
         .exec("sess_1", "echo hi", ExecOptions::new())
         .await
         .unwrap_err();
-    assert!(matches!(err, BoxkiteError::Connection(_)));
+    assert!(matches!(err, BoxxkiteError::Connection(_)));
     assert_eq!(err.code(), None);
     assert_eq!(err.status(), None);
 }
@@ -19,6 +19,6 @@ async fn unreachable_server_yields_connection_error() {
 #[test]
 fn config_error_rejected_before_any_request_is_built() {
     let err = Client::new("ftp://cp.example.com", "bxk_live_test").unwrap_err();
-    assert!(matches!(err, BoxkiteError::Config(_)));
+    assert!(matches!(err, BoxxkiteError::Config(_)));
     assert!(err.to_string().contains("cleartext") || err.to_string().contains("invalid"));
 }

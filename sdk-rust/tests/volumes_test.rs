@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::CreateVolumeOptions;
+use boxxkite_client::CreateVolumeOptions;
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -57,7 +57,7 @@ async fn get_volume_parses_ready_status() {
         .and(path("/v1/volumes/vol_1"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "id": "vol_1", "label": "shared-data", "size_gb": 50.0, "status": "ready",
-            "pvc_name": "boxkite-vol-1", "failure_reason": null, "created_at": "2026-01-01T00:00:00Z"
+            "pvc_name": "boxxkite-vol-1", "failure_reason": null, "created_at": "2026-01-01T00:00:00Z"
         })))
         .mount(&server)
         .await;
@@ -67,7 +67,7 @@ async fn get_volume_parses_ready_status() {
         .await
         .expect("get_volume should succeed");
     assert_eq!(volume.status, "ready");
-    assert_eq!(volume.pvc_name.as_deref(), Some("boxkite-vol-1"));
+    assert_eq!(volume.pvc_name.as_deref(), Some("boxxkite-vol-1"));
 }
 
 #[tokio::test]

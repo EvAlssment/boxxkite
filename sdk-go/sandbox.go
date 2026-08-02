@@ -1,4 +1,4 @@
-package boxkite
+package boxxkite
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 // (POST /v1/sandboxes). All fields are optional -- a zero-value
 // CreateSandboxRequest{} creates one default "small" sandbox. Use Ptr(...)
 // to populate the pointer-typed fields, e.g.
-// boxkite.CreateSandboxRequest{Size: boxkite.Ptr("medium")}.
+// boxxkite.CreateSandboxRequest{Size: boxxkite.Ptr("medium")}.
 type CreateSandboxRequest struct {
 	// Label is an optional human-readable label for the sandbox.
 	Label *string `json:"label,omitempty"`
@@ -46,7 +46,7 @@ type CreateSandboxRequest struct {
 	// GPUCount is opt-in and experimental (docs/GPU-SUPPORT-SCOPING.md) --
 	// it requests this many GPUs as a Kubernetes extended-resource limit.
 	// 422s (gpu_support_disabled) unless the deployment has
-	// BOXKITE_GPU_ENABLED set and a GPU-equipped node pool with a device
+	// BOXXKITE_GPU_ENABLED set and a GPU-equipped node pool with a device
 	// plugin provisioned; not verified against real GPU hardware in this
 	// codebase.
 	GPUCount *int `json:"gpu_count,omitempty"`

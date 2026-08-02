@@ -8,7 +8,7 @@
 # npm -- not just "python_packages/npm_packages left empty" but the
 # runtimes themselves absent. Closes another slice of
 # docs/E2B-COMPARISON.md's "template gallery" gap: a base other than
-# boxkite-default/boxkite-minimal/boxkite-node for callers who'd rather not
+# boxxkite-default/boxxkite-minimal/boxxkite-node for callers who'd rather not
 # carry runtimes they'll never use.
 #
 # SECURITY NOTES (identical posture to deploy/sandbox-node.Dockerfile):

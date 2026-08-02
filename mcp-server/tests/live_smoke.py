@@ -1,9 +1,9 @@
 """Manual, non-CI live smoke test -- drives the real MCP server process over
-stdio via mcp's own ClientSession, against the real hosted boxkite
+stdio via mcp's own ClientSession, against the real hosted boxxkite
 control-plane, using the test API key. Not collected by pytest (not
 prefixed test_*, and it needs live credentials + network); run directly:
 
-    BOXKITE_BASE_URL=... BOXKITE_API_KEY=... python tests/live_smoke.py
+    BOXXKITE_BASE_URL=... BOXXKITE_API_KEY=... python tests/live_smoke.py
 
 Exercises create_sandbox -> exec -> destroy_sandbox end to end.
 """
@@ -19,13 +19,13 @@ from mcp.client.stdio import stdio_client
 
 
 async def main() -> int:
-    base_url = os.environ["BOXKITE_BASE_URL"]
-    api_key = os.environ["BOXKITE_API_KEY"]
+    base_url = os.environ["BOXXKITE_BASE_URL"]
+    api_key = os.environ["BOXXKITE_API_KEY"]
 
     params = StdioServerParameters(
         command=sys.executable,
-        args=["-m", "boxkite_mcp.server"],
-        env={**os.environ, "BOXKITE_BASE_URL": base_url, "BOXKITE_API_KEY": api_key},
+        args=["-m", "boxxkite_mcp.server"],
+        env={**os.environ, "BOXXKITE_BASE_URL": base_url, "BOXXKITE_API_KEY": api_key},
     )
 
     async with stdio_client(params) as (read, write):

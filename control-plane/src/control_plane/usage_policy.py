@@ -1,5 +1,5 @@
-"""Fair-use policy layer: this is where BOXKITE_FREE_MONTHLY_SANDBOX_HOURS,
-BOXKITE_MAX_SESSION_MINUTES, and BOXKITE_MAX_CONCURRENT_SANDBOXES are
+"""Fair-use policy layer: this is where BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS,
+BOXXKITE_MAX_SESSION_MINUTES, and BOXXKITE_MAX_CONCURRENT_SANDBOXES are
 actually enforced.
 
 Deliberately NOT inside SandboxManager (per the task's explicit instruction
@@ -12,25 +12,25 @@ calls unchanged.
 
 Enforcement walkthrough (also in the top-level report):
 1. `create_session` first counts ALL accounts' currently-active rows
-   combined -- if that's already at BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES,
+   combined -- if that's already at BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES,
    it raises LimitExceededError before checking anything account-specific.
    This is the cluster-wide ceiling: enough accounts hitting their own
    (much smaller) per-account cap could otherwise still collectively
    exhaust node capacity.
 2. It then counts the account's own currently-active rows in
    `sandbox_sessions` (not SandboxManager/K8s state) — if that count is
-   already at BOXKITE_MAX_CONCURRENT_SANDBOXES, it raises
+   already at BOXXKITE_MAX_CONCURRENT_SANDBOXES, it raises
    LimitExceededError before ever calling SandboxManager.
 3. It then computes the account's total sandbox-hours consumed so far this
    calendar month (destroyed sessions' recorded durations, plus elapsed
    time for any still-active sessions) — if that total is at or past
-   BOXKITE_FREE_MONTHLY_SANDBOX_HOURS, it raises LimitExceededError.
+   BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS, it raises LimitExceededError.
 4. Only if all three checks pass does it insert a `sandbox_sessions` row
    (pod_name=None) to reserve the slot, THEN call
    `SandboxManager.create_session(...)` for real, then fill in the real
    pod_name once that returns.
 5. Independently, a background reaper (reaper.py) periodically tears down
-   any session whose wall-clock age exceeds BOXKITE_MAX_SESSION_MINUTES,
+   any session whose wall-clock age exceeds BOXXKITE_MAX_SESSION_MINUTES,
    regardless of whether the caller ever calls DELETE.
 
 Steps 1-4's checks AND the reservation insert run inside
@@ -38,8 +38,8 @@ Steps 1-4's checks AND the reservation insert run inside
 observe the same "below cap" count before any of them commits its new row
 -- see that function's docstring for the race this closes, and
 PostgresSessionLock's docstring for closing it across replicas too (via
-BOXKITE_USAGE_LOCK_BACKEND=postgres; the default "memory" backend only
-closes it within a single process, same caveat BOXKITE_RATE_LIMIT_BACKEND
+BOXXKITE_USAGE_LOCK_BACKEND=postgres; the default "memory" backend only
+closes it within a single process, same caveat BOXXKITE_RATE_LIMIT_BACKEND
 documents for rate limiting). The critical section is exited before the
 actual SandboxManager.create_session(...) call (a real K8s round trip that
 can take tens of seconds) specifically so one slow/stuck pod-create doesn't
@@ -72,7 +72,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from boxkite.capability_policy import assert_policy_invariants, build_session_capability_policy
+from boxxkite.capability_policy import assert_policy_invariants, build_session_capability_policy
 
 from .config import settings
 from .errors import ApiError, LimitExceededError
@@ -99,7 +99,7 @@ async def _fire_webhook_event(db, *, account_id: str, event_type: str, data: dic
         )
 
 # Ordering used to compare a requested sandbox size against
-# settings.BOXKITE_MAX_SANDBOX_SIZE -- mirrors SandboxManager.create_session's
+# settings.BOXXKITE_MAX_SANDBOX_SIZE -- mirrors SandboxManager.create_session's
 # own "small"/"medium"/"large" size presets.
 _SANDBOX_SIZE_ORDER = {"small": 0, "medium": 1, "large": 2}
 
@@ -107,7 +107,7 @@ _SANDBOX_SIZE_ORDER = {"small": 0, "medium": 1, "large": 2}
 # create_session() below -- NOT the whole method. Without this, concurrent
 # requests each read the same "below cap" count before any of them commits
 # its new row, letting all of them through regardless of
-# BOXKITE_MAX_CONCURRENT_SANDBOXES / BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES
+# BOXXKITE_MAX_CONCURRENT_SANDBOXES / BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES
 # -- a classic TOCTOU race. Module-level (not per-UsagePolicy-instance,
 # since one is constructed fresh per request) so it actually serializes
 # across concurrent requests in this process.
@@ -123,10 +123,10 @@ _SANDBOX_SIZE_ORDER = {"small": 0, "medium": 1, "large": 2}
 #
 # NOTE(v2), same caveat as rate_limit.py's per-process limiter: this only
 # holds within a single control-plane process. A multi-replica deployment
-# needs BOXKITE_USAGE_LOCK_BACKEND=postgres (see PostgresSessionLock below)
+# needs BOXXKITE_USAGE_LOCK_BACKEND=postgres (see PostgresSessionLock below)
 # for the cap to hold cluster-wide -- "memory" (this lock) silently allows
 # limit * replica_count through instead, same failure mode
-# BOXKITE_RATE_LIMIT_BACKEND documents for rate limiting.
+# BOXXKITE_RATE_LIMIT_BACKEND documents for rate limiting.
 _create_session_lock = asyncio.Lock()
 
 
@@ -170,12 +170,12 @@ class PostgresSessionLock:
     Postgres-only: advisory locks aren't part of ANSI SQL and have no SQLite
     equivalent, unlike rate_limit.py's counter-table approach (which works
     on both dialects). Only exercised when
-    settings.BOXKITE_USAGE_LOCK_BACKEND == "postgres" -- the default
+    settings.BOXXKITE_USAGE_LOCK_BACKEND == "postgres" -- the default
     "memory" backend never touches this class, so SQLite-backed tests are
     unaffected.
     """
 
-    LOCK_KEY = "boxkite:usage_policy:create_session"
+    LOCK_KEY = "boxxkite:usage_policy:create_session"
 
     @staticmethod
     def _advisory_lock_id(key: str) -> int:
@@ -194,7 +194,7 @@ class PostgresSessionLock:
 @asynccontextmanager
 async def _create_session_critical_section(db: AsyncSession):
     """Serializes create_session's count-check-then-reserve step per
-    settings.BOXKITE_USAGE_LOCK_BACKEND -- "memory" (default) uses the
+    settings.BOXXKITE_USAGE_LOCK_BACKEND -- "memory" (default) uses the
     process-local _create_session_lock; "postgres" uses PostgresSessionLock
     on the same `db` session the checks/reservation-insert run against
     (see that class's docstring for why the same session matters).
@@ -206,7 +206,7 @@ async def _create_session_critical_section(db: AsyncSession):
     `async with` block exits) rather than staying held until the request's
     db session eventually closes at the end of the request.
     """
-    if settings.BOXKITE_USAGE_LOCK_BACKEND == "postgres":
+    if settings.BOXXKITE_USAGE_LOCK_BACKEND == "postgres":
         await PostgresSessionLock().acquire(db)
         try:
             yield
@@ -387,7 +387,7 @@ class UsagePolicy:
         # cheap, purely config-driven checks that don't need the
         # count-check-then-reserve critical section below.
         requested_rank = _SANDBOX_SIZE_ORDER.get(size)
-        max_rank = _SANDBOX_SIZE_ORDER.get(settings.BOXKITE_MAX_SANDBOX_SIZE)
+        max_rank = _SANDBOX_SIZE_ORDER.get(settings.BOXXKITE_MAX_SANDBOX_SIZE)
         if requested_rank is not None and max_rank is not None and requested_rank > max_rank:
             raise LimitExceededError(
                 code="sandbox_size_limit_reached",
@@ -395,17 +395,17 @@ class UsagePolicy:
                     "Requested sandbox size exceeds this account's maximum "
                     "allowed size."
                 ),
-                details={"requested_size": size, "max_size": settings.BOXKITE_MAX_SANDBOX_SIZE},
+                details={"requested_size": size, "max_size": settings.BOXXKITE_MAX_SANDBOX_SIZE},
             )
 
-        if storage_gb is not None and storage_gb > settings.BOXKITE_MAX_SANDBOX_STORAGE_GB:
+        if storage_gb is not None and storage_gb > settings.BOXXKITE_MAX_SANDBOX_STORAGE_GB:
             raise LimitExceededError(
                 code="sandbox_storage_limit_reached",
                 message=(
                     "Requested sandbox storage exceeds this account's maximum "
                     "allowed storage."
                 ),
-                details={"requested_storage_gb": storage_gb, "max_storage_gb": settings.BOXKITE_MAX_SANDBOX_STORAGE_GB},
+                details={"requested_storage_gb": storage_gb, "max_storage_gb": settings.BOXXKITE_MAX_SANDBOX_STORAGE_GB},
             )
 
         # Holds ONLY for the count-check-then-reserve step -- see
@@ -459,7 +459,7 @@ class UsagePolicy:
             assert_policy_invariants(policy)
         except ValueError:
             # Phase 1 is observability/invariant-checking only (see the
-            # module docstring on boxkite.capability_policy) -- it must
+            # module docstring on boxxkite.capability_policy) -- it must
             # not change what create_session actually allows. A secret
             # and an MCP connection are only unique per-account within
             # their own tables (models_orm.py), so nothing stops the two
@@ -485,35 +485,35 @@ class UsagePolicy:
             now = _utcnow()
 
             global_active_count = await self._sessions.count_active_total()
-            if global_active_count >= settings.BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES:
+            if global_active_count >= settings.BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES:
                 raise LimitExceededError(
                     code="global_capacity_reached",
                     message="All sandbox capacity is in use right now. Please try again shortly.",
                     details={
-                        "limit": settings.BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES,
+                        "limit": settings.BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES,
                         "active": global_active_count,
                     },
                 )
 
             active_count = await self._sessions.count_active_for_account(account.id)
-            if active_count >= settings.BOXKITE_MAX_CONCURRENT_SANDBOXES:
+            if active_count >= settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES:
                 raise LimitExceededError(
                     code="concurrent_sandbox_limit_reached",
                     message=(
                         "Concurrent sandbox usage limit reached "
-                        f"({settings.BOXKITE_MAX_CONCURRENT_SANDBOXES} at a time). "
+                        f"({settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES} at a time). "
                         "Destroy an existing sandbox session before creating another."
                     ),
-                    details={"limit": settings.BOXKITE_MAX_CONCURRENT_SANDBOXES, "active": active_count},
+                    details={"limit": settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES, "active": active_count},
                 )
 
             hours_used = await self.monthly_hours_used(account.id, now=now)
-            if hours_used >= settings.BOXKITE_FREE_MONTHLY_SANDBOX_HOURS:
+            if hours_used >= settings.BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS:
                 raise LimitExceededError(
                     code="monthly_usage_limit_reached",
                     message="Monthly usage limit reached. Try again next calendar month.",
                     details={
-                        "limit_hours": settings.BOXKITE_FREE_MONTHLY_SANDBOX_HOURS,
+                        "limit_hours": settings.BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS,
                         "used_hours": round(hours_used, 4),
                     },
                 )

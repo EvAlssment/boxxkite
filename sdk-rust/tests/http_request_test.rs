@@ -2,7 +2,7 @@ mod common;
 
 use std::collections::HashMap;
 
-use boxkite_client::HttpRequestOptions;
+use boxxkite_client::HttpRequestOptions;
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, ResponseTemplate};

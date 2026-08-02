@@ -3,7 +3,7 @@
 Mirrors tests/test_sidecar_node_interpreter.py's coverage shape (see
 docs/BROWSER-EXEC-DESIGN.md):
 
-- 404 when BOXKITE_BROWSER_ENABLED is off (the default).
+- 404 when BOXXKITE_BROWSER_ENABLED is off (the default).
 - Requires the same sidecar auth as every other route once enabled.
 - navigate/exec/screenshot lazily spawn the browser process on first call.
 - A script-level error (page.evaluate throwing, a bad navigation) comes
@@ -17,7 +17,7 @@ docs/BROWSER-EXEC-DESIGN.md):
 - Oversized screenshots are rejected with an error, never silently
   truncated (a truncated PNG is corrupt, unlike truncated text output).
 - /configure kills any live browser process before wiping session state,
-  unconditionally (regardless of the current BOXKITE_BROWSER_ENABLED value).
+  unconditionally (regardless of the current BOXXKITE_BROWSER_ENABLED value).
 - The browser driver subprocess is spawned with
   skip_network_isolation=True in K8s mode (docs/BROWSER-EXEC-DESIGN.md
   §3.1) -- this is the ONE sidecar-launched subprocess that opts out of
@@ -102,7 +102,7 @@ def teardown_function(_):
 # response) for a navigate to "https://hang.invalid/" so tests can exercise
 # the sidecar's own timeout-kills-the-process path.
 _FAKE_BROWSER_DRIVER_SOURCE = """
-process.stdout.write("__BOXKITE_BROWSER_READY__\\n");
+process.stdout.write("__BOXXKITE_BROWSER_READY__\\n");
 const readline = require('readline');
 const rl = readline.createInterface({ input: process.stdin, terminal: false });
 rl.on('line', (rawLine) => {
@@ -161,7 +161,7 @@ def _enable_fake_driver(monkeypatch):
     uses), and substitute the dependency-free fake driver above for the
     real Playwright-backed one."""
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
-    monkeypatch.setattr(sidecar_main, "BOXKITE_BROWSER_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_BROWSER_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: 1)
     monkeypatch.setattr(
         sidecar_main,
@@ -413,7 +413,7 @@ def test_spawn_browser_fails_when_sandbox_process_is_missing(monkeypatch):
     """K8s mode: if get_sandbox_pid() can't find the sandbox process,
     /browser/navigate must fail loudly (502), not hang or silently no-op."""
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
-    monkeypatch.setattr(sidecar_main, "BOXKITE_BROWSER_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_BROWSER_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: None)
 
     with TestClient(sidecar_main.app) as client:
@@ -487,7 +487,7 @@ def test_configure_kills_live_browser_before_wiping_session(monkeypatch, tmp_pat
 def test_configure_kills_live_browser_even_when_flag_is_off(monkeypatch, tmp_path):
     """docs/BROWSER-EXEC-DESIGN.md §4: /configure must kill any live browser
     process UNCONDITIONALLY -- a process started while
-    BOXKITE_BROWSER_ENABLED was true must still be killed if the flag was
+    BOXXKITE_BROWSER_ENABLED was true must still be killed if the flag was
     since flipped off before this recycle, mirroring the Node
     interpreter's identical requirement."""
     _enable_fake_driver(monkeypatch)
@@ -508,7 +508,7 @@ def test_configure_kills_live_browser_even_when_flag_is_off(monkeypatch, tmp_pat
 
         # Flip the flag off -- /browser/navigate itself would now 404 --
         # but /configure must still tear down the leftover process.
-        monkeypatch.setattr(sidecar_main, "BOXKITE_BROWSER_ENABLED", False)
+        monkeypatch.setattr(sidecar_main, "BOXXKITE_BROWSER_ENABLED", False)
 
         configure_response = client.post(
             "/configure",
@@ -625,7 +625,7 @@ def _resolve_playwright_node_path() -> "str | None":
     if not node_bin:
         return None
     for candidate in (
-        os.environ.get("BOXKITE_TEST_PLAYWRIGHT_NODE_PATH"),
+        os.environ.get("BOXXKITE_TEST_PLAYWRIGHT_NODE_PATH"),
         "/tmp/pw-test/node_modules",
     ):
         if not candidate or not os.path.isdir(candidate):
@@ -646,7 +646,7 @@ def _resolve_playwright_node_path() -> "str | None":
 
 def _resolve_test_chromium_executable() -> "str | None":
     for candidate in (
-        os.environ.get("BOXKITE_TEST_CHROMIUM_EXECUTABLE"),
+        os.environ.get("BOXXKITE_TEST_CHROMIUM_EXECUTABLE"),
         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
         shutil.which("chromium"),
         shutil.which("chromium-browser"),
@@ -662,14 +662,14 @@ _REAL_BROWSER_EXECUTABLE = _resolve_test_chromium_executable()
 _REAL_BROWSER_AVAILABLE = _REAL_BROWSER_NODE_PATH is not None and _REAL_BROWSER_EXECUTABLE is not None
 _REAL_BROWSER_SKIP_REASON = (
     "No `playwright` npm package reachable via NODE_PATH and/or no Chromium/Chrome "
-    "executable found in this environment -- set BOXKITE_TEST_PLAYWRIGHT_NODE_PATH "
-    "and BOXKITE_TEST_CHROMIUM_EXECUTABLE to enable these real-browser checks."
+    "executable found in this environment -- set BOXXKITE_TEST_PLAYWRIGHT_NODE_PATH "
+    "and BOXXKITE_TEST_CHROMIUM_EXECUTABLE to enable these real-browser checks."
 )
 
 
 def _enable_real_browser(monkeypatch):
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
-    monkeypatch.setattr(sidecar_main, "BOXKITE_BROWSER_ENABLED", True)
+    monkeypatch.setattr(sidecar_main, "BOXXKITE_BROWSER_ENABLED", True)
     monkeypatch.setattr(sidecar_main, "get_sandbox_pid", lambda: 1)
     monkeypatch.setattr(
         sidecar_main,
@@ -683,7 +683,7 @@ def _enable_real_browser(monkeypatch):
         node_dir = os.path.dirname(node_path)
         extended_env["PATH"] = f"{extended_env['PATH']}{os.pathsep}{node_dir}"
     extended_env["NODE_PATH"] = _REAL_BROWSER_NODE_PATH
-    extended_env["BOXKITE_BROWSER_EXECUTABLE_PATH"] = _REAL_BROWSER_EXECUTABLE
+    extended_env["BOXXKITE_BROWSER_EXECUTABLE_PATH"] = _REAL_BROWSER_EXECUTABLE
     monkeypatch.setattr(sidecar_main, "SAFE_EXEC_ENV", extended_env)
     monkeypatch.setattr(sidecar_main, "BROWSER_STARTUP_TIMEOUT_SECONDS", 60)
 

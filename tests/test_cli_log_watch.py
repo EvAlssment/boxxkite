@@ -1,4 +1,4 @@
-"""Tests for `boxkite log`/`boxkite watch` — hosted-only audit-log history
+"""Tests for `boxxkite log`/`boxxkite watch` — hosted-only audit-log history
 and live-watch commands. Same mocking pattern as test_cli.py: httpx is
 monkeypatched, no real control-plane."""
 
@@ -7,9 +7,9 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
-from boxkite.cli import app
-from boxkite.cli import client as client_module
-from boxkite.cli import config_store
+from boxxkite.cli import app
+from boxxkite.cli import client as client_module
+from boxxkite.cli import config_store
 
 runner = CliRunner()
 
@@ -69,14 +69,14 @@ ENTRY = {
 
 @pytest.fixture(autouse=True)
 def _isolated_config(tmp_path, monkeypatch):
-    config_dir = tmp_path / ".boxkite"
+    config_dir = tmp_path / ".boxxkite"
     monkeypatch.setattr(config_store, "CONFIG_DIR", config_dir)
     monkeypatch.setattr(config_store, "CONFIG_FILE", config_dir / "config.toml")
     monkeypatch.setattr(config_store, "LOCAL_ENV_FILE", config_dir / "local.env")
     yield
 
 
-# ── boxkite log ────────────────────────────────────────────────────────
+# ── boxxkite log ────────────────────────────────────────────────────────
 def test_log_hosted_auto_selects_single_session_and_prints_entries(monkeypatch):
     config_store.write_hosted_config(base_url="https://cp.example.com", api_key="bxk_live_x")
 
@@ -144,7 +144,7 @@ def test_log_in_local_mode_explains_capability_gap():
     assert "hosted control-plane" in result.output
 
 
-# ── boxkite watch ──────────────────────────────────────────────────────
+# ── boxxkite watch ──────────────────────────────────────────────────────
 def test_watch_hosted_prints_each_streamed_entry(monkeypatch):
     config_store.write_hosted_config(base_url="https://cp.example.com", api_key="bxk_live_x")
 

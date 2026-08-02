@@ -4,7 +4,7 @@ the same credential /v1/sandboxes/* requires -- since a connection only
 exists to be granted to a sandbox session created via that same API.
 
 `catalog_id` must resolve against the curated allowlist (mcp_catalog.py,
-config.py's BOXKITE_MCP_CATALOG) -- never a caller-supplied hostname.
+config.py's BOXXKITE_MCP_CATALOG) -- never a caller-supplied hostname.
 
 Scope note: this router only manages the connection-grant row and its
 resolved catalog host. There is no MCP-proxy transport and no third-party
@@ -42,7 +42,7 @@ async def _enforce_mcp_connection_rate_limit(request: Request, response: Respons
         request,
         bucket="mcp_connection_ops",
         subject=str(account.id),
-        limit=settings.BOXKITE_MCP_CONNECTION_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_MCP_CONNECTION_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -54,7 +54,7 @@ async def _enforce_mcp_connection_rate_limit(request: Request, response: Respons
     summary="Create an org-scoped outbound-MCP connection grant",
     description=(
         "Creates a new outbound-MCP connection grant for the authenticated account. "
-        "catalog_id must resolve against boxkite's curated MCP catalog (GitHub issue #117) "
+        "catalog_id must resolve against boxxkite's curated MCP catalog (GitHub issue #117) "
         "-- grant a sandbox session access to it via "
         "SandboxCreateRequest.mcp_connection_names."
     ),
@@ -71,11 +71,11 @@ async def create_mcp_connection(
     connections = McpConnectionRepository(db)
 
     existing_count = await connections.count_for_account(account.id)
-    if existing_count >= settings.BOXKITE_MAX_MCP_CONNECTIONS_PER_ACCOUNT:
+    if existing_count >= settings.BOXXKITE_MAX_MCP_CONNECTIONS_PER_ACCOUNT:
         raise LimitExceededError(
             code="mcp_connection_limit_reached",
             message="MCP connection limit reached for this account.",
-            details={"limit": settings.BOXKITE_MAX_MCP_CONNECTIONS_PER_ACCOUNT},
+            details={"limit": settings.BOXXKITE_MAX_MCP_CONNECTIONS_PER_ACCOUNT},
         )
 
     if await connections.get_by_label_for_account(account_id=account.id, label=body.label) is not None:

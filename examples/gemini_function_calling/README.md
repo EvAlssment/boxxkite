@@ -2,8 +2,8 @@
 
 Closes a real, previously-undocumented gap noted in `docs/E2B-COMPARISON.md`
 §4.1: E2B has a narrated "connect an LLM provider" quickstart per provider
-(OpenAI, Gemini, Mistral, Groq); boxkite had the equivalent underlying
-capability (`boxkite.tools.adapters.to_openai_functions`, pure stdlib, no
+(OpenAI, Gemini, Mistral, Groq); boxxkite had the equivalent underlying
+capability (`boxxkite.tools.adapters.to_openai_functions`, pure stdlib, no
 provider SDK dependency) but no runnable example showing it for Gemini.
 This is that example.
 
@@ -30,9 +30,9 @@ the matching `ToolSpec.handler()` by name.
 
 ## Prerequisites
 
-1. A running boxkite stack: `boxkite up` from the repo root (see the main
+1. A running boxxkite stack: `boxxkite up` from the repo root (see the main
    README's "Quickstart: docker-compose" section).
-2. `pip install -e ../..` (boxkite itself -- no extra needed) then
+2. `pip install -e ../..` (boxxkite itself -- no extra needed) then
    `pip install -r requirements.txt` (just the `google-genai` package).
 3. `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) set -- `genai.Client()` picks
    either up from the environment with no explicit `api_key=` argument
@@ -41,8 +41,8 @@ the matching `ToolSpec.handler()` by name.
 ## Run
 
 ```bash
-boxkite up
-export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxkite/local.env | cut -d= -f2)
+boxxkite up
+export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxxkite/local.env | cut -d= -f2)
 export RUNTIME_MODE=compose
 export SIDECAR_URL=http://localhost:8080
 export GEMINI_API_KEY=...
@@ -58,7 +58,7 @@ Tools wired: ['bash_tool', 'file_create']
 Running agent...
 ------------------------------------------------------------
 The script printed:
-hello from boxkite
+hello from boxxkite
 2026-07-11
 Destroying session <uuid> ...
 ```
@@ -66,7 +66,7 @@ Destroying session <uuid> ...
 ## What's verified vs. what needs a live run
 
 Imports and tool wiring were verified against the actual installed
-`boxkite`/`google-genai` 2.11.0 package versions in this environment:
+`boxxkite`/`google-genai` 2.11.0 package versions in this environment:
 `genai.Client(api_key=...)` construction, `types.FunctionDeclaration`'s real
 field set (confirming `parameters_json_schema` takes a raw dict, unlike
 `parameters` which wants a `Schema` object), `types.Content`/`types.Part`'s

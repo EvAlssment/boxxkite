@@ -115,7 +115,7 @@ async def test_login_rejects_social_only_account_with_distinct_error(client: htt
 async def test_login_rate_limited_after_repeated_attempts(client: httpx.AsyncClient, monkeypatch):
     from control_plane.config import settings
 
-    monkeypatch.setattr(settings, "BOXKITE_AUTH_RATE_LIMIT_PER_MINUTE", 3)
+    monkeypatch.setattr(settings, "BOXXKITE_AUTH_RATE_LIMIT_PER_MINUTE", 3)
 
     for _ in range(3):
         await client.post(

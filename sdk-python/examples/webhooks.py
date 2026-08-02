@@ -1,6 +1,6 @@
 """Runnable end-to-end example against a real hosted control-plane.
 
-    BOXKITE_BASE_URL=https://your-control-plane BOXKITE_API_KEY=bxk_live_... \\
+    BOXXKITE_BASE_URL=https://your-control-plane BOXXKITE_API_KEY=bxk_live_... \\
         python examples/webhooks.py
 """
 
@@ -13,13 +13,13 @@ import os
 import sys
 import time
 
-from boxkite_client import BoxkiteApiError, BoxkiteClient
+from boxxkite_client import BoxxkiteApiError, BoxxkiteClient
 
 
 def verify_signature(
     secret: str, signature_header: str, raw_body: bytes, tolerance_seconds: int = 300
 ) -> bool:
-    """Verify an `X-Boxkite-Webhook-Signature` header, per docs/WEBHOOKS-DESIGN.md §6."""
+    """Verify an `X-Boxxkite-Webhook-Signature` header, per docs/WEBHOOKS-DESIGN.md §6."""
     parts = dict(p.split("=", 1) for p in signature_header.split(","))
     timestamp, signature = int(parts["t"]), parts["v1"]
     if abs(time.time() - timestamp) > tolerance_seconds:
@@ -30,17 +30,17 @@ def verify_signature(
 
 
 def main() -> None:
-    base_url = os.environ.get("BOXKITE_BASE_URL")
-    api_key = os.environ.get("BOXKITE_API_KEY")
+    base_url = os.environ.get("BOXXKITE_BASE_URL")
+    api_key = os.environ.get("BOXXKITE_API_KEY")
     if not base_url or not api_key:
-        print("Set BOXKITE_BASE_URL and BOXKITE_API_KEY first.", file=sys.stderr)
+        print("Set BOXXKITE_BASE_URL and BOXXKITE_API_KEY first.", file=sys.stderr)
         raise SystemExit(1)
 
-    client = BoxkiteClient(base_url=base_url, api_key=api_key)
+    client = BoxxkiteClient(base_url=base_url, api_key=api_key)
 
     try:
         webhook = client.create_webhook(
-            url="https://example.com/boxkite-webhook",
+            url="https://example.com/boxxkite-webhook",
             event_types=["sandbox.created", "sandbox.destroyed", "audit_log.entry"],
             description="webhooks example",
         )
@@ -62,7 +62,7 @@ def main() -> None:
 
         client.delete_webhook(webhook["id"])
         print("Webhook deleted.")
-    except BoxkiteApiError as exc:
+    except BoxxkiteApiError as exc:
         print(f"API error: {exc.message} [{exc.code}]", file=sys.stderr)
         raise SystemExit(1) from exc
 

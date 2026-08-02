@@ -8,7 +8,7 @@
 # #179 and docs/KATA-CONTAINERS-SCOPING.md's dated update). The pod schedules
 # and runs as a genuinely separate-kernel VM, and the sidecar's nsenter/
 # setns() exec mechanism works across the VM boundary unchanged. Enabling
-# this (BOXKITE_KATA_RUNTIME_CLASS_ENABLED=true, see resource_config.py)
+# this (BOXXKITE_KATA_RUNTIME_CLASS_ENABLED=true, see resource_config.py)
 # still opts a deployment into an experimental configuration -- one that now
 # KNOWINGLY trades away the control described below.
 #
@@ -85,12 +85,12 @@ metadata:
     app: sandbox
     component: execution
     session-id: SESSION_ID
-    sandbox.boxkite.dev/size: "small"
-    sandbox.boxkite.dev/runtime: "kata"
+    sandbox.boxxkite.dev/size: "small"
+    sandbox.boxxkite.dev/runtime: "kata"
   annotations:
-    sandbox.boxkite.dev/status: "warm"  # warm, active, terminating
-    sandbox.boxkite.dev/created-at: ""
-    sandbox.boxkite.dev/last-used: ""
+    sandbox.boxxkite.dev/status: "warm"  # warm, active, terminating
+    sandbox.boxxkite.dev/created-at: ""
+    sandbox.boxxkite.dev/last-used: ""
 spec:
   # The only functional difference from deploy/pod-template.yaml: routes
   # this pod through the Kata Containers OCI runtime instead of runc. The
@@ -104,7 +104,7 @@ spec:
 
   initContainers:
   - name: init-prefetch
-    image: boxkite-sidecar:latest
+    image: boxxkite-sidecar:latest
     imagePullPolicy: IfNotPresent
     command: ["python", "-c", "print('Init container ready')"]
     volumeMounts:
@@ -119,7 +119,7 @@ spec:
 
   containers:
   - name: sandbox
-    image: boxkite-sandbox:latest
+    image: boxxkite-sandbox:latest
     imagePullPolicy: IfNotPresent
 
     securityContext:
@@ -174,7 +174,7 @@ spec:
       mountPath: /tmp
 
   - name: sidecar
-    image: boxkite-sidecar:latest
+    image: boxxkite-sidecar:latest
     imagePullPolicy: IfNotPresent
 
     # Identical grant to deploy/pod-template.yaml's sidecar -- see that
@@ -307,7 +307,7 @@ spec:
     - name: tmp
       mountPath: /tmp
     - name: sidecar-tls
-      mountPath: /etc/boxkite/tls
+      mountPath: /etc/boxxkite/tls
       readOnly: true
 
   # sizeLimit CONFIRMED NOT enforced under Kata's shipped defaults (live run

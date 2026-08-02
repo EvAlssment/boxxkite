@@ -1,6 +1,6 @@
-# Contributing to boxkite
+# Contributing to boxxkite
 
-Thanks for considering a contribution. boxkite's own code is small and
+Thanks for considering a contribution. boxxkite's own code is small and
 focused, so this doc stays short — but its dependency tree (LangChain,
 LangGraph, and cloud SDKs for Kubernetes/AWS/Azure) is substantial. Expect a
 cold `pip install -e '.[dev]'` to take a few minutes, not seconds.
@@ -30,7 +30,7 @@ For anything beyond a small fix (a new tool, a change to pod security
 context, a new storage backend), please open an issue first to discuss the
 approach. This project touches code-execution isolation; changes to
 `deploy/pod-template.yaml`, `deploy/network-policy.yaml`,
-`sidecar/main.py`'s path/permission handling, or `src/boxkite/manager.py`'s
+`sidecar/main.py`'s path/permission handling, or `src/boxxkite/manager.py`'s
 security context construction get extra scrutiny before merge.
 
 ## Developer Certificate of Origin (DCO), not a CLA
@@ -66,7 +66,7 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 # Some tests import sidecar/main.py directly (fastapi/pydantic/aiofiles),
 # which aren't declared in pyproject.toml since they're the sidecar's own
-# dependencies, not the boxkite package's — install them too:
+# dependencies, not the boxxkite package's — install them too:
 pip install -r sidecar/requirements.txt
 pytest tests/
 ```
@@ -86,7 +86,7 @@ install steps, run from the repo root:
 
 ```bash
 # from the repo root, with the root .venv already active
-pip install -e .                        # control-plane depends on boxkite as a local sibling
+pip install -e .                        # control-plane depends on boxxkite as a local sibling
 cd control-plane
 pip install -e ".[dev]"
 pytest tests/
@@ -138,18 +138,18 @@ test pass.
 directly. Every change lands through a pull request from your own fork:
 
 ```bash
-gh repo fork EvAlssment/boxkite --clone
-cd boxkite
+gh repo fork EvAlssment/boxxkite --clone
+cd boxxkite
 git checkout -b my-change
 # ... make your change ...
 git commit -s
 git push -u origin my-change
-gh pr create --repo EvAlssment/boxkite
+gh pr create --repo EvAlssment/boxxkite
 ```
 
 (Or the non-`gh` equivalent: fork via the GitHub UI, clone your fork, add
-`EvAlssment/boxkite` as an `upstream` remote to pull in future changes, and
-open the PR from your fork's branch against `EvAlssment/boxkite:main`.)
+`EvAlssment/boxxkite` as an `upstream` remote to pull in future changes, and
+open the PR from your fork's branch against `EvAlssment/boxxkite:main`.)
 
 Every PR needs at least one approving review before it can merge — branch
 protection enforces this, it isn't just a norm. This repo's CI workflows

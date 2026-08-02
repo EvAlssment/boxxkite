@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::StartProcessOptions;
+use boxxkite_client::StartProcessOptions;
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
@@ -187,7 +187,7 @@ async fn get_process_output_maps_unknown_process_id_to_404() {
 #[tokio::test]
 async fn stream_process_output_yields_output_then_exit() {
     use futures_util::StreamExt;
-    use boxkite_client::ProcessStreamEvent;
+    use boxxkite_client::ProcessStreamEvent;
 
     let server = common::mock_server().await;
     let client = common::client_for(&server);

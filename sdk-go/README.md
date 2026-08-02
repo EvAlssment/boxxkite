@@ -1,13 +1,13 @@
-# boxkite (Go client)
+# boxxkite (Go client)
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/EvAlssment/boxkite/sdk-go.svg)](https://pkg.go.dev/github.com/EvAlssment/boxkite/sdk-go)
+[![Go Reference](https://pkg.go.dev/badge/github.com/EvAlssment/boxxkite/sdk-go.svg)](https://pkg.go.dev/github.com/EvAlssment/boxxkite/sdk-go)
 
-A Go client for a **hosted** boxkite control-plane — create sandboxes, run
-commands, edit files, over HTTP. Mirrors `sdk-python`'s `BoxkiteClient`
-(PyPI: `boxkite-client`) and `sdk-js`'s `BoxkiteClient` (npm:
-`boxkite-client`) method-for-method, adapted to Go idiom (`(result, err)`
+A Go client for a **hosted** boxxkite control-plane — create sandboxes, run
+commands, edit files, over HTTP. Mirrors `sdk-python`'s `BoxxkiteClient`
+(PyPI: `boxxkite-client`) and `sdk-js`'s `BoxxkiteClient` (npm:
+`boxxkite-client`) method-for-method, adapted to Go idiom (`(result, err)`
 returns, a request-struct pattern instead of keyword arguments, `context.Context`
-on every call). Not a client for the `boxkite` package itself
+on every call). Not a client for the `boxxkite` package itself
 (`SandboxManager`, embedded directly against a Kubernetes cluster) — use
 this to talk to *someone else's* running control-plane, hosted or
 self-hosted, over its API.
@@ -15,7 +15,7 @@ self-hosted, over its API.
 ## Install
 
 ```bash
-go get github.com/EvAlssment/boxkite/sdk-go
+go get github.com/EvAlssment/boxxkite/sdk-go
 ```
 
 ## Quickstart
@@ -28,24 +28,24 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/EvAlssment/boxkite/sdk-go"
+	"github.com/EvAlssment/boxxkite/sdk-go"
 )
 
 func main() {
-	client, err := boxkite.NewClient("https://your-control-plane.example.com", "bxk_live_...")
+	client, err := boxxkite.NewClient("https://your-control-plane.example.com", "bxk_live_...")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	ctx := context.Background()
-	err = client.WithSandbox(ctx, boxkite.CreateSandboxRequest{Label: boxkite.Ptr("demo")}, func(sb *boxkite.Session) error {
+	err = client.WithSandbox(ctx, boxxkite.CreateSandboxRequest{Label: boxxkite.Ptr("demo")}, func(sb *boxxkite.Session) error {
 		result, err := sb.Exec(ctx, "python3 -c 'print(1 + 1)'", nil)
 		if err != nil {
 			return err
 		}
 		fmt.Println(result.Stdout) // "2\n"
 
-		if _, err := sb.FileCreate(ctx, "notes.txt", "hello from boxkite\n", nil); err != nil {
+		if _, err := sb.FileCreate(ctx, "notes.txt", "hello from boxxkite\n", nil); err != nil {
 			return err
 		}
 		viewed, err := sb.View(ctx, "notes.txt", nil)
@@ -69,8 +69,8 @@ directly if you want the sandbox to outlive the call that created it.
 
 Every optional parameter uses a `*Request`/`*Options` struct with
 pointer-typed optional fields (`nil` == omit) rather than Go's nonexistent
-keyword arguments — use `boxkite.Ptr(v)` to fill one in inline, e.g.
-`boxkite.CreateSandboxRequest{Size: boxkite.Ptr("medium")}`.
+keyword arguments — use `boxxkite.Ptr(v)` to fill one in inline, e.g.
+`boxxkite.CreateSandboxRequest{Size: boxxkite.Ptr("medium")}`.
 
 Also available: file/directory search (`Ls`/`Glob`/`Grep`), long-running
 background processes (`StartProcess`/`GetProcessOutput`/`StopProcess`),
@@ -80,19 +80,19 @@ human takeover over a raw WebSocket (`Takeover`), desktop (GUI) takeover
 over the same raw-WebSocket pattern (`DesktopTakeover`), and CRUD for images,
 volumes, webhooks, outbound-MCP connections, and secrets (`CreateSecret`/
 `ListSecrets`/`DeleteSecret`). Full reference with examples for all of
-these: [`docs/API.md`](https://github.com/EvAlssment/boxkite/blob/main/docs/API.md).
+these: [`docs/API.md`](https://github.com/EvAlssment/boxxkite/blob/main/docs/API.md).
 
 ## Webhooks
 
 Register a subscription with `CreateWebhook`, then verify each delivery's
-`X-Boxkite-Webhook-Signature` header (`docs/WEBHOOKS-DESIGN.md` §6) before
+`X-Boxxkite-Webhook-Signature` header (`docs/WEBHOOKS-DESIGN.md` §6) before
 trusting its body:
 
 ```go
-webhook, err := client.CreateWebhook(ctx, boxkite.CreateWebhookRequest{
-	URL:         "https://example.com/boxkite-webhook",
+webhook, err := client.CreateWebhook(ctx, boxxkite.CreateWebhookRequest{
+	URL:         "https://example.com/boxxkite-webhook",
 	EventTypes:  []string{"sandbox.created", "sandbox.destroyed", "audit_log.entry"},
-	Description: boxkite.Ptr("webhooks example"),
+	Description: boxxkite.Ptr("webhooks example"),
 })
 if err != nil {
 	log.Fatal(err)
@@ -141,7 +141,7 @@ verify a locally-signed payload, delete) lives in
 [`examples/webhooks.go`](examples/webhooks.go):
 
 ```sh
-BOXKITE_BASE_URL=https://your-control-plane BOXKITE_API_KEY=bxk_live_... \
+BOXXKITE_BASE_URL=https://your-control-plane BOXXKITE_API_KEY=bxk_live_... \
     go run ./examples/webhooks.go
 ```
 
@@ -150,15 +150,15 @@ schedule, and delivery-idempotency contract.
 
 ## Error handling
 
-Every non-2xx response returns a `*boxkite.APIError` (`.StatusCode`,
+Every non-2xx response returns a `*boxxkite.APIError` (`.StatusCode`,
 `.Code`, `.Message`). A network-level failure (DNS, TLS, timeout,
-connection refused) returns a `*boxkite.ConnectionError` instead. Both
+connection refused) returns a `*boxxkite.ConnectionError` instead. Both
 implement `error`; neither panics.
 
 ```go
 result, err := client.Exec(ctx, sandboxID, "echo hi", nil)
 if err != nil {
-	var apiErr *boxkite.APIError
+	var apiErr *boxxkite.APIError
 	if errors.As(err, &apiErr) && apiErr.Code == "concurrent_sandbox_limit_reached" {
 		// back off, destroy an old session, etc.
 	}
@@ -173,7 +173,7 @@ from `DefaultRetryConfig()` (2 retries, exponential backoff with full
 jitter, `Retry-After` honored):
 
 ```go
-client, err := boxkite.NewClient(baseURL, apiKey, boxkite.WithRetry(boxkite.DefaultRetryConfig()))
+client, err := boxxkite.NewClient(baseURL, apiKey, boxxkite.WithRetry(boxxkite.DefaultRetryConfig()))
 ```
 
 Only idempotent verbs (`GET`/`HEAD`/`PUT`/`DELETE`/`OPTIONS`) are retried,
@@ -268,7 +268,7 @@ WebSocket upgrade request.
   factories have no direct Go analog here, because there is no dominant
   Go agent-framework tool-spec convention to mirror yet (no Go equivalent
   of LangChain/LangGraph/Vercel AI SDK has emerged as a clear standard at
-  the time of writing). If one does, a `boxkite/langchain`-style subpackage
+  the time of writing). If one does, a `boxxkite/langchain`-style subpackage
   wrapping `Client`'s methods into that framework's tool interface would
   be the natural next step.
 - **No `payload_format`/`hec_token` fields on `CreateWebhookRequest`.**
@@ -277,7 +277,7 @@ WebSocket upgrade request.
   `sdk-python`'s nor `sdk-js`'s `create_webhook`/`createWebhook` expose it
   yet — same "match the existing SDKs' method sets" rationale as above.
 - **No separate async/concurrent client variant.** Unlike
-  `sdk-python`'s `AsyncBoxkiteClient` (a second class, because Python
+  `sdk-python`'s `AsyncBoxxkiteClient` (a second class, because Python
   needs an explicit async/sync split), every method here already takes a
   `context.Context` and is safe to call from any goroutine — Go's
   goroutine-friendly blocking-call style doesn't need a parallel "async"
@@ -306,14 +306,14 @@ a real `gorilla/websocket` upgrader against an `httptest.Server`.
 ## Related tools
 
 Moving an in-progress local Claude Code/Codex CLI/opencode session (full
-conversation history, not just a diff) into a fresh boxkite sandbox is
-handled by the separate `boxkite-handoff` CLI (Python, built on
+conversation history, not just a diff) into a fresh boxxkite sandbox is
+handled by the separate `boxxkite-handoff` CLI (Python, built on
 `sdk-python`, not this SDK) — see
 [`../docs/handoff-adapters.md`](../docs/handoff-adapters.md) and
 [`../handoff-cli/README.md`](../handoff-cli/README.md). Not yet published
 to PyPI.
 
-See the [root README](https://github.com/EvAlssment/boxkite#readme) for
-what boxkite is and the full self-hosting story, and
-[`docs/API.md`](https://github.com/EvAlssment/boxkite/blob/main/docs/API.md)
+See the [root README](https://github.com/EvAlssment/boxxkite#readme) for
+what boxxkite is and the full self-hosting story, and
+[`docs/API.md`](https://github.com/EvAlssment/boxxkite/blob/main/docs/API.md)
 for the complete REST API reference this client wraps.

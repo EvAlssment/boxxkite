@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { BoxkiteClient } from "../src/index.js";
+import { BoxxkiteClient } from "../src/index.js";
 import { createSandboxTools } from "../src/vercel-ai.js";
 
 function fakeFetch(handler: (req: { method: string; url: string; body: unknown }) => Response): typeof fetch {
@@ -12,8 +12,8 @@ function fakeFetch(handler: (req: { method: string; url: string; body: unknown }
   }) as typeof fetch;
 }
 
-function clientWith(handler: (req: { method: string; url: string; body: unknown }) => Response): BoxkiteClient {
-  return new BoxkiteClient({
+function clientWith(handler: (req: { method: string; url: string; body: unknown }) => Response): BoxxkiteClient {
+  return new BoxxkiteClient({
     baseUrl: "https://cp.example.com",
     apiKey: "bxk_live_test",
     fetchImpl: fakeFetch(handler),
@@ -21,7 +21,7 @@ function clientWith(handler: (req: { method: string; url: string; body: unknown 
 }
 
 // Vercel AI SDK's tool().execute expects a second "options" argument
-// (toolCallId, messages, ...) -- boxkite's tools never read it, but it's
+// (toolCallId, messages, ...) -- boxxkite's tools never read it, but it's
 // part of the real call shape, so tests pass a minimal stand-in rather
 // than omitting it.
 const toolCallOptions = { toolCallId: "call-1", messages: [] } as any;

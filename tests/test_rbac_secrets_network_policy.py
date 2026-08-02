@@ -1,6 +1,6 @@
 """Tests that deploy/rbac.yaml grants the manager's ServiceAccount the RBAC
 it needs for the per-session secrets-egress NetworkPolicy mechanism (issue
-#74, src/boxkite/secrets_network_policy.py).
+#74, src/boxxkite/secrets_network_policy.py).
 
 A sibling `deploy/hosted-deployment/rbac.yaml` used to live in this same
 repo and this file also asserted parity between the two -- that manifest is

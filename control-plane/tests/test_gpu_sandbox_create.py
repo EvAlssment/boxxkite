@@ -11,7 +11,7 @@ from __future__ import annotations
 import httpx
 
 from conftest import signup_and_get_api_key
-from boxkite import resource_config
+from boxxkite import resource_config
 
 
 async def test_gpu_count_rejected_when_gpu_support_disabled(client: httpx.AsyncClient, monkeypatch):

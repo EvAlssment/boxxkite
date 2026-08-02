@@ -31,13 +31,13 @@ from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Counter, H
 REGISTRY = CollectorRegistry()
 
 REQUEST_COUNT = Counter(
-    "boxkite_http_requests_total",
+    "boxxkite_http_requests_total",
     "Total HTTP requests processed, by method, matched route template, and status.",
     ["method", "route", "status"],
     registry=REGISTRY,
 )
 REQUEST_LATENCY = Histogram(
-    "boxkite_http_request_duration_seconds",
+    "boxxkite_http_request_duration_seconds",
     "HTTP request latency in seconds, by method and matched route template.",
     ["method", "route"],
     registry=REGISTRY,
@@ -46,7 +46,7 @@ REQUEST_LATENCY = Histogram(
 # Paths excluded from metrics recording so probes/scrapes don't inflate counts.
 _UNINSTRUMENTED_PREFIXES = ("/metrics", "/health")
 
-_ACCESS_LOGGER = logging.getLogger("boxkite.access")
+_ACCESS_LOGGER = logging.getLogger("boxxkite.access")
 
 # LogRecord attributes that are built-in; everything else in a record's __dict__
 # came from a structured `extra=` and is worth emitting.
@@ -74,9 +74,9 @@ class JsonLogFormatter(logging.Formatter):
 
 
 def configure_logging(cfg) -> None:
-    """Install a root log handler. JSON when BOXKITE_JSON_LOGS is true (or unset
+    """Install a root log handler. JSON when BOXXKITE_JSON_LOGS is true (or unset
     and not a dev/test ENVIRONMENT); human-readable text otherwise."""
-    use_json = cfg.BOXKITE_JSON_LOGS
+    use_json = cfg.BOXXKITE_JSON_LOGS
     if use_json is None:
         use_json = not cfg.is_dev_environment
 

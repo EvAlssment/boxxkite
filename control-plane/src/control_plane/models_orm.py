@@ -26,7 +26,7 @@ Four tables:
 - `sandbox_images` — declarative-builder custom image metadata
   (docs/DECLARATIVE-BUILDER-DESIGN.md). One row per build request. The
   actual image bytes live in a registry, namespaced
-  `boxkite-images/{account_id}/{image_id}`, never referenced by anything
+  `boxxkite-images/{account_id}/{image_id}`, never referenced by anything
   outside this row until `status == "completed"` and `digest` is set --
   see `image_builder.py` for the build/scan pipeline and
   `routers/images.py` for the ownership-scoping API.
@@ -57,8 +57,8 @@ Four tables:
   raw token is ever persisted (`token_hash`, see `security.py`), the raw
   value is handed to the caller/email exactly once, and every lookup is by
   hash, never by account_id + guesswork. See `routers/auth.py` for the
-  gating flags (`BOXKITE_REFRESH_TOKENS_ENABLED`,
-  `BOXKITE_PASSWORD_RESET_ENABLED`, `BOXKITE_EMAIL_VERIFICATION_ENABLED`)
+  gating flags (`BOXXKITE_REFRESH_TOKENS_ENABLED`,
+  `BOXXKITE_PASSWORD_RESET_ENABLED`, `BOXXKITE_EMAIL_VERIFICATION_ENABLED`)
   and `repository.py` for the account-scoped "revoke all" operations used
   on password change and reuse detection.
 
@@ -166,7 +166,7 @@ class Account(Base):
     # layered on top of, not a replacement for, pod isolation.
     custom_allowed_commands: Mapped[list | None] = mapped_column(JSON, nullable=True)
     # NULL means "not verified yet" -- the default for every account,
-    # including every account created before BOXKITE_EMAIL_VERIFICATION_ENABLED
+    # including every account created before BOXXKITE_EMAIL_VERIFICATION_ENABLED
     # existed. Set once by POST /v1/auth/verify-email. Deliberately
     # informational only today: no route currently checks this column to
     # gate access (see routers/auth.py's module docstring for why enforcing
@@ -251,7 +251,7 @@ class SandboxSession(Base):
     # by computing elapsed time on the fly instead (see usage_policy.py).
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Set by the reaper when it tears a session down for exceeding
-    # BOXKITE_MAX_SESSION_MINUTES, vs. a caller-initiated DELETE. Purely
+    # BOXXKITE_MAX_SESSION_MINUTES, vs. a caller-initiated DELETE. Purely
     # informational.
     destroyed_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
@@ -263,7 +263,7 @@ class McpConnection(Base):
     docs/OUTBOUND-MCP-DESIGN.md §3). Models a session's access to one
     curated MCP catalog entry (mcp_catalog.py) -- the same
     (account_id, label) -> allowed-host shape `Secret` below already has,
-    applied to a fixed, boxkite-reviewed catalog hostname instead of a
+    applied to a fixed, boxxkite-reviewed catalog hostname instead of a
     caller-supplied one.
 
     `host` is resolved from the curated catalog at creation time via
@@ -497,7 +497,7 @@ class ExecLogEntry(Base):
     # coverage begins at the first row with a non-NULL row_hash. Computed
     # and written in the same INSERT as the row itself
     # (ExecLogEntryRepository.create), never a follow-up UPDATE. See
-    # control_plane.audit_chain / boxkite.audit for the shared hash formula
+    # control_plane.audit_chain / boxxkite.audit for the shared hash formula
     # and verifier both audit surfaces (this table and the self-hosted
     # SQLiteAuditSink) run through.
     row_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -560,7 +560,7 @@ class SandboxImage(Base):
     `cache_key` is a deterministic hash of (base, sorted python_packages,
     sorted apt_packages, sorted npm_packages) -- see `image_builder.cache_key_for`. A new build
     request whose cache_key matches an already-`completed` image for the
-    SAME account, created within BOXKITE_IMAGE_BUILD_CACHE_HOURS, reuses
+    SAME account, created within BOXXKITE_IMAGE_BUILD_CACHE_HOURS, reuses
     that image's digest/registry_ref instead of re-running the build
     (the design doc's "24h cache" requirement). Cache reuse is scoped to
     the requesting account only -- it never reads or reuses another
@@ -579,7 +579,7 @@ class SandboxImage(Base):
         String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True
     )
     label: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    # Legal values today: "boxkite-default", "boxkite-minimal" -- see
+    # Legal values today: "boxxkite-default", "boxxkite-minimal" -- see
     # schemas.py:SandboxImageBuildRequest.base. Stored as a plain string
     # (not a DB enum) so adding a future legal base doesn't need a schema
     # migration, but the *set* of legal values is still enforced entirely
@@ -595,7 +595,7 @@ class SandboxImage(Base):
     # "completed" -- a pod is only ever created from `registry_ref`, which
     # embeds this digest, never a mutable tag (design doc section 5).
     digest: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    # "registry.internal/boxkite-images/{account_id}/{image_id}@{digest}" --
+    # "registry.internal/boxxkite-images/{account_id}/{image_id}@{digest}" --
     # namespaced by account_id so a bug in the DB-layer authorization check
     # isn't the only thing standing between two accounts' custom images,
     # same rationale as Snapshot.storage_key_prefix above.
@@ -640,7 +640,7 @@ class OAuthClient(Base):
 
 class OAuthAuthorizationCode(Base):
     """One row per in-flight `GET /oauth/authorize` grant -- single-use,
-    short TTL (`BOXKITE_MCP_AUTH_CODE_TTL_SECONDS`). See
+    short TTL (`BOXXKITE_MCP_AUTH_CODE_TTL_SECONDS`). See
     docs/MCP-OAUTH-AND-SOCIAL-LOGIN-DESIGN.md §3.1/§3.2.
 
     `account_id` is set once the resource owner approves on the consent
@@ -768,7 +768,7 @@ class WebhookSubscription(Base):
     same URL).
 
     `payload_format` selects the body shape `webhook_delivery.py` sends:
-    `"boxkite_v1"` (default, the envelope documented above) or
+    `"boxxkite_v1"` (default, the envelope documented above) or
     `"splunk_hec"` (docs/WEBHOOKS-DESIGN.md's audit-log-export addendum) --
     the latter wraps the same event envelope in a Splunk HTTP Event
     Collector-shaped body (`{"time", "host", "source", "sourcetype",
@@ -799,7 +799,7 @@ class WebhookSubscription(Base):
     wrapped_data_key: Mapped[str] = mapped_column(String, nullable=False)
     encryption_key_id: Mapped[str] = mapped_column(String(200), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    payload_format: Mapped[str] = mapped_column(String(32), nullable=False, default="boxkite_v1")
+    payload_format: Mapped[str] = mapped_column(String(32), nullable=False, default="boxxkite_v1")
     hec_token_ciphertext: Mapped[str | None] = mapped_column(String, nullable=True)
     hec_token_nonce: Mapped[str | None] = mapped_column(String(64), nullable=True)
     hec_token_wrapped_data_key: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -819,7 +819,7 @@ class WebhookDelivery(Base):
     single delivery's full retry history.
 
     `status` progresses pending -> delivered, or pending -> failed once
-    `attempt_count` reaches `BOXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS` without
+    `attempt_count` reaches `BOXXKITE_WEBHOOK_MAX_DELIVERY_ATTEMPTS` without
     a 2xx response. `account_id` is denormalized from the parent
     subscription (not just reachable via a join) so this table can be
     queried/scoped the same account-first way every other table in this
@@ -861,7 +861,7 @@ class WebhookDelivery(Base):
 
 class RefreshToken(Base):
     """Opt-in dashboard-JWT refresh token (issue #79), gated by
-    `BOXKITE_REFRESH_TOKENS_ENABLED` (off by default -- see
+    `BOXXKITE_REFRESH_TOKENS_ENABLED` (off by default -- see
     routers/auth.py). Follows `ApiKey`'s exact credential-storage shape:
     only `token_hash` (SHA-256 of the raw token) is ever persisted, the raw
     value is returned to the caller exactly once, at issuance.
@@ -892,7 +892,7 @@ class RefreshToken(Base):
 
 class PasswordResetToken(Base):
     """Opt-in password-reset token (issue #79), gated by
-    `BOXKITE_PASSWORD_RESET_ENABLED` (off by default -- see
+    `BOXXKITE_PASSWORD_RESET_ENABLED` (off by default -- see
     routers/auth.py). Same credential-storage shape as `ApiKey`/
     `RefreshToken`: only `token_hash` is ever persisted; the raw token is
     handed to `EmailSender` exactly once and never logged or echoed back
@@ -922,7 +922,7 @@ class PasswordResetToken(Base):
 
 class EmailVerificationToken(Base):
     """Opt-in email-verification token (issue #79), gated by
-    `BOXKITE_EMAIL_VERIFICATION_ENABLED` (off by default -- see
+    `BOXXKITE_EMAIL_VERIFICATION_ENABLED` (off by default -- see
     routers/auth.py). Same credential-storage shape as `PasswordResetToken`
     above -- only `token_hash` is persisted, `used_at` marks redemption."""
 
@@ -1014,7 +1014,7 @@ class OrganizationMember(Base):
 class OrganizationInvite(Base):
     """A pending invitation to join an organization (org/team, issue #225).
     Lets an owner/admin invite someone by email even before that person has a
-    boxkite account. Only a SHA-256 hash of the single-use token is stored
+    boxxkite account. Only a SHA-256 hash of the single-use token is stored
     (`token_hash`, same posture as api_keys / email_verification_tokens); the
     raw token is returned to the inviter exactly once. Redeemed via
     `POST /v1/organizations/accept-invite`, which requires the accepting

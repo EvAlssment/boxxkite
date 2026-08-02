@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from boxkite_bastion.config import BastionConfigError, BastionSettings, _normalize_to_ws_origin
+from boxxkite_bastion.config import BastionConfigError, BastionSettings, _normalize_to_ws_origin
 
 
 def test_normalize_https_to_wss():
@@ -31,13 +31,13 @@ def test_normalize_rejects_unrecognized_scheme():
 
 
 def test_from_env_requires_control_plane_url(monkeypatch):
-    monkeypatch.delenv("BOXKITE_BASTION_CONTROL_PLANE_URL", raising=False)
+    monkeypatch.delenv("BOXXKITE_BASTION_CONTROL_PLANE_URL", raising=False)
     with pytest.raises(BastionConfigError):
         BastionSettings.from_env()
 
 
 def test_from_env_reads_and_normalizes_control_plane_url(monkeypatch):
-    monkeypatch.setenv("BOXKITE_BASTION_CONTROL_PLANE_URL", "https://api.example.com")
+    monkeypatch.setenv("BOXXKITE_BASTION_CONTROL_PLANE_URL", "https://api.example.com")
     settings = BastionSettings.from_env()
     assert settings.control_plane_ws_base_url == "wss://api.example.com"
     assert settings.listen_port == 2222
@@ -47,12 +47,12 @@ def test_from_env_reads_and_normalizes_control_plane_url(monkeypatch):
 
 
 def test_from_env_reads_optional_overrides(monkeypatch):
-    monkeypatch.setenv("BOXKITE_BASTION_CONTROL_PLANE_URL", "https://api.example.com")
-    monkeypatch.setenv("BOXKITE_BASTION_LISTEN_HOST", "127.0.0.1")
-    monkeypatch.setenv("BOXKITE_BASTION_LISTEN_PORT", "2200")
-    monkeypatch.setenv("BOXKITE_BASTION_HOST_KEY_PATH", "/etc/bastion/host_key")
-    monkeypatch.setenv("BOXKITE_BASTION_MAX_CONNECTIONS_PER_HOST", "3")
-    monkeypatch.setenv("BOXKITE_BASTION_LOGIN_TIMEOUT_SECONDS", "5")
+    monkeypatch.setenv("BOXXKITE_BASTION_CONTROL_PLANE_URL", "https://api.example.com")
+    monkeypatch.setenv("BOXXKITE_BASTION_LISTEN_HOST", "127.0.0.1")
+    monkeypatch.setenv("BOXXKITE_BASTION_LISTEN_PORT", "2200")
+    monkeypatch.setenv("BOXXKITE_BASTION_HOST_KEY_PATH", "/etc/bastion/host_key")
+    monkeypatch.setenv("BOXXKITE_BASTION_MAX_CONNECTIONS_PER_HOST", "3")
+    monkeypatch.setenv("BOXXKITE_BASTION_LOGIN_TIMEOUT_SECONDS", "5")
     settings = BastionSettings.from_env()
     assert settings.listen_host == "127.0.0.1"
     assert settings.listen_port == 2200

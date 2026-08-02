@@ -6,7 +6,7 @@
 //! does (never a query-string token -- see `SECURITY.md`'s "New trust
 //! boundary: remote desktop takeover" section).
 
-use boxkite_client::Client;
+use boxxkite_client::Client;
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpListener;
 use tokio_tungstenite::tungstenite::handshake::server::{Request, Response};

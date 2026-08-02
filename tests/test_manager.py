@@ -9,12 +9,12 @@ import httpx
 import pytest
 from kubernetes_asyncio.client.exceptions import ApiException
 
-from boxkite.aws_identity import (
+from boxxkite.aws_identity import (
     AKS_SKIP_CONTAINERS_ANNOTATION,
     EKS_SKIP_CONTAINERS_ANNOTATION,
     AWS_WEB_IDENTITY_VOLUME_NAME,
 )
-from boxkite.manager import (
+from boxxkite.manager import (
     ORGANIZATION_ID_ANNOTATION,
     SANDBOX_NAMESPACE,
     SESSION_ID_ANNOTATION,
@@ -22,7 +22,7 @@ from boxkite.manager import (
     SandboxManager,
     _get_s3_bucket,
 )
-from boxkite.resource_config import (
+from boxxkite.resource_config import (
     SANDBOX_EXEC_NETWORK_ISOLATION_ENABLED_ENV,
     SANDBOX_CONTAINER_CPU_LIMIT_ENV,
     SANDBOX_CONTAINER_CPU_REQUEST_ENV,
@@ -36,16 +36,16 @@ from boxkite.resource_config import (
     build_sidecar_exec_network_isolation_env,
     build_sidecar_container_resources,
 )
-import boxkite.warm_pool as warm_pool_module
-from boxkite.warm_pool import WarmPoolManager
-from boxkite.warm_pool import _get_s3_bucket as _get_warm_pool_s3_bucket
-from boxkite.sidecar_auth import (
+import boxxkite.warm_pool as warm_pool_module
+from boxxkite.warm_pool import WarmPoolManager
+from boxxkite.warm_pool import _get_s3_bucket as _get_warm_pool_s3_bucket
+from boxxkite.sidecar_auth import (
     SIDECAR_AUTH_HEADER,
     SIDECAR_AUTH_SECRET_KEY,
     SIDECAR_AUTH_TOKEN_ENV,
     sidecar_auth_secret_name,
 )
-from boxkite.tls import (
+from boxxkite.tls import (
     SIDECAR_TLS_CERT_SECRET_KEY,
     SIDECAR_TLS_DISABLED_ENV,
     SIDECAR_TLS_KEY_SECRET_KEY,
@@ -172,7 +172,7 @@ def _make_pod(
             name=pod_name,
             labels={
                 "session-id": session_id,
-                "sandbox.boxkite.dev/status": "claimed",
+                "sandbox.boxxkite.dev/status": "claimed",
             },
             annotations={SESSION_ID_ANNOTATION: session_id},
         ),
@@ -542,7 +542,7 @@ async def test_resolve_session_retries_retryable_k8s_transport_error(monkeypatch
             "namespace": SANDBOX_NAMESPACE,
             "label_selector": (
                 "app=sandbox,"
-                "sandbox.boxkite.dev/status=claimed,"
+                "sandbox.boxxkite.dev/status=claimed,"
                 "session-id=session-1"
             ),
         }
@@ -552,7 +552,7 @@ async def test_resolve_session_retries_retryable_k8s_transport_error(monkeypatch
             "namespace": SANDBOX_NAMESPACE,
             "label_selector": (
                 "app=sandbox,"
-                "sandbox.boxkite.dev/status=claimed,"
+                "sandbox.boxxkite.dev/status=claimed,"
                 "session-id=session-1"
             ),
         }
@@ -1525,7 +1525,7 @@ def _stale_warm_pod(pod_name: str) -> SimpleNamespace:
     return SimpleNamespace(
         metadata=SimpleNamespace(
             name=pod_name,
-            labels={"app": "sandbox", "pool": "warm", "sandbox.boxkite.dev/status": "warm"},
+            labels={"app": "sandbox", "pool": "warm", "sandbox.boxxkite.dev/status": "warm"},
             creation_timestamp=datetime.now(timezone.utc) - timedelta(hours=25),
         ),
         status=SimpleNamespace(
@@ -1761,7 +1761,7 @@ async def test_claiming_warm_pod_recovers_its_tls_cert_from_secret():
     """Mirrors test_claiming_warm_pod_recovers_its_auth_token_from_secret --
     a warm pod's TLS cert (created by WarmPoolManager) must be recoverable
     by SandboxManager via the same per-pod Secret, not just the auth token."""
-    from boxkite.tls import generate_pod_self_signed_cert
+    from boxxkite.tls import generate_pod_self_signed_cert
 
     manager = SandboxManager()
     pod_name = "sandbox-warm-tls-claim"
@@ -1788,7 +1788,7 @@ async def test_claiming_warm_pod_recovers_its_tls_cert_from_secret():
 async def test_ensure_pod_secret_cached_returns_both_values_from_one_read():
     """The combined fetch (issue #178) must return both the auth token AND
     the TLS cert from a single Secret containing both keys, and cache both."""
-    from boxkite.tls import generate_pod_self_signed_cert
+    from boxxkite.tls import generate_pod_self_signed_cert
 
     manager = SandboxManager()
     pod_name = "sandbox-combined-secret-fetch"

@@ -89,7 +89,7 @@ async def _enforce_webhook_rate_limit(request: Request, response: Response, acco
         request,
         bucket="webhook_ops",
         subject=str(account.id),
-        limit=settings.BOXKITE_WEBHOOK_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_WEBHOOK_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -104,7 +104,7 @@ async def _enforce_webhook_rate_limit(request: Request, response: Response, acco
         "event_types (see docs/WEBHOOKS-DESIGN.md for the full event "
         "catalog -- 'sandbox.created'/'sandbox.destroyed'/'audit_log.entry'). "
         "A fresh signing secret is generated and returned exactly once, in "
-        "this response -- use it to verify the X-Boxkite-Webhook-Signature "
+        "this response -- use it to verify the X-Boxxkite-Webhook-Signature "
         "header on every delivery. The `url` is checked at registration "
         "time against the same private/link-local/loopback/metadata-address "
         "denylist POST /v1/secrets uses for allowed_hosts. `payload_format` "
@@ -123,11 +123,11 @@ async def create_webhook(
 
     webhooks = WebhookSubscriptionRepository(db)
     existing_count = await webhooks.count_for_account(account.id)
-    if existing_count >= settings.BOXKITE_MAX_WEBHOOKS_PER_ACCOUNT:
+    if existing_count >= settings.BOXXKITE_MAX_WEBHOOKS_PER_ACCOUNT:
         raise LimitExceededError(
             code="webhook_limit_reached",
             message="Webhook subscription limit reached for this account.",
-            details={"limit": settings.BOXKITE_MAX_WEBHOOKS_PER_ACCOUNT},
+            details={"limit": settings.BOXXKITE_MAX_WEBHOOKS_PER_ACCOUNT},
         )
 
     _validate_webhook_url(body.url)

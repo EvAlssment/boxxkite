@@ -676,7 +676,7 @@ async def test_takeover_token_rejects_deactivated_account(
 ):
     """A takeover token is minted from an already-authenticated (and
     therefore already deactivation-checked) API key, but its short TTL
-    (BOXKITE_TAKEOVER_TOKEN_TTL_SECONDS, default 30s) is still a real
+    (BOXXKITE_TAKEOVER_TOKEN_TTL_SECONDS, default 30s) is still a real
     window: an account deactivated between mint and redemption must not be
     able to complete the takeover WS handshake on the strength of a token
     minted moments before."""
@@ -1578,7 +1578,7 @@ async def test_concurrent_takeover_connections_produce_exactly_one_recording(
         "connect",
         lambda *a, **kw: _FakeSidecarConnCtx(_FakeSidecarFullDuplexWs([b"welcome\n"]), barrier=barrier),
     )
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_TAKEOVER_RECORDING_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_TAKEOVER_RECORDING_ENABLED", True)
 
     key = await signup_and_get_api_key(client, "concurrent-recording@example.com", role="admin")
     session_id = await _create_session(client, key)
@@ -1619,7 +1619,7 @@ async def test_concurrent_takeover_connections_three_connections_produce_exactly
         "connect",
         lambda *a, **kw: _FakeSidecarConnCtx(_FakeSidecarFullDuplexWs([b"welcome\n"]), barrier=barrier),
     )
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_TAKEOVER_RECORDING_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_TAKEOVER_RECORDING_ENABLED", True)
 
     key = await signup_and_get_api_key(client, "concurrent-recording-3@example.com", role="admin")
     session_id = await _create_session(client, key)
@@ -1674,7 +1674,7 @@ async def test_takeover_flush_typed_snapshot_exception_still_releases_recording(
         "connect",
         lambda *a, **kw: _FakeSidecarConnCtx(_FakeSidecarFullDuplexWs([b"welcome\n"])),
     )
-    monkeypatch.setattr(sandboxes_module.settings, "BOXKITE_TAKEOVER_RECORDING_ENABLED", True)
+    monkeypatch.setattr(sandboxes_module.settings, "BOXXKITE_TAKEOVER_RECORDING_ENABLED", True)
 
     async def _boom(**kwargs):
         raise RuntimeError("simulated DB failure during typed-snapshot flush")

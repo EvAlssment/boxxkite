@@ -17,7 +17,7 @@ from __future__ import annotations
 import httpx
 from sqlalchemy import select, update
 
-from boxkite.audit import GENESIS_HASH
+from boxxkite.audit import GENESIS_HASH
 from control_plane import db as db_module
 from control_plane.audit_chain import verify_exec_log_chain
 from control_plane.models_orm import ExecLogEntry

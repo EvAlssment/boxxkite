@@ -11,15 +11,15 @@ from pathlib import Path
 
 import pytest
 
-from boxkite import resource_config
-from boxkite._manager_config import _validate_gpu_count
+from boxxkite import resource_config
+from boxxkite._manager_config import _validate_gpu_count
 
 
 @pytest.fixture(autouse=True)
 def _clean_gpu_env(monkeypatch):
-    monkeypatch.delenv(resource_config.BOXKITE_GPU_ENABLED_ENV, raising=False)
+    monkeypatch.delenv(resource_config.BOXXKITE_GPU_ENABLED_ENV, raising=False)
     monkeypatch.delenv(resource_config.GPU_RESOURCE_NAME_ENV, raising=False)
-    monkeypatch.delenv(resource_config.BOXKITE_MAX_GPU_COUNT_PER_SESSION_ENV, raising=False)
+    monkeypatch.delenv(resource_config.BOXXKITE_MAX_GPU_COUNT_PER_SESSION_ENV, raising=False)
 
 
 def test_gpu_disabled_by_default():
@@ -67,24 +67,24 @@ def test_validate_gpu_count_none_is_a_no_op():
 
 
 def test_validate_gpu_count_rejected_when_disabled():
-    with pytest.raises(ValueError, match="BOXKITE_GPU_ENABLED"):
+    with pytest.raises(ValueError, match="BOXXKITE_GPU_ENABLED"):
         _validate_gpu_count(1)
 
 
 def test_validate_gpu_count_accepted_when_enabled_and_within_ceiling(monkeypatch):
-    monkeypatch.setenv(resource_config.BOXKITE_GPU_ENABLED_ENV, "true")
+    monkeypatch.setenv(resource_config.BOXXKITE_GPU_ENABLED_ENV, "true")
     assert _validate_gpu_count(1) == 1
 
 
 def test_validate_gpu_count_rejected_above_ceiling(monkeypatch):
-    monkeypatch.setenv(resource_config.BOXKITE_GPU_ENABLED_ENV, "true")
-    monkeypatch.setenv(resource_config.BOXKITE_MAX_GPU_COUNT_PER_SESSION_ENV, "2")
+    monkeypatch.setenv(resource_config.BOXXKITE_GPU_ENABLED_ENV, "true")
+    monkeypatch.setenv(resource_config.BOXXKITE_MAX_GPU_COUNT_PER_SESSION_ENV, "2")
     with pytest.raises(ValueError, match="at most 2"):
         _validate_gpu_count(3)
 
 
 def test_validate_gpu_count_rejected_when_zero_or_negative(monkeypatch):
-    monkeypatch.setenv(resource_config.BOXKITE_GPU_ENABLED_ENV, "true")
+    monkeypatch.setenv(resource_config.BOXXKITE_GPU_ENABLED_ENV, "true")
     with pytest.raises(ValueError):
         _validate_gpu_count(0)
 
@@ -93,6 +93,6 @@ def test_validate_gpu_count_rejected_when_zero_or_negative(monkeypatch):
 
 
 def test_manager_py_forces_cold_create_and_wires_gpu_count():
-    source = (Path(__file__).resolve().parent.parent / "src" / "boxkite" / "manager.py").read_text()
+    source = (Path(__file__).resolve().parent.parent / "src" / "boxxkite" / "manager.py").read_text()
     assert "gpu_count is not None" in source
     assert "build_sandbox_container_resources(size=size, gpu_count=gpu_count)" in source

@@ -1,4 +1,4 @@
-"""Tests for boxkite.tools.pty_tools (pty_exec), docs/AGENT-PTY-DESIGN.md.
+"""Tests for boxxkite.tools.pty_tools (pty_exec), docs/AGENT-PTY-DESIGN.md.
 
 Mirrors tests/test_search_tools.py's pattern: mock SandboxManager, assert
 the tool calls the right manager method with the right args, and assert
@@ -13,7 +13,7 @@ whitelist/audit-sink tests below, mirroring test_bash_tool.py's own.
 
 import pytest
 
-from boxkite.tools.pty_tools import create_pty_exec_tool, create_pty_exec_tool_spec
+from boxxkite.tools.pty_tools import create_pty_exec_tool, create_pty_exec_tool_spec
 
 pytestmark = pytest.mark.pr
 

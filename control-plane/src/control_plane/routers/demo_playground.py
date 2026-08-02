@@ -12,15 +12,15 @@ reach. The actual risks this router defends against instead:
 1. Resource/cost exhaustion -- every demo sandbox is created against the
    well-known internal "demo" Account (demo_account.py) so
    UsagePolicy/SandboxSessionRepository's existing bookkeeping works
-   unmodified, but capacity is gated against BOXKITE_DEMO_MAX_CONCURRENT
+   unmodified, but capacity is gated against BOXXKITE_DEMO_MAX_CONCURRENT
    (this account's own active-session count), a small, separate ceiling
-   from BOXKITE_MAX_CONCURRENT_SANDBOXES/BOXKITE_GLOBAL_MAX_CONCURRENT_
+   from BOXXKITE_MAX_CONCURRENT_SANDBOXES/BOXXKITE_GLOBAL_MAX_CONCURRENT_
    SANDBOXES. If UsagePolicy.create_session's own (much larger-scoped)
-   caps happen to bind first -- e.g. BOXKITE_MAX_CONCURRENT_SANDBOXES is
-   configured below BOXKITE_DEMO_MAX_CONCURRENT -- that's caught and
+   caps happen to bind first -- e.g. BOXXKITE_MAX_CONCURRENT_SANDBOXES is
+   configured below BOXXKITE_DEMO_MAX_CONCURRENT -- that's caught and
    surfaced as the exact same 503 "at capacity" response, never a raw 429
    naming a real-account-shaped limit. Every demo sandbox is also hard-
-   capped to BOXKITE_DEMO_LIFETIME_MINUTES (a real K8s activeDeadlineSeconds
+   capped to BOXXKITE_DEMO_LIFETIME_MINUTES (a real K8s activeDeadlineSeconds
    kill, not just bookkeeping -- see UsagePolicy.create_session's
    lifetime_minutes param) and reaped promptly on that same short cutoff
    (see reaper.py) even if the caller never calls DELETE.
@@ -30,11 +30,11 @@ reach. The actual risks this router defends against instead:
    as the `X-Demo-Token` header; a bare session_id alone is never
    sufficient to act on a session.
 3. Abuse volume -- every route here is rate-limited per source IP
-   (BOXKITE_DEMO_RATE_LIMIT_PER_MINUTE), since there is no account to key
+   (BOXXKITE_DEMO_RATE_LIMIT_PER_MINUTE), since there is no account to key
    on the way every other rate-limited route in this API has.
 
 404s entirely (route-not-found, not a 403) unless
-BOXKITE_DEMO_PLAYGROUND_ENABLED is set -- same convention
+BOXXKITE_DEMO_PLAYGROUND_ENABLED is set -- same convention
 routers/images.py's `_require_builder_enabled` already uses for its own
 opt-in feature.
 """
@@ -71,7 +71,7 @@ router = APIRouter(prefix="/v1/demo", tags=["demo-playground"])
 
 _AT_CAPACITY_MESSAGE = "Demo is at capacity, try again shortly."
 
-# Serializes the BOXKITE_DEMO_MAX_CONCURRENT check against
+# Serializes the BOXXKITE_DEMO_MAX_CONCURRENT check against
 # SandboxSessionRepository.count_active_for_account with the reservation
 # that (eventually) makes that count reflect it -- without this, two
 # concurrent POST /v1/demo/sandboxes requests can both read "below cap"
@@ -79,12 +79,12 @@ _AT_CAPACITY_MESSAGE = "Demo is at capacity, try again shortly."
 # this exact check exists to enforce (usage_policy.py's own
 # `_create_session_lock` guards its OWN per-account/global caps the same
 # way, but that lock is scoped to a different, much larger-scoped check --
-# it doesn't protect this router's separate, smaller BOXKITE_DEMO_MAX_
+# it doesn't protect this router's separate, smaller BOXXKITE_DEMO_MAX_
 # CONCURRENT ceiling, and can't be reused here directly since it's already
 # acquired *inside* UsagePolicy.create_session, and asyncio.Lock isn't
 # reentrant). Deliberately held across the full create_session call
 # (including its K8s pod-creation round trip), not just the count check --
-# BOXKITE_DEMO_MAX_CONCURRENT is small (default 3) and this is a marketing
+# BOXXKITE_DEMO_MAX_CONCURRENT is small (default 3) and this is a marketing
 # demo, not a high-throughput path, so serializing demo-sandbox creation
 # one-at-a-time is an acceptable latency tradeoff for closing the race
 # correctly rather than partially.
@@ -100,7 +100,7 @@ def reset_demo_create_lock_for_tests() -> None:
 
 
 def _require_demo_enabled() -> None:
-    if not settings.BOXKITE_DEMO_PLAYGROUND_ENABLED:
+    if not settings.BOXXKITE_DEMO_PLAYGROUND_ENABLED:
         raise ApiError(404, "not_found", "The public demo playground is not enabled on this deployment.")
 
 
@@ -111,7 +111,7 @@ async def _enforce_demo_rate_limit(request: Request, response: Response, *, buck
     await enforce_rate_limit(
         request,
         bucket=bucket,
-        limit=settings.BOXKITE_DEMO_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_DEMO_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -150,9 +150,9 @@ async def _get_active_demo_session_or_404(
     description=(
         "Creates a short-lived, plain-default-image sandbox with no signup "
         "required, for the public marketing-site playground. Rate-limited "
-        "per source IP (BOXKITE_DEMO_RATE_LIMIT_PER_MINUTE). Returns 503 "
+        "per source IP (BOXXKITE_DEMO_RATE_LIMIT_PER_MINUTE). Returns 503 "
         "`demo_at_capacity` if the demo pool's own concurrency ceiling "
-        "(BOXKITE_DEMO_MAX_CONCURRENT) is in use. Returns a session-scoped "
+        "(BOXXKITE_DEMO_MAX_CONCURRENT) is in use. Returns a session-scoped "
         "token that must be presented as the `X-Demo-Token` header on every "
         "subsequent call for this session. 404s entirely if the demo "
         "playground isn't enabled on this deployment."
@@ -172,15 +172,15 @@ async def create_demo_sandbox(
 
     requested_minutes = body.lifetime_minutes if body is not None else None
     lifetime_minutes = (
-        min(requested_minutes, settings.BOXKITE_DEMO_LIFETIME_MINUTES)
+        min(requested_minutes, settings.BOXXKITE_DEMO_LIFETIME_MINUTES)
         if requested_minutes is not None
-        else settings.BOXKITE_DEMO_LIFETIME_MINUTES
+        else settings.BOXXKITE_DEMO_LIFETIME_MINUTES
     )
 
     async with _demo_create_lock:
         sessions = SandboxSessionRepository(db)
         active_count = await sessions.count_active_for_account(demo_account.id)
-        if active_count >= settings.BOXKITE_DEMO_MAX_CONCURRENT:
+        if active_count >= settings.BOXXKITE_DEMO_MAX_CONCURRENT:
             raise ApiError(503, "demo_at_capacity", _AT_CAPACITY_MESSAGE)
 
         try:
@@ -209,7 +209,7 @@ async def create_demo_sandbox(
     description=(
         "Requires the `X-Demo-Token` header minted by POST /v1/demo/sandboxes "
         "for this exact session_id. Runs with a fixed, non-negotiable "
-        "timeout (BOXKITE_DEMO_EXEC_TIMEOUT_SECONDS) -- any caller-supplied "
+        "timeout (BOXXKITE_DEMO_EXEC_TIMEOUT_SECONDS) -- any caller-supplied "
         "timeout concept does not apply here. stdout/stderr are each "
         "truncated to a fixed cap to bound response size."
     ),
@@ -234,7 +234,7 @@ async def exec_in_demo_sandbox(
         result = await manager.execute(
             session_id=session_id,
             command=body.command,
-            timeout=settings.BOXKITE_DEMO_EXEC_TIMEOUT_SECONDS,
+            timeout=settings.BOXXKITE_DEMO_EXEC_TIMEOUT_SECONDS,
             description="demo-playground",
         )
     except Exception as exc:

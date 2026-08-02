@@ -15,8 +15,8 @@ from control_plane.config import settings
 async def test_global_cap_blocks_a_second_account_even_under_its_own_per_account_limit(
     client: httpx.AsyncClient, monkeypatch
 ):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 5)
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 5)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 1)
 
     key_a = await signup_and_get_api_key(client, "global-cap-a@example.com")
     key_b = await signup_and_get_api_key(client, "global-cap-b@example.com")
@@ -34,8 +34,8 @@ async def test_global_cap_blocks_a_second_account_even_under_its_own_per_account
 async def test_destroying_any_accounts_session_frees_a_global_slot(
     client: httpx.AsyncClient, monkeypatch
 ):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_CONCURRENT_SANDBOXES", 5)
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 5)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 1)
 
     key_a = await signup_and_get_api_key(client, "global-cap-free-a@example.com")
     key_b = await signup_and_get_api_key(client, "global-cap-free-b@example.com")
@@ -56,7 +56,7 @@ async def test_global_cap_checked_before_pod_creation(client: httpx.AsyncClient,
     """The global check must happen before SandboxManager.create_session is
     called at all -- no pod should be created for a request that's about to
     be rejected on capacity grounds."""
-    monkeypatch.setattr(settings, "BOXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 0)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 0)
     key = await signup_and_get_api_key(client, "global-cap-no-pod@example.com")
 
     resp = await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {key}"})

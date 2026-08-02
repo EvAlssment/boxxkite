@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.process_tools (start_process, get_process_output,
+Tests for boxxkite.tools.process_tools (start_process, get_process_output,
 send_process_input, stop_process, list_processes LangChain tools).
 
 Mirrors tests/test_search_tools.py's pattern: mock SandboxManager, assert
@@ -9,7 +9,7 @@ error paths return a string instead of raising.
 
 import pytest
 
-from boxkite.tools.process_tools import (
+from boxxkite.tools.process_tools import (
     create_get_process_output_tool,
     create_list_processes_tool,
     create_send_process_input_tool,

@@ -2,7 +2,7 @@
 
 **Security boundary (read this before touching anything in this module):**
 
-This is the ONLY place in boxkite that ever executes package-install code
+This is the ONLY place in boxxkite that ever executes package-install code
 (`pip`/`apk`/`apt` resolving and running third-party install-time code).
 Every other trust boundary in this project keeps a live session pod's
 `sandbox` container free of any package manager, by design (see
@@ -30,7 +30,7 @@ Concretely, the isolation this module is built around:
    Job's pod.
 3. **No ambient credentials beyond a narrowly-scoped registry-push
    credential**, namespaced per account
-   (`{BOXKITE_IMAGE_REGISTRY_PREFIX}/{account_id}/{image_id}`) — never the
+   (`{BOXXKITE_IMAGE_REGISTRY_PREFIX}/{account_id}/{image_id}`) — never the
    control plane's own database credentials, never a session pod's sidecar
    auth token, never cluster-admin RBAC. See
    `deploy/image-builder-rbac.yaml`.
@@ -38,7 +38,7 @@ Concretely, the isolation this module is built around:
    mutable tag** (`SandboxImage.digest`/`registry_ref`) — a pod spec
    created from a tag-only reference could have its target silently
    swapped after this module's scan gate already passed it. See
-   `boxkite.manager._validate_image_ref`, which refuses anything that isn't
+   `boxxkite.manager._validate_image_ref`, which refuses anything that isn't
    `repo@sha256:<64-hex>`.
 5. **A build's failed vulnerability scan is `rejected`, never silently
    promoted to `completed`.** `_scan_gate` below is the single place that
@@ -48,16 +48,16 @@ Concretely, the isolation this module is built around:
    digest-referenced image (`_run_trivy_scan`, invoked from
    `KanikoJobBuildRunner._collect_success`) -- not a placeholder. If the
    scanner itself can't run (binary missing, timeout, malformed output),
-   `BOXKITE_IMAGE_SCAN_REQUIRED` (default `True`) decides whether that
+   `BOXXKITE_IMAGE_SCAN_REQUIRED` (default `True`) decides whether that
    fails the build closed or is logged as a loud warning and let through
    unscanned -- see that setting's docstring in `config.py`.
 6. **The pod's security context is never a function of the image.**
-   `boxkite.manager._create_pod` applies identical `security_context`,
+   `boxxkite.manager._create_pod` applies identical `security_context`,
    resource limits, and network policy regardless of which image is
    referenced — this module has no ability to influence any of that; it
    only ever produces a `registry_ref` string.
 
-This entire feature is off by default (`BOXKITE_IMAGE_BUILDER_ENABLED`) —
+This entire feature is off by default (`BOXXKITE_IMAGE_BUILDER_ENABLED`) —
 an operator must explicitly opt in.
 """
 
@@ -74,7 +74,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Protocol
 
-from boxkite.k8s_auth import build_kubernetes_api_client, load_kubernetes_config
+from boxxkite.k8s_auth import build_kubernetes_api_client, load_kubernetes_config
 from kubernetes_asyncio import client as k8s_client
 from kubernetes_asyncio.client.exceptions import ApiException
 
@@ -85,7 +85,7 @@ logger = logging.getLogger(__name__)
 
 # Kaniko's `--digest-file=/dev/termination-log` writes exactly the
 # produced image's digest (nothing else) -- validated with the same
-# `sha256:<64-hex>` shape `boxkite.manager._validate_image_ref` requires
+# `sha256:<64-hex>` shape `boxxkite.manager._validate_image_ref` requires
 # for the `repo@sha256:<64-hex>` reference it's later embedded into, so a
 # truncated/corrupted termination message can never silently become a
 # "completed" build with a garbage digest.
@@ -101,7 +101,7 @@ _DOCKERFILE_CONFIGMAP_KEY = "Dockerfile"
 
 class UnknownBaseError(ValueError):
     """Raised when a `base` value has no entry in
-    `settings.BOXKITE_BASE_IMAGE_REFS` -- guards against the schemas.py
+    `settings.BOXXKITE_BASE_IMAGE_REFS` -- guards against the schemas.py
     `Literal` and this config dict drifting out of sync (e.g. a new base
     added to one but not the other), rather than silently building `FROM`
     nothing or an empty string."""
@@ -137,11 +137,11 @@ def render_dockerfile(
     call sites/tests still call it with just base/python_packages/apt_packages.
     """
     npm_packages = npm_packages or []
-    base_image_ref = settings.BOXKITE_BASE_IMAGE_REFS.get(base)
+    base_image_ref = settings.BOXXKITE_BASE_IMAGE_REFS.get(base)
     if base_image_ref is None:
         raise UnknownBaseError(
             f"No image reference configured for base {base!r} -- check "
-            "BOXKITE_BASE_IMAGE_REFS_RAW/schemas.py's base Literal are in sync"
+            "BOXXKITE_BASE_IMAGE_REFS_RAW/schemas.py's base Literal are in sync"
         )
 
     for pkg in (*python_packages, *apt_packages):
@@ -232,24 +232,24 @@ def build_configmap_spec(*, image_id: str, account_id: str, dockerfile_content: 
         "metadata": {
             "name": configmap_name,
             "labels": {
-                "app": "boxkite-image-builder",
-                "boxkite.dev/account-id": account_id,
-                "boxkite.dev/image-id": image_id,
+                "app": "boxxkite-image-builder",
+                "boxxkite.dev/account-id": account_id,
+                "boxxkite.dev/image-id": image_id,
             },
         },
         "data": {_DOCKERFILE_CONFIGMAP_KEY: dockerfile_content},
-        "_boxkite_configmap_name": configmap_name,
+        "_boxxkite_configmap_name": configmap_name,
     }
 
 
 def _strip_internal_keys(spec: dict) -> dict:
     """`build_job_spec`/`build_configmap_spec` embed extra top-level
-    `_boxkite_*` keys for unit-test introspection (see their docstrings) --
+    `_boxxkite_*` keys for unit-test introspection (see their docstrings) --
     not part of the actual Kubernetes object schema. Strip them before
     handing the spec to a real K8s API call; sending them would rely on
     the API server silently pruning unrecognized top-level fields rather
     than this code being explicit about what it actually submits."""
-    return {k: v for k, v in spec.items() if not k.startswith("_boxkite_")}
+    return {k: v for k, v in spec.items() if not k.startswith("_boxxkite_")}
 
 
 def cache_key_for(
@@ -272,7 +272,7 @@ def cache_key_for(
 
 def cache_window_start(*, now: datetime | None = None) -> datetime:
     now = now or _utcnow()
-    return now - timedelta(hours=settings.BOXKITE_IMAGE_BUILD_CACHE_HOURS)
+    return now - timedelta(hours=settings.BOXXKITE_IMAGE_BUILD_CACHE_HOURS)
 
 
 @dataclass(frozen=True)
@@ -308,15 +308,15 @@ class ImageBuildRunner(Protocol):
 
 
 def _registry_ref_for(*, account_id: str, image_id: str, digest: str) -> str:
-    return f"{settings.BOXKITE_IMAGE_REGISTRY_PREFIX}/{account_id}/{image_id}@{digest}"
+    return f"{settings.BOXXKITE_IMAGE_REGISTRY_PREFIX}/{account_id}/{image_id}@{digest}"
 
 
 def _scan_gate(scan_result: dict) -> tuple[bool, str | None]:
     """The single decision point for "did this build pass its
     vulnerability-scan gate" -- see this module's docstring point 5. Blocks
-    on any severity in BOXKITE_IMAGE_SCAN_BLOCK_SEVERITIES being present
+    on any severity in BOXXKITE_IMAGE_SCAN_BLOCK_SEVERITIES being present
     with a non-zero count. Returns (passed, reason_if_not)."""
-    blocked = settings.BOXKITE_IMAGE_SCAN_BLOCK_SEVERITIES
+    blocked = settings.BOXXKITE_IMAGE_SCAN_BLOCK_SEVERITIES
     for severity in blocked:
         if int(scan_result.get(severity, 0) or 0) > 0:
             return False, f"vulnerability scan found {scan_result.get(severity)} {severity}-severity issue(s)"
@@ -338,7 +338,7 @@ class ImageScanUnavailableError(ImageScanError):
 
 
 class ImageScanTimeoutError(ImageScanError):
-    """The scan subprocess did not finish within BOXKITE_IMAGE_SCAN_TIMEOUT_SECONDS."""
+    """The scan subprocess did not finish within BOXXKITE_IMAGE_SCAN_TIMEOUT_SECONDS."""
 
 
 class ImageScanOutputError(ImageScanError):
@@ -349,7 +349,7 @@ class ImageScanOutputError(ImageScanError):
 
 # Every severity trivy can report, lowercased -- used both as the fixed
 # `--severity` argument (we always want full counts back, independent of
-# which of these BOXKITE_IMAGE_SCAN_BLOCK_SEVERITIES actually blocks a
+# which of these BOXXKITE_IMAGE_SCAN_BLOCK_SEVERITIES actually blocks a
 # build) and as the key set _scan_gate's severity lookups index into.
 _TRIVY_SEVERITIES = ("critical", "high", "medium", "low", "unknown")
 
@@ -401,7 +401,7 @@ async def _run_trivy_scan(image_ref: str, *, timeout_seconds: float) -> dict:
     partial/best-effort dict -- if the scanner itself couldn't produce a
     trustworthy result; the caller (`KanikoJobBuildRunner._collect_success`)
     is the one place that decides what an unusable scan means for the build
-    (BOXKITE_IMAGE_SCAN_REQUIRED)."""
+    (BOXXKITE_IMAGE_SCAN_REQUIRED)."""
     trivy_path = shutil.which("trivy")
     if trivy_path is None:
         raise ImageScanUnavailableError("trivy binary not found on PATH")
@@ -455,7 +455,7 @@ class KanikoJobBuildRunner:
     module's top docstring for the full isolation model and
     `deploy/image-builder-job.yaml` / `deploy/image-builder-network-policy.yaml`
     for the reference manifests this class's Job spec must stay in parity
-    with (mirroring how `boxkite.manager`/`deploy/pod-template.yaml` stay in
+    with (mirroring how `boxxkite.manager`/`deploy/pod-template.yaml` stay in
     parity today, per `tests/test_pod_template_parity.py`).
 
     `run_build` (submit Job + ConfigMap, poll to completion/failure/timeout,
@@ -468,7 +468,7 @@ class KanikoJobBuildRunner:
     `k8s_core_api` are the seam those tests inject fakes through; in
     production (`RUNTIME_MODE=k8s`, via `deps.get_image_build_runner`) they
     are left `None` and lazily initialized from the ambient cluster config
-    the first time `run_build` runs, reusing `boxkite.k8s_auth` (the same
+    the first time `run_build` runs, reusing `boxxkite.k8s_auth` (the same
     in-cluster/kubeconfig loading `SandboxManager` itself uses).
 
     `scan_image` is the same kind of seam for the vulnerability scan
@@ -487,7 +487,7 @@ class KanikoJobBuildRunner:
         self._scan_image: Callable[[str], Awaitable[dict]] = scan_image or self._default_scan_image
 
     async def _default_scan_image(self, image_ref: str) -> dict:
-        return await _run_trivy_scan(image_ref, timeout_seconds=settings.BOXKITE_IMAGE_SCAN_TIMEOUT_SECONDS)
+        return await _run_trivy_scan(image_ref, timeout_seconds=settings.BOXXKITE_IMAGE_SCAN_TIMEOUT_SECONDS)
 
     async def _ensure_k8s_clients(self) -> tuple["k8s_client.BatchV1Api", "k8s_client.CoreV1Api"]:
         """Lazily initializes real API clients from ambient cluster config
@@ -495,7 +495,7 @@ class KanikoJobBuildRunner:
         `SandboxManager._init_k8s`'s lazy-init-under-lock shape. Tests (and
         any caller that constructs this with explicit fakes) skip this
         entirely: both attributes are already set, so this returns them
-        immediately without ever touching `boxkite.k8s_auth`."""
+        immediately without ever touching `boxxkite.k8s_auth`."""
         if self._k8s_batch_api is not None and self._k8s_core_api is not None:
             return self._k8s_batch_api, self._k8s_core_api
         async with self._init_lock:
@@ -538,16 +538,16 @@ class KanikoJobBuildRunner:
         """
         job_name = _job_name_for(image_id)
         configmap_name = _configmap_name_for(image_id)
-        registry_ref = f"{settings.BOXKITE_IMAGE_REGISTRY_PREFIX}/{account_id}/{image_id}"
+        registry_ref = f"{settings.BOXXKITE_IMAGE_REGISTRY_PREFIX}/{account_id}/{image_id}"
         return {
             "apiVersion": "batch/v1",
             "kind": "Job",
             "metadata": {
                 "name": job_name,
                 "labels": {
-                    "app": "boxkite-image-builder",
-                    "boxkite.dev/account-id": account_id,
-                    "boxkite.dev/image-id": image_id,
+                    "app": "boxxkite-image-builder",
+                    "boxxkite.dev/account-id": account_id,
+                    "boxxkite.dev/image-id": image_id,
                 },
             },
             "spec": {
@@ -558,15 +558,15 @@ class KanikoJobBuildRunner:
                 # limits alone don't stop a CPU/IO-bound (not memory-bound)
                 # hang. Kubernetes kills the pod once this elapses regardless
                 # of the container's own resource usage.
-                "activeDeadlineSeconds": settings.BOXKITE_IMAGE_BUILD_TIMEOUT_SECONDS,
+                "activeDeadlineSeconds": settings.BOXXKITE_IMAGE_BUILD_TIMEOUT_SECONDS,
                 "template": {
                     "metadata": {
-                        "labels": {"app": "boxkite-image-builder"},
+                        "labels": {"app": "boxxkite-image-builder"},
                     },
                     "spec": {
                         "restartPolicy": "Never",
                         "automountServiceAccountToken": False,
-                        "serviceAccountName": "boxkite-image-builder",
+                        "serviceAccountName": "boxxkite-image-builder",
                         "containers": [
                             {
                                 "name": "kaniko",
@@ -603,12 +603,12 @@ class KanikoJobBuildRunner:
                                 # container could.
                                 "resources": {
                                     "requests": {
-                                        "cpu": settings.BOXKITE_IMAGE_BUILD_CPU_REQUEST,
-                                        "memory": settings.BOXKITE_IMAGE_BUILD_MEMORY_REQUEST,
+                                        "cpu": settings.BOXXKITE_IMAGE_BUILD_CPU_REQUEST,
+                                        "memory": settings.BOXXKITE_IMAGE_BUILD_MEMORY_REQUEST,
                                     },
                                     "limits": {
-                                        "cpu": settings.BOXKITE_IMAGE_BUILD_CPU_LIMIT,
-                                        "memory": settings.BOXKITE_IMAGE_BUILD_MEMORY_LIMIT,
+                                        "cpu": settings.BOXXKITE_IMAGE_BUILD_CPU_LIMIT,
+                                        "memory": settings.BOXXKITE_IMAGE_BUILD_MEMORY_LIMIT,
                                     },
                                 },
                                 # The build-context Dockerfile is delivered as a
@@ -636,7 +636,7 @@ class KanikoJobBuildRunner:
                     },
                 },
             },
-            "_boxkite_build_spec": {
+            "_boxxkite_build_spec": {
                 "base": base,
                 "python_packages": sorted(python_packages),
                 "apt_packages": sorted(apt_packages),
@@ -649,7 +649,7 @@ class KanikoJobBuildRunner:
             # outside this reference manifest's scope"; this is that
             # generation step, made concrete and unit-testable here rather
             # than left as a TODO.
-            "_boxkite_generated_dockerfile": render_dockerfile(
+            "_boxxkite_generated_dockerfile": render_dockerfile(
                 base=base, python_packages=python_packages, apt_packages=apt_packages, npm_packages=npm_packages
             ),
         }
@@ -688,12 +688,12 @@ class KanikoJobBuildRunner:
             apt_packages=apt_packages,
             npm_packages=npm_packages,
         )
-        dockerfile_content = job_spec["_boxkite_generated_dockerfile"]
+        dockerfile_content = job_spec["_boxxkite_generated_dockerfile"]
         configmap_spec = build_configmap_spec(
             image_id=image_id, account_id=account_id, dockerfile_content=dockerfile_content
         )
         job_name = job_spec["metadata"]["name"]
-        configmap_name = configmap_spec["_boxkite_configmap_name"]
+        configmap_name = configmap_spec["_boxxkite_configmap_name"]
 
         try:
             await core_api.create_namespaced_config_map(
@@ -746,10 +746,10 @@ class KanikoJobBuildRunner:
         """Polls `read_namespaced_job` (not `read_namespaced_job_status` --
         deliberately, so this only needs RBAC on the `jobs` resource, not
         the separate `jobs/status` subresource) until `status.succeeded`,
-        `status.failed`, or `BOXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS` elapses.
+        `status.failed`, or `BOXXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS` elapses.
         `backoffLimit: 0` on the Job (build_job_spec) means `status.failed`
         is set after exactly one failed attempt, never a retried one."""
-        deadline = _utcnow() + timedelta(seconds=settings.BOXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS)
+        deadline = _utcnow() + timedelta(seconds=settings.BOXXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS)
 
         while True:
             try:
@@ -781,16 +781,16 @@ class KanikoJobBuildRunner:
             if _utcnow() >= deadline:
                 logger.error(
                     f"[image_builder] build {image_id} timed out after "
-                    f"{settings.BOXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS:.0f}s"
+                    f"{settings.BOXXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS:.0f}s"
                 )
                 return await self._collect_failure(
                     core_api=core_api,
                     namespace=namespace,
                     job_name=job_name,
-                    reason=f"Build timed out after {settings.BOXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS:.0f}s",
+                    reason=f"Build timed out after {settings.BOXXKITE_IMAGE_BUILD_WAIT_TIMEOUT_SECONDS:.0f}s",
                 )
 
-            await asyncio.sleep(settings.BOXKITE_IMAGE_BUILD_POLL_INTERVAL_SECONDS)
+            await asyncio.sleep(settings.BOXXKITE_IMAGE_BUILD_POLL_INTERVAL_SECONDS)
 
     async def _find_job_pod(self, *, core_api, namespace: str, job_name: str):
         """Kubernetes labels every pod a Job creates with `job-name=<job
@@ -843,10 +843,10 @@ class KanikoJobBuildRunner:
         """Runs the vulnerability scan against the just-pushed image.
         Returns `(scan_result, None)` on a usable result -- either a real
         scan or, if the scanner couldn't run and
-        `BOXKITE_IMAGE_SCAN_REQUIRED` is `False`, an explicitly
+        `BOXXKITE_IMAGE_SCAN_REQUIRED` is `False`, an explicitly
         `"scanned": False` placeholder that still passes through
         `_scan_gate` (deliberately, since it carries no severity counts).
-        Returns `(_, failure_reason)` when `BOXKITE_IMAGE_SCAN_REQUIRED` is
+        Returns `(_, failure_reason)` when `BOXXKITE_IMAGE_SCAN_REQUIRED` is
         `True` (the default) and the scanner itself failed -- see that
         setting's docstring in config.py for why fail-CLOSED is the
         default: a scanner that silently can't run is exactly the
@@ -855,15 +855,15 @@ class KanikoJobBuildRunner:
         try:
             return await self._scan_image(registry_ref), None
         except ImageScanError as exc:
-            if settings.BOXKITE_IMAGE_SCAN_REQUIRED:
+            if settings.BOXXKITE_IMAGE_SCAN_REQUIRED:
                 logger.error(
                     f"[image_builder] vulnerability scan failed for build {image_id} ({registry_ref}): "
-                    f"{exc}; failing the build closed (BOXKITE_IMAGE_SCAN_REQUIRED=true)"
+                    f"{exc}; failing the build closed (BOXXKITE_IMAGE_SCAN_REQUIRED=true)"
                 )
                 return {}, f"Vulnerability scan could not be completed: {exc}"
             logger.warning(
                 f"[image_builder] vulnerability scan failed for build {image_id} ({registry_ref}): "
-                f"{exc}; BOXKITE_IMAGE_SCAN_REQUIRED=false, so this build proceeds UNSCANNED -- "
+                f"{exc}; BOXXKITE_IMAGE_SCAN_REQUIRED=false, so this build proceeds UNSCANNED -- "
                 "its vulnerability content has NOT been verified"
             )
             return {"scanned": False, "scanner": "trivy", "error": str(exc)}, None

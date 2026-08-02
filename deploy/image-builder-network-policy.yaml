@@ -7,7 +7,7 @@
 #
 # This is a SEPARATE, DELIBERATELY MORE PERMISSIVE policy than
 # deploy/network-policy.yaml, and it must stay scoped ONLY to builder Job
-# pods (selected below by `app: boxkite-image-builder`, the exact label
+# pods (selected below by `app: boxxkite-image-builder`, the exact label
 # `control-plane/src/control_plane/image_builder.py`'s
 # `KanikoJobBuildRunner.build_job_spec` sets on the Job's pod template) --
 # NEVER to `app: sandbox` pods. A live session sandbox pod must NEVER match
@@ -42,7 +42,7 @@
 # for a malicious pinned package's install-time code if an operator applied
 # this manifest without editing the CHANGEME below.
 #
-# This feature is OFF by default (BOXKITE_IMAGE_BUILDER_ENABLED=false) --
+# This feature is OFF by default (BOXXKITE_IMAGE_BUILDER_ENABLED=false) --
 # do not apply this file unless you have explicitly opted into the
 # declarative builder and read docs/DECLARATIVE-BUILDER-DESIGN.md section 5
 # in full.
@@ -50,12 +50,12 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: boxkite-image-builder-network-policy
+  name: boxxkite-image-builder-network-policy
   namespace: default  # Change to your namespace
 spec:
   podSelector:
     matchLabels:
-      app: boxkite-image-builder
+      app: boxxkite-image-builder
 
   policyTypes:
   - Ingress
@@ -98,7 +98,7 @@ spec:
       port: 443
 
   # CHANGEME: the container registry this image gets pushed to
-  # (BOXKITE_IMAGE_REGISTRY_PREFIX) -- if it's in-cluster, prefer a
+  # (BOXXKITE_IMAGE_REGISTRY_PREFIX) -- if it's in-cluster, prefer a
   # namespaceSelector/podSelector target instead of the blanket 443 rule
   # above, same rationale as deploy/network-policy.yaml's storage-egress
   # options. This too currently resolves to nothing (see the ipBlock

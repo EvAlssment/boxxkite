@@ -5,14 +5,14 @@
 //!
 //! Push, out-of-process notifications on sandbox lifecycle events -- not
 //! the same thing as this crate's own `AuditSink`-style pull model (which
-//! doesn't exist here at all; that's a `src/boxkite` embedding concept, not
+//! doesn't exist here at all; that's a `src/boxxkite` embedding concept, not
 //! part of the hosted control-plane's HTTP surface this crate wraps).
 
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
 /// Event types a webhook subscription can receive. See
 /// `docs/WEBHOOKS-DESIGN.md` for the full event catalog.
@@ -64,7 +64,7 @@ pub struct Webhook {
     pub created_at: String,
     pub last_triggered_at: Option<String>,
     /// The raw signing secret. Only present on [`Client::create_webhook`]'s
-    /// response -- use it to verify the `X-Boxkite-Webhook-Signature`
+    /// response -- use it to verify the `X-Boxxkite-Webhook-Signature`
     /// header on every delivery.
     pub secret: Option<String>,
 }
@@ -121,7 +121,7 @@ impl Client {
         url: &str,
         event_types: &[WebhookEventType],
         options: CreateWebhookOptions,
-    ) -> Result<Webhook, BoxkiteError> {
+    ) -> Result<Webhook, BoxxkiteError> {
         #[derive(Serialize)]
         struct Body<'a> {
             url: &'a str,
@@ -140,14 +140,14 @@ impl Client {
 
     /// `GET /v1/webhooks` -- webhook subscriptions for this account. The
     /// signing secret is never returned here.
-    pub async fn list_webhooks(&self) -> Result<Vec<Webhook>, BoxkiteError> {
+    pub async fn list_webhooks(&self) -> Result<Vec<Webhook>, BoxxkiteError> {
         let builder = self.request(Method::GET, "/v1/webhooks");
         self.send_or_default(builder).await
     }
 
     /// `DELETE /v1/webhooks/{id}` -- delete a webhook subscription owned by
     /// this account. 404s if already gone or never owned by this account.
-    pub async fn delete_webhook(&self, subscription_id: &str) -> Result<(), BoxkiteError> {
+    pub async fn delete_webhook(&self, subscription_id: &str) -> Result<(), BoxxkiteError> {
         let builder = self.request(Method::DELETE, &format!("/v1/webhooks/{subscription_id}"));
         self.send_no_content(builder).await
     }
@@ -158,7 +158,7 @@ impl Client {
         &self,
         subscription_id: &str,
         options: ListWebhookDeliveriesOptions,
-    ) -> Result<Vec<WebhookDelivery>, BoxkiteError> {
+    ) -> Result<Vec<WebhookDelivery>, BoxxkiteError> {
         let mut query = Vec::new();
         if let Some(limit) = options.limit {
             query.push(("limit", limit.to_string()));

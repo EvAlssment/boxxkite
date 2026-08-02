@@ -3,7 +3,7 @@
 # Claude Code Sandbox Container
 # Extends sandbox-minimal.Dockerfile with the Claude Code CLI
 # (@anthropic-ai/claude-code) preinstalled, for running Claude Code headless
-# against a boxkite sandbox -- see docs/CLAUDE-CODE-SANDBOX-QUICKSTART.md and
+# against a boxxkite sandbox -- see docs/CLAUDE-CODE-SANDBOX-QUICKSTART.md and
 # examples/claude_code_sandbox/.
 #
 # WHY THIS IS A SEPARATE, OUT-OF-BAND DOCKERFILE AND NOT A DECLARATIVE-BUILDER
@@ -21,13 +21,13 @@
 # - npm is REMOVED after installing @anthropic-ai/claude-code globally --
 #   the resulting `claude` binary and its own bundled dependencies remain,
 #   but no package manager survives into the runtime image, same as every
-#   other boxkite base image.
+#   other boxxkite base image.
 # - Claude Code's own credential (ANTHROPIC_API_KEY) is deliberately NOT
 #   baked into this image or set as a build-time ENV -- see
 #   docs/CLAUDE-CODE-SANDBOX-QUICKSTART.md's security note on why it must be
 #   supplied per-command instead, and why that's a known, tracked gap
 #   (docs/SECRETS-DESIGN.md), not a solved problem.
-# - Runs as non-root user (UID 1001), same as every other boxkite base image.
+# - Runs as non-root user (UID 1001), same as every other boxxkite base image.
 
 ARG PYTHON_VERSION=3.11
 

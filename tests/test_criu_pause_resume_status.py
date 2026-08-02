@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from boxkite.checkpoint_backend import (
+from boxxkite.checkpoint_backend import (
     CheckpointRestoreNotSupportedError,
     KubeletForensicCheckpointBackend,
 )

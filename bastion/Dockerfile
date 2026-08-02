@@ -3,11 +3,11 @@
 # bastion/ container -- a standalone SSH listener, deliberately NOT part of
 # the sandbox/sidecar pod (see docs/SSH-BASTION-DESIGN.md and this
 # component's own README). Unlike control-plane/Dockerfile, this image has
-# no dependency on the sibling `boxkite` package -- bastion/ never talks to
+# no dependency on the sibling `boxxkite` package -- bastion/ never talks to
 # the sidecar or SandboxManager directly, only to control-plane's public
 # HTTP/WS API -- so it can build standalone from this directory:
 #
-#   docker build -t boxkite-bastion:local bastion/
+#   docker build -t boxxkite-bastion:local bastion/
 
 ARG PYTHON_VERSION=3.11
 
@@ -45,4 +45,4 @@ EXPOSE 2222
 
 USER bastion
 
-CMD ["boxkite-bastion"]
+CMD ["boxxkite-bastion"]

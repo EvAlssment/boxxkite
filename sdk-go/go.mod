@@ -1,4 +1,4 @@
-module github.com/EvAlssment/boxkite/sdk-go
+module github.com/EvAlssment/boxxkite/sdk-go
 
 go 1.22
 

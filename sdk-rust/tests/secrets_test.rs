@@ -1,6 +1,6 @@
 mod common;
 
-use boxkite_client::CreateSecretOptions;
+use boxxkite_client::CreateSecretOptions;
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, ResponseTemplate};

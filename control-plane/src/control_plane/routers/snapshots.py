@@ -5,7 +5,7 @@ touches user-facing text: this is a point-in-time copy of the sandbox's
 workspace/output filesystem in blob storage, restorable into a *fresh* pod
 later — it does not preserve running processes, open network connections,
 or in-memory state (see the design doc's section 2 for why a true VM-level
-checkpoint isn't what boxkite's plain-K8s-pod isolation can deliver).
+checkpoint isn't what boxxkite's plain-K8s-pod isolation can deliver).
 
 Two routers live in this module because the design doc's API shape mixes
 session-scoped and snapshot-scoped paths:
@@ -91,7 +91,7 @@ async def _enforce_snapshot_rate_limit(request: Request, response: Response, acc
         request,
         bucket="snapshot_ops",
         subject=str(account.id),
-        limit=settings.BOXKITE_SNAPSHOT_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_SNAPSHOT_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
@@ -114,7 +114,7 @@ def _to_snapshot_out(row) -> SnapshotOut:
         "connections, or in-memory state. 404s for a session_id owned by a "
         "different account, identical to every other session-scoped route. "
         "429s with `snapshot_limit_reached` if this account is already at "
-        "BOXKITE_MAX_SNAPSHOTS_PER_ACCOUNT."
+        "BOXXKITE_MAX_SNAPSHOTS_PER_ACCOUNT."
     ),
 )
 async def create_snapshot(
@@ -132,15 +132,15 @@ async def create_snapshot(
 
     snapshots = SnapshotRepository(db)
     active_count = await snapshots.count_active_for_account(account.id)
-    if active_count >= settings.BOXKITE_MAX_SNAPSHOTS_PER_ACCOUNT:
+    if active_count >= settings.BOXXKITE_MAX_SNAPSHOTS_PER_ACCOUNT:
         raise LimitExceededError(
             code="snapshot_limit_reached",
             message=(
                 "Snapshot limit reached "
-                f"({settings.BOXKITE_MAX_SNAPSHOTS_PER_ACCOUNT} at a time). "
+                f"({settings.BOXXKITE_MAX_SNAPSHOTS_PER_ACCOUNT} at a time). "
                 "Delete an existing snapshot before creating another."
             ),
-            details={"limit": settings.BOXKITE_MAX_SNAPSHOTS_PER_ACCOUNT, "active": active_count},
+            details={"limit": settings.BOXXKITE_MAX_SNAPSHOTS_PER_ACCOUNT, "active": active_count},
         )
 
     snapshot_id = str(uuid4())
@@ -305,9 +305,9 @@ async def restore_snapshot(
         **out.model_dump(),
         usage=UsageSummary(
             monthly_sandbox_hours_used=round(hours_used, 4),
-            monthly_sandbox_hours_limit=settings.BOXKITE_FREE_MONTHLY_SANDBOX_HOURS,
+            monthly_sandbox_hours_limit=settings.BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS,
             concurrent_sandboxes=active_count,
-            concurrent_sandboxes_limit=settings.BOXKITE_MAX_CONCURRENT_SANDBOXES,
+            concurrent_sandboxes_limit=settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES,
         ),
     )
 

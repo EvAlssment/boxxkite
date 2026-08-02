@@ -4,7 +4,7 @@
 // //go:build ignore tag keeps this out of `go build ./...` (it is a second
 // package main alongside quickstart.go) while still allowing:
 //
-//	BOXKITE_BASE_URL=https://your-control-plane BOXKITE_API_KEY=bxk_live_... \
+//	BOXXKITE_BASE_URL=https://your-control-plane BOXXKITE_API_KEY=bxk_live_... \
 //	    go run ./examples/webhooks.go
 package main
 
@@ -22,10 +22,10 @@ import (
 	"strings"
 	"time"
 
-	boxkite "github.com/EvAlssment/boxkite/sdk-go"
+	boxxkite "github.com/EvAlssment/boxxkite/sdk-go"
 )
 
-// verifySignature verifies an X-Boxkite-Webhook-Signature header, per
+// verifySignature verifies an X-Boxxkite-Webhook-Signature header, per
 // docs/WEBHOOKS-DESIGN.md §6.
 func verifySignature(secret, signatureHeader string, rawBody []byte, toleranceSeconds int64) bool {
 	parts := map[string]string{}
@@ -53,24 +53,24 @@ func verifySignature(secret, signatureHeader string, rawBody []byte, toleranceSe
 }
 
 func main() {
-	baseURL := os.Getenv("BOXKITE_BASE_URL")
-	apiKey := os.Getenv("BOXKITE_API_KEY")
+	baseURL := os.Getenv("BOXXKITE_BASE_URL")
+	apiKey := os.Getenv("BOXXKITE_API_KEY")
 	if baseURL == "" || apiKey == "" {
-		fmt.Fprintln(os.Stderr, "Set BOXKITE_BASE_URL and BOXKITE_API_KEY first.")
+		fmt.Fprintln(os.Stderr, "Set BOXXKITE_BASE_URL and BOXXKITE_API_KEY first.")
 		os.Exit(1)
 	}
 
-	client, err := boxkite.NewClient(baseURL, apiKey)
+	client, err := boxxkite.NewClient(baseURL, apiKey)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	ctx := context.Background()
 
-	webhook, err := client.CreateWebhook(ctx, boxkite.CreateWebhookRequest{
-		URL:         "https://example.com/boxkite-webhook",
+	webhook, err := client.CreateWebhook(ctx, boxxkite.CreateWebhookRequest{
+		URL:         "https://example.com/boxxkite-webhook",
 		EventTypes:  []string{"sandbox.created", "sandbox.destroyed", "audit_log.entry"},
-		Description: boxkite.Ptr("webhooks example"),
+		Description: boxxkite.Ptr("webhooks example"),
 	})
 	if err != nil {
 		exitOnError(err)
@@ -103,7 +103,7 @@ func main() {
 }
 
 func exitOnError(err error) {
-	var apiErr *boxkite.APIError
+	var apiErr *boxxkite.APIError
 	if errors.As(err, &apiErr) {
 		fmt.Fprintf(os.Stderr, "API error: %s [%s]\n", apiErr.Message, apiErr.Code)
 		os.Exit(1)

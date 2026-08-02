@@ -26,12 +26,12 @@ metadata:
     # small, medium, or large -- see resource_config.py's SANDBOX_SIZE_PRESETS.
     # Missing on pods created before this label existed; both warm_pool.py and
     # manager.py treat a missing label as the default size.
-    sandbox.boxkite.dev/size: "small"
+    sandbox.boxxkite.dev/size: "small"
   annotations:
     # For warm pool management
-    sandbox.boxkite.dev/status: "warm"  # warm, active, terminating
-    sandbox.boxkite.dev/created-at: ""
-    sandbox.boxkite.dev/last-used: ""
+    sandbox.boxxkite.dev/status: "warm"  # warm, active, terminating
+    sandbox.boxxkite.dev/created-at: ""
+    sandbox.boxxkite.dev/last-used: ""
 spec:
   # Share PID namespace so sidecar can nsenter into sandbox
   shareProcessNamespace: true
@@ -45,7 +45,7 @@ spec:
   # Init container to set up volumes (optional - for cold starts with pre-fetch)
   initContainers:
   - name: init-prefetch
-    image: boxkite-sidecar:latest
+    image: boxxkite-sidecar:latest
     imagePullPolicy: IfNotPresent
     command: ["python", "-c", "print('Init container ready')"]
     # In production, this would run prefetch logic
@@ -62,7 +62,7 @@ spec:
   containers:
   # Sandbox container - runs user code
   - name: sandbox
-    image: boxkite-sandbox:latest
+    image: boxxkite-sandbox:latest
     imagePullPolicy: IfNotPresent
 
     # Security context - non-root, no privilege escalation
@@ -124,7 +124,7 @@ spec:
 
   # Sidecar container - HTTP API and storage sync
   - name: sidecar
-    image: boxkite-sidecar:latest
+    image: boxxkite-sidecar:latest
     imagePullPolicy: IfNotPresent
 
     # Runs as root for nsenter and volume writes.
@@ -184,7 +184,7 @@ spec:
     #
     # scheme: HTTPS -- matches manager.py's/warm_pool.py's real pod spec,
     # which serves the sidecar over TLS by default (see
-    # src/boxkite/tls.py, docs/SIDECAR-TRANSPORT-TLS-DESIGN.md). The
+    # src/boxxkite/tls.py, docs/SIDECAR-TRANSPORT-TLS-DESIGN.md). The
     # kubelet's httpGet probe does NOT validate the serving cert (there is
     # no caBundle option for pod probes) -- it only needs the scheme to
     # match, so no cert distribution to the kubelet is required. If you set
@@ -210,17 +210,17 @@ spec:
     env:
     - name: RUNTIME_MODE
       value: "k8s"
-    # Manager-to-sidecar TLS (see src/boxkite/tls.py,
+    # Manager-to-sidecar TLS (see src/boxxkite/tls.py,
     # docs/SIDECAR-TRANSPORT-TLS-DESIGN.md). Leave unset/"" for the default
     # (TLS on, matching the probes' scheme: HTTPS above). Set to "true" only
     # if you run your own service-mesh mTLS (Istio/Linkerd) and want to
-    # skip boxkite's own per-pod cert generation -- if you do, also change
+    # skip boxxkite's own per-pod cert generation -- if you do, also change
     # both probes' scheme above back to HTTP.
     - name: SIDECAR_TLS_DISABLED
       value: ""
     # SECURITY: shared secret the sidecar requires on every HTTP request
     # except /health (defense in depth on top of NetworkPolicy — see
-    # src/boxkite/sidecar_auth.py and SECURITY.md). SandboxManager and
+    # src/boxxkite/sidecar_auth.py and SECURITY.md). SandboxManager and
     # WarmPoolManager generate a FRESH random value per pod at pod-creation
     # time, create a dedicated per-pod Secret for it (name:
     # sidecar_auth_secret_name(pod_name), i.e. "<pod-name>-sidecar-auth", key:
@@ -342,7 +342,7 @@ spec:
     - name: tmp
       mountPath: /tmp
     # Per-pod TLS cert/key (see the SIDECAR_TLS_DISABLED comment above and
-    # src/boxkite/tls.py). A mounted file, not secretKeyRef -- uvicorn's
+    # src/boxxkite/tls.py). A mounted file, not secretKeyRef -- uvicorn's
     # ssl_certfile/ssl_keyfile need filesystem paths. This static template
     # can't generate a per-pod cert the way manager.py/warm_pool.py do at
     # apply time -- if you deploy from a literal copy of this file, create
@@ -351,7 +351,7 @@ spec:
     # SIDECAR_TLS_DISABLED=true and drop this mount + the probes' HTTPS
     # scheme entirely.
     - name: sidecar-tls
-      mountPath: /etc/boxkite/tls
+      mountPath: /etc/boxxkite/tls
       readOnly: true
 
   # Volumes - EmptyDir shared between containers. Every volume below has a
@@ -384,7 +384,7 @@ spec:
       sizeLimit: 1Gi
   # Backs the sidecar-tls volumeMount above. Secret-sourced (not emptyDir):
   # the same per-pod Secret SIDECAR_AUTH_TOKEN reads from, keyed tls_cert/
-  # tls_key -- see src/boxkite/tls.py's SIDECAR_TLS_CERT_SECRET_KEY/
+  # tls_key -- see src/boxxkite/tls.py's SIDECAR_TLS_CERT_SECRET_KEY/
   # SIDECAR_TLS_KEY_SECRET_KEY.
   - name: sidecar-tls
     secret:

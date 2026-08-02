@@ -34,8 +34,8 @@ from kubernetes_asyncio import client as k8s_client
 from kubernetes_asyncio.client.exceptions import ApiException
 from kubernetes_asyncio.config.config_exception import ConfigException
 
-from boxkite.k8s_auth import build_kubernetes_api_client, load_kubernetes_config
-from boxkite.manager import SANDBOX_NAMESPACE
+from boxxkite.k8s_auth import build_kubernetes_api_client, load_kubernetes_config
+from boxxkite.manager import SANDBOX_NAMESPACE
 
 from .config import settings
 
@@ -51,7 +51,7 @@ def _pvc_name_for(*, account_id: str, volume_id: str) -> str:
     limited to lowercase alphanumerics and '-', so this can't just
     concatenate the raw UUIDs with a slash the way SandboxImage.registry_ref
     does."""
-    return f"boxkite-vol-{account_id[:8]}-{volume_id[:8]}"
+    return f"boxxkite-vol-{account_id[:8]}-{volume_id[:8]}"
 
 
 def build_pvc_spec(*, volume_id: str, account_id: str, size_gb: float) -> dict:
@@ -68,10 +68,10 @@ def build_pvc_spec(*, volume_id: str, account_id: str, size_gb: float) -> dict:
       docs/EXTERNAL-STORAGE-MOUNTING-DESIGN.md's addendum on why
       concurrent multi-sandbox mount semantics are the interesting open
       question here, not the PVC mechanics).
-    - `storageClassName` comes from BOXKITE_VOLUME_STORAGE_CLASS (operator-
+    - `storageClassName` comes from BOXXKITE_VOLUME_STORAGE_CLASS (operator-
       configurable, never a caller-supplied value) -- same "N operator-
       reviewed choices, never arbitrary caller input" posture as
-      BOXKITE_BASE_IMAGE_REFS.
+      BOXXKITE_BASE_IMAGE_REFS.
     - Labels namespace the PVC by account_id/volume_id, mirroring
       SandboxImage's registry-path namespacing, so a bug in the DB-layer
       authorization check isn't the only thing standing between two
@@ -84,17 +84,17 @@ def build_pvc_spec(*, volume_id: str, account_id: str, size_gb: float) -> dict:
         "metadata": {
             "name": pvc_name,
             "labels": {
-                "app": "boxkite-volume",
-                "boxkite.dev/account-id": account_id,
-                "boxkite.dev/volume-id": volume_id,
+                "app": "boxxkite-volume",
+                "boxxkite.dev/account-id": account_id,
+                "boxxkite.dev/volume-id": volume_id,
             },
         },
         "spec": {
             "accessModes": ["ReadWriteOnce"],
-            "storageClassName": settings.BOXKITE_VOLUME_STORAGE_CLASS,
+            "storageClassName": settings.BOXXKITE_VOLUME_STORAGE_CLASS,
             "resources": {"requests": {"storage": f"{size_gb}Gi"}},
         },
-        "_boxkite_pvc_name": pvc_name,
+        "_boxxkite_pvc_name": pvc_name,
     }
 
 
@@ -123,17 +123,17 @@ class K8sVolumeProvisioner:
     wait for it to bind (or fail); delete it on deprovision.
 
     Implemented against a real `CoreV1Api`, mirroring
-    `boxkite.manager.SandboxManager`'s own create-and-poll pattern
+    `boxxkite.manager.SandboxManager`'s own create-and-poll pattern
     (`_create_pod`/`_wait_for_pod_ready`) — lazy client init via
-    `boxkite.k8s_auth.load_kubernetes_config`/`build_kubernetes_api_client`,
+    `boxxkite.k8s_auth.load_kubernetes_config`/`build_kubernetes_api_client`,
     a 409-on-create conflict check, and a poll loop bounded by
-    `BOXKITE_VOLUME_PROVISION_TIMEOUT_SECONDS`. Still NOT exercised against
+    `BOXXKITE_VOLUME_PROVISION_TIMEOUT_SECONDS`. Still NOT exercised against
     a LIVE cluster in this repo's test suite (there is no live Kubernetes
     API in CI here) — covered by unit tests against a mocked `CoreV1Api`
     instead (mirroring `tests/test_manager.py`'s own mocking pattern for
     pod create/poll). Security-review this end to end (see
     `docs/EXTERNAL-STORAGE-MOUNTING-DESIGN.md`) before enabling
-    `BOXKITE_VOLUMES_ENABLED` against real multi-tenant traffic.
+    `BOXXKITE_VOLUMES_ENABLED` against real multi-tenant traffic.
     """
 
     def __init__(self, k8s_core_api=None):
@@ -157,8 +157,8 @@ class K8sVolumeProvisioner:
     async def provision(self, *, volume_id: str, account_id: str, size_gb: float) -> VolumeOutcome:
         await self._ensure_client()
         spec = build_pvc_spec(volume_id=volume_id, account_id=account_id, size_gb=size_gb)
-        pvc_name = spec["_boxkite_pvc_name"]
-        pvc_body = {k: v for k, v in spec.items() if not k.startswith("_boxkite_")}
+        pvc_name = spec["_boxxkite_pvc_name"]
+        pvc_body = {k: v for k, v in spec.items() if not k.startswith("_boxxkite_")}
 
         try:
             await self._k8s_core_api.create_namespaced_persistent_volume_claim(
@@ -194,7 +194,7 @@ class K8sVolumeProvisioner:
         `ApiException`, and bound the whole loop by a wall-clock timeout
         rather than a fixed attempt count.
         """
-        effective_timeout = timeout if timeout is not None else settings.BOXKITE_VOLUME_PROVISION_TIMEOUT_SECONDS
+        effective_timeout = timeout if timeout is not None else settings.BOXXKITE_VOLUME_PROVISION_TIMEOUT_SECONDS
         start_time = asyncio.get_event_loop().time()
         while True:
             try:
@@ -245,7 +245,7 @@ class FakeVolumeProvisioner:
 
     async def provision(self, *, volume_id: str, account_id: str, size_gb: float) -> VolumeOutcome:
         spec = build_pvc_spec(volume_id=volume_id, account_id=account_id, size_gb=size_gb)
-        pvc_name = spec["_boxkite_pvc_name"]
+        pvc_name = spec["_boxxkite_pvc_name"]
 
         # Deterministic failure hook for tests: a size that hashes to a
         # "toolarge"-flagged synthetic quota rejection.

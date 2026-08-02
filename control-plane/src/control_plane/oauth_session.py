@@ -17,7 +17,7 @@ from .config import settings
 from .repository import AccountRepository
 from .security import decode_oauth_login_session_token
 
-OAUTH_LOGIN_SESSION_COOKIE = "boxkite_oauth_session"
+OAUTH_LOGIN_SESSION_COOKIE = "boxxkite_oauth_session"
 
 
 def set_login_session_cookie(response: Response, *, token: str, ttl_seconds: int) -> None:

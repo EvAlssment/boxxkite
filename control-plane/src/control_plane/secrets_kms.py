@@ -298,7 +298,7 @@ class LocalDevSecretsKmsClient:
         raw_key = settings.SECRETS_LOCAL_DEV_KMS_KEY
         if not raw_key:
             # Zero-config local dev: derive a process-local key so tests and
-            # `boxkite up` style local runs work without any setup, at the
+            # `boxxkite up` style local runs work without any setup, at the
             # cost of secrets not surviving a process restart (matching
             # JWT_SECRET's own "insecure default, fine for dev" posture).
             logger.warning(

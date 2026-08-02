@@ -11,7 +11,7 @@ lookup is scoped to `account.id` at the database layer
 (`SandboxImageRepository.get_for_account`), so a foreign `image_id` 404s,
 never distinguishing "doesn't exist" from "belongs to someone else".
 
-This entire feature is gated by `BOXKITE_IMAGE_BUILDER_ENABLED` (off by
+This entire feature is gated by `BOXXKITE_IMAGE_BUILDER_ENABLED` (off by
 default) -- every route here 404s if it's disabled, so a deployment that
 hasn't opted in exposes no trace of this API beyond the route existing in
 the OpenAPI schema.
@@ -49,13 +49,13 @@ async def _enforce_image_build_rate_limit(request: Request, response: Response, 
         request,
         bucket="image_build_ops",
         subject=str(account.id),
-        limit=settings.BOXKITE_IMAGE_BUILD_RATE_LIMIT_PER_MINUTE,
+        limit=settings.BOXXKITE_IMAGE_BUILD_RATE_LIMIT_PER_MINUTE,
         response=response,
     )
 
 
 def _require_builder_enabled() -> None:
-    if not settings.BOXKITE_IMAGE_BUILDER_ENABLED:
+    if not settings.BOXXKITE_IMAGE_BUILDER_ENABLED:
         raise ApiError(
             404,
             "not_found",
@@ -107,11 +107,11 @@ async def _run_build_in_background(
         "returns 202 with status='queued' immediately; poll GET "
         "/v1/images/{id} for progress. If an identical (base + sorted "
         "package list) build already completed for this account within "
-        "BOXKITE_IMAGE_BUILD_CACHE_HOURS, this reuses that build's digest "
+        "BOXXKITE_IMAGE_BUILD_CACHE_HOURS, this reuses that build's digest "
         "instead of re-running it (still returns a NEW image row, but with "
         "status='completed' immediately). 429 with "
         "`image_build_limit_reached` if this account is already at "
-        "BOXKITE_MAX_IMAGES_PER_ACCOUNT. 404s if the declarative builder "
+        "BOXXKITE_MAX_IMAGES_PER_ACCOUNT. 404s if the declarative builder "
         "isn't enabled on this deployment."
     ),
 )
@@ -128,19 +128,19 @@ async def create_image_build(
 
     images = SandboxImageRepository(db)
     active_count = await images.count_active_for_account(account.id)
-    if active_count >= settings.BOXKITE_MAX_IMAGES_PER_ACCOUNT:
+    if active_count >= settings.BOXXKITE_MAX_IMAGES_PER_ACCOUNT:
         raise LimitExceededError(
             code="image_build_limit_reached",
             message=(
                 "Custom image limit reached "
-                f"({settings.BOXKITE_MAX_IMAGES_PER_ACCOUNT} at a time). "
+                f"({settings.BOXXKITE_MAX_IMAGES_PER_ACCOUNT} at a time). "
                 "Delete an existing image before building another."
             ),
-            details={"limit": settings.BOXKITE_MAX_IMAGES_PER_ACCOUNT, "active": active_count},
+            details={"limit": settings.BOXXKITE_MAX_IMAGES_PER_ACCOUNT, "active": active_count},
         )
 
     in_flight_total = await images.count_in_flight_total()
-    if in_flight_total >= settings.BOXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS:
+    if in_flight_total >= settings.BOXXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS:
         raise LimitExceededError(
             code="global_build_capacity_reached",
             message=(
@@ -148,7 +148,7 @@ async def create_image_build(
                 "in use. Try again shortly."
             ),
             details={
-                "limit": settings.BOXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS,
+                "limit": settings.BOXXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS,
                 "in_flight": in_flight_total,
             },
         )

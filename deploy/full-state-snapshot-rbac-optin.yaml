@@ -1,8 +1,8 @@
 # Opt-in RBAC for full-state (process/memory) checkpoint
-# (docs/FULL-STATE-SNAPSHOT-SCOPING.md, src/boxkite/checkpoint_backend.py).
+# (docs/FULL-STATE-SNAPSHOT-SCOPING.md, src/boxxkite/checkpoint_backend.py).
 #
 # DO NOT apply this manifest unless you have deliberately enabled
-# BOXKITE_FULL_STATE_SNAPSHOT_ENABLED and understand what it grants. It is
+# BOXXKITE_FULL_STATE_SNAPSHOT_ENABLED and understand what it grants. It is
 # a SEPARATE, opt-in file -- never merged into deploy/rbac.yaml's default
 # grant set -- specifically so a self-hoster who never enables this
 # feature never applies this broader permission by accident.
@@ -31,7 +31,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: boxkite-full-state-checkpoint-optin
+  name: boxxkite-full-state-checkpoint-optin
 rules:
 # nodes/proxy is cluster-scoped (nodes aren't namespaced) -- this cannot
 # be expressed as a namespaced Role the way deploy/rbac.yaml's other
@@ -40,7 +40,7 @@ rules:
   resources: ["nodes/proxy"]
   verbs: ["create", "get"]
 # Needed to resolve which node a session's pod is scheduled on before
-# calling the proxy above (src/boxkite/_manager_checkpoint.py's
+# calling the proxy above (src/boxxkite/_manager_checkpoint.py's
 # read_namespaced_pod call) -- deploy/rbac.yaml's default sandbox-manager-role
 # already grants "get" on pods, but only namespace-scoped; nodes/proxy
 # itself requires this separate ClusterRole regardless, so this rule is
@@ -54,14 +54,14 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: boxkite-full-state-checkpoint-optin-binding
+  name: boxxkite-full-state-checkpoint-optin-binding
 subjects:
 - kind: ServiceAccount
   # Matches deploy/rbac.yaml's RoleBinding subject -- update both if you
   # rename this ServiceAccount.
-  name: boxkite-control-plane
+  name: boxxkite-control-plane
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: boxkite-full-state-checkpoint-optin
+  name: boxxkite-full-state-checkpoint-optin
   apiGroup: rbac.authorization.k8s.io

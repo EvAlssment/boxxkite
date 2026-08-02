@@ -8,10 +8,10 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
 use crate::client::Client;
-use crate::error::BoxkiteError;
+use crate::error::BoxxkiteError;
 
 /// CPU/memory size preset for a sandbox. Capped per-account by the
-/// deployment's `BOXKITE_MAX_SANDBOX_SIZE` -- requesting a larger size than
+/// deployment's `BOXXKITE_MAX_SANDBOX_SIZE` -- requesting a larger size than
 /// the account is allowed returns `429`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -25,7 +25,7 @@ pub enum SandboxSize {
 /// unset (server defaults apply) unless set via the chained setters.
 ///
 /// ```no_run
-/// use boxkite_client::CreateSandboxOptions;
+/// use boxxkite_client::CreateSandboxOptions;
 ///
 /// let options = CreateSandboxOptions::new()
 ///     .label("demo")
@@ -136,9 +136,9 @@ impl CreateSandboxOptions {
     /// Opt-in, experimental (`docs/GPU-SUPPORT-SCOPING.md`) -- requests this
     /// many GPUs as a Kubernetes extended-resource limit on the sandbox
     /// container. 422s (`gpu_support_disabled`) unless the deployment has
-    /// `BOXKITE_GPU_ENABLED` set and a GPU-equipped node pool with a device
+    /// `BOXXKITE_GPU_ENABLED` set and a GPU-equipped node pool with a device
     /// plugin provisioned; not verified against real GPU hardware in this
-    /// codebase. Bounded by `BOXKITE_MAX_GPU_COUNT_PER_SESSION`
+    /// codebase. Bounded by `BOXXKITE_MAX_GPU_COUNT_PER_SESSION`
     /// (422 `invalid_gpu_count` otherwise).
     pub fn gpu_count(mut self, gpu_count: i64) -> Self {
         self.gpu_count = Some(gpu_count);
@@ -189,7 +189,7 @@ impl Client {
     pub async fn create_sandbox(
         &self,
         options: CreateSandboxOptions,
-    ) -> Result<Sandbox, BoxkiteError> {
+    ) -> Result<Sandbox, BoxxkiteError> {
         let builder = self.request(Method::POST, "/v1/sandboxes").json(&options);
         self.send(builder).await
     }
@@ -198,12 +198,12 @@ impl Client {
     /// batch of sandboxes in one call and returns all of them. Each session
     /// in the batch is created and limit-checked one at a time, so a later
     /// item can still fail the concurrent-sandbox or monthly-usage cap even
-    /// if earlier items succeeded (surfaces as a `BoxkiteError::Api` for the
+    /// if earlier items succeeded (surfaces as a `BoxxkiteError::Api` for the
     /// whole call, per the underlying REST contract).
     pub async fn create_sandbox_batch(
         &self,
         options: CreateSandboxOptions,
-    ) -> Result<Vec<Sandbox>, BoxkiteError> {
+    ) -> Result<Vec<Sandbox>, BoxxkiteError> {
         let builder = self.request(Method::POST, "/v1/sandboxes").json(&options);
         self.send(builder).await
     }
@@ -211,13 +211,13 @@ impl Client {
     /// `GET /v1/sandboxes/{session_id}` -- fetch one sandbox session by id.
     /// Resolves destroyed sessions too (a lookup, not an operational route
     /// that requires a live pod).
-    pub async fn get_sandbox(&self, session_id: &str) -> Result<Sandbox, BoxkiteError> {
+    pub async fn get_sandbox(&self, session_id: &str) -> Result<Sandbox, BoxxkiteError> {
         let builder = self.request(Method::GET, &format!("/v1/sandboxes/{session_id}"));
         self.send(builder).await
     }
 
     /// `GET /v1/sandboxes` -- list sandbox sessions owned by this account.
-    pub async fn list_sandboxes(&self, active_only: bool) -> Result<Vec<Sandbox>, BoxkiteError> {
+    pub async fn list_sandboxes(&self, active_only: bool) -> Result<Vec<Sandbox>, BoxxkiteError> {
         let builder = self
             .request(Method::GET, "/v1/sandboxes")
             .query(&[("active_only", active_only.to_string())]);
@@ -225,7 +225,7 @@ impl Client {
     }
 
     /// `DELETE /v1/sandboxes/{session_id}` -- tear down a sandbox session.
-    pub async fn destroy_sandbox(&self, session_id: &str) -> Result<(), BoxkiteError> {
+    pub async fn destroy_sandbox(&self, session_id: &str) -> Result<(), BoxxkiteError> {
         let builder = self.request(Method::DELETE, &format!("/v1/sandboxes/{session_id}"));
         self.send_no_content(builder).await
     }

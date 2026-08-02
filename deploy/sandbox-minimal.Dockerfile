@@ -6,7 +6,7 @@
 # `base` value for the declarative builder (docs/DECLARATIVE-BUILDER-DESIGN.md)
 # for callers who want to compose their own python_packages/apt_packages from
 # scratch on a small, fast-building image instead of layering on top of the
-# much larger boxkite-default footprint.
+# much larger boxxkite-default footprint.
 #
 # SECURITY NOTES (identical posture to deploy/sandbox.Dockerfile):
 # - pip is REMOVED after installation to prevent runtime package installs

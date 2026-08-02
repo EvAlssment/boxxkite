@@ -270,7 +270,7 @@ async def configure(req: main.ConfigureRequest):
     await main._reset_interpreter()
     # Same requirement for the (opt-in, may not even be running) Node
     # interpreter -- always call this, not just when
-    # BOXKITE_NODE_INTERPRETER_ENABLED is set, since a still-live process
+    # BOXXKITE_NODE_INTERPRETER_ENABLED is set, since a still-live process
     # started while the flag was on must still be killed if the flag was
     # since flipped off before this recycle.
     await main._reset_node_interpreter()
@@ -278,20 +278,20 @@ async def configure(req: main.ConfigureRequest):
     # a recycled pod must never hand a new tenant a still-live browser page
     # (cookies, session storage, whatever the previous tenant navigated to)
     # left over from before. Always call this, not just when
-    # BOXKITE_BROWSER_ENABLED is set, same reasoning as the Node interpreter
+    # BOXXKITE_BROWSER_ENABLED is set, same reasoning as the Node interpreter
     # reset above (docs/BROWSER-EXEC-DESIGN.md §4).
     await main._reset_browser()
     # Same requirement for the (opt-in) desktop takeover stack -- a recycled
     # pod must never hand a new tenant a still-live Xvfb/WM/x11vnc session
     # (windows, clipboard, whatever the previous tenant had open) left over
-    # from before. Always call this, not just when BOXKITE_DESKTOP_ENABLED is
+    # from before. Always call this, not just when BOXXKITE_DESKTOP_ENABLED is
     # set, same reasoning as _reset_browser above.
     await main.kill_desktop_session()
     # Same requirement for the (opt-in, may not even be running) LSP
     # servers (GitHub issue #183) -- a recycled pod must never hand a new
     # tenant a still-live language server whose open documents contain the
     # previous tenant's source code. Always call this, not just when
-    # BOXKITE_LSP_ENABLED is set, same reasoning as the Node interpreter/
+    # BOXXKITE_LSP_ENABLED is set, same reasoning as the Node interpreter/
     # browser resets above.
     await main._kill_all_lsp_servers()
 

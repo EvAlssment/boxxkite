@@ -1,4 +1,4 @@
-"""boxkite control-plane FastAPI app.
+"""boxxkite control-plane FastAPI app.
 
 A separate service from `sidecar/main.py` — see `__init__.py`'s module
 docstring for the architecture this sits on top of. Auto-generated
@@ -23,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from boxkite import close_sandbox_manager, close_warm_pool, get_sandbox_manager, get_warm_pool
+from boxxkite import close_sandbox_manager, close_warm_pool, get_sandbox_manager, get_warm_pool
 
 from .config import settings
 from .db import dispose_engine, get_engine, init_schema
@@ -100,19 +100,19 @@ def verify_startup_config(cfg) -> None:
     # accepted, so a deploy that forgot to wire up a cloud KMS fails loudly
     # instead of silently shipping weakly-protected secrets.
     if cfg.SECRETS_KMS_BACKEND == "local" and not cfg.is_dev_environment:
-        if cfg.BOXKITE_ALLOW_INSECURE_LOCAL_KMS:
+        if cfg.BOXXKITE_ALLOW_INSECURE_LOCAL_KMS:
             logger.warning(
                 "[control-plane] SECRETS_KMS_BACKEND='local' while "
                 f"ENVIRONMENT={cfg.ENVIRONMENT!r}: Secret.ciphertext is protected by "
                 "a local dev key, not a real KMS. Running anyway because "
-                "BOXKITE_ALLOW_INSECURE_LOCAL_KMS=true is set."
+                "BOXXKITE_ALLOW_INSECURE_LOCAL_KMS=true is set."
             )
         else:
             raise RuntimeError(
                 "[control-plane] SECRETS_KMS_BACKEND='local' is not a real KMS and "
                 f"must not be used while ENVIRONMENT={cfg.ENVIRONMENT!r}. Refusing to "
                 "start: set SECRETS_KMS_BACKEND to aws/azure/gcp with SECRETS_KMS_KEY_ID, "
-                "or set BOXKITE_ALLOW_INSECURE_LOCAL_KMS=true to explicitly accept a "
+                "or set BOXXKITE_ALLOW_INSECURE_LOCAL_KMS=true to explicitly accept a "
                 "local dev key outside development."
             )
 
@@ -173,12 +173,12 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="boxkite control plane",
+    title="boxxkite control plane",
     description=(
-        "Multi-tenant control-plane API for boxkite: sign up, generate an "
+        "Multi-tenant control-plane API for boxxkite: sign up, generate an "
         "API key, and create/manage sandbox sessions through an "
         "authenticated HTTP API. Sandbox pod lifecycle is delegated to "
-        "boxkite's SandboxManager/WarmPoolManager; this service adds "
+        "boxxkite's SandboxManager/WarmPoolManager; this service adds "
         "accounts, API keys, and configurable fair-use limits on top. "
         "No billing or payment concepts exist here — usage limits are "
         "purely fair-use caps, not pricing tiers."
@@ -323,8 +323,8 @@ async def readiness(response: Response) -> dict:
 )
 async def metrics() -> Response:
     """Prometheus exposition of request counts + latency. 404s when
-    BOXKITE_METRICS_ENABLED is false (same opt-out convention as the API docs)."""
-    if not settings.BOXKITE_METRICS_ENABLED:
+    BOXXKITE_METRICS_ENABLED is false (same opt-out convention as the API docs)."""
+    if not settings.BOXXKITE_METRICS_ENABLED:
         return Response(status_code=404)
     body, content_type = render_metrics()
     return Response(content=body, media_type=content_type)

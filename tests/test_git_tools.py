@@ -1,5 +1,5 @@
 """
-Tests for boxkite.tools.git_tools.
+Tests for boxxkite.tools.git_tools.
 
 Mirrors tests/test_bash_tool.py's and tests/test_search_tools.py's pattern:
 mock SandboxManager (execute + file_create), assert the tool builds the
@@ -20,8 +20,8 @@ from uuid import uuid4
 
 import pytest
 
-from boxkite.tools.bash_tool import sanitize_output
-from boxkite.tools.git_tools import (
+from boxxkite.tools.bash_tool import sanitize_output
+from boxxkite.tools.git_tools import (
     create_git_add_tool,
     create_git_branch_tool,
     create_git_checkout_tool,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from boxkite_bastion.rate_limit import PerHostConnectionLimiter
+from boxxkite_bastion.rate_limit import PerHostConnectionLimiter
 
 
 def test_try_acquire_succeeds_up_to_the_configured_max():

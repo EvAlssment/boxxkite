@@ -1,4 +1,4 @@
-"""Run Claude Code headlessly inside a boxkite sandbox, against a real repo.
+"""Run Claude Code headlessly inside a boxxkite sandbox, against a real repo.
 
 See ../../docs/CLAUDE-CODE-SANDBOX-QUICKSTART.md for the full write-up,
 including why this needs the custom ../../deploy/sandbox-claude-code.Dockerfile
@@ -14,17 +14,17 @@ shell string).
 
 Prerequisites:
   - `docker build -f ../../deploy/sandbox-claude-code.Dockerfile -t
-    boxkite-sandbox-claude-code ../..`
-  - `boxkite up` with SANDBOX_IMAGE=boxkite-sandbox-claude-code (see the
+    boxxkite-sandbox-claude-code ../..`
+  - `boxxkite up` with SANDBOX_IMAGE=boxxkite-sandbox-claude-code (see the
     quickstart doc).
-  - `pip install -e ../..` (boxkite itself; no extra needed -- this example
+  - `pip install -e ../..` (boxxkite itself; no extra needed -- this example
     uses only bash_tool and git_tools, no LangChain/LlamaIndex adapter).
   - ANTHROPIC_API_KEY set in *this* process's environment (not baked into
     the image) -- this script passes it into the sandboxed command itself.
 
 Run:
     export ANTHROPIC_API_KEY=sk-ant-...
-    export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxkite/local.env | cut -d= -f2)
+    export SIDECAR_AUTH_TOKEN=$(grep ^SIDECAR_AUTH_TOKEN= ~/.boxxkite/local.env | cut -d= -f2)
     export RUNTIME_MODE=compose SIDECAR_URL=http://localhost:8080
     python run_claude_code.py
 """
@@ -36,9 +36,9 @@ import os
 import shlex
 from uuid import uuid4
 
-from boxkite import SandboxManager
-from boxkite.tools.bash_tool import create_bash_tool_spec
-from boxkite.tools.git_tools import create_git_tool_specs
+from boxxkite import SandboxManager
+from boxxkite.tools.bash_tool import create_bash_tool_spec
+from boxxkite.tools.git_tools import create_git_tool_specs
 
 REPO_URL = "https://github.com/octocat/Hello-World.git"
 PROMPT = "Summarize in two sentences what this repository contains."

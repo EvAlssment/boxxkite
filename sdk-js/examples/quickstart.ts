@@ -3,21 +3,21 @@
  * Build first (relative imports resolve against dist/, not this .ts file):
  *
  *   npm run build
- *   BOXKITE_BASE_URL=https://your-control-plane BOXKITE_API_KEY=bxk_live_... \
+ *   BOXXKITE_BASE_URL=https://your-control-plane BOXXKITE_API_KEY=bxk_live_... \
  *       node dist/examples/quickstart.js
  */
 
-import { BoxkiteApiError, BoxkiteClient } from "../src/index.js";
+import { BoxxkiteApiError, BoxxkiteClient } from "../src/index.js";
 
 async function main() {
-  const baseUrl = process.env.BOXKITE_BASE_URL;
-  const apiKey = process.env.BOXKITE_API_KEY;
+  const baseUrl = process.env.BOXXKITE_BASE_URL;
+  const apiKey = process.env.BOXXKITE_API_KEY;
   if (!baseUrl || !apiKey) {
-    console.error("Set BOXKITE_BASE_URL and BOXKITE_API_KEY first.");
+    console.error("Set BOXXKITE_BASE_URL and BOXXKITE_API_KEY first.");
     process.exit(1);
   }
 
-  const client = new BoxkiteClient({ baseUrl, apiKey });
+  const client = new BoxxkiteClient({ baseUrl, apiKey });
 
   const account = await client.account();
   console.log(`Signed in as ${account.email}`);
@@ -36,7 +36,7 @@ async function main() {
         const result = await sb.exec("python3 -c 'print(1 + 1)'");
         console.log(`exec result: ${result.stdout.trim()}`);
 
-        await sb.fileCreate("hello.txt", "hello from boxkite-client (js)\n");
+        await sb.fileCreate("hello.txt", "hello from boxxkite-client (js)\n");
         const viewed = await sb.view("hello.txt");
         console.log(`file contents: ${viewed.content.trim()}`);
       },
@@ -44,7 +44,7 @@ async function main() {
     );
     console.log("Sandbox destroyed.");
   } catch (err) {
-    if (err instanceof BoxkiteApiError) {
+    if (err instanceof BoxxkiteApiError) {
       console.error(`API error: ${err.message} [${err.code}]`);
       process.exit(1);
     }

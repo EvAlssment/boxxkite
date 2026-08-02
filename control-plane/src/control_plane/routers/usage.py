@@ -44,9 +44,9 @@ async def get_usage(
     hours_used = await policy.monthly_hours_used(account.id)
     return UsageSummary(
         monthly_sandbox_hours_used=round(hours_used, 4),
-        monthly_sandbox_hours_limit=settings.BOXKITE_FREE_MONTHLY_SANDBOX_HOURS,
+        monthly_sandbox_hours_limit=settings.BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS,
         concurrent_sandboxes=active_count,
-        concurrent_sandboxes_limit=settings.BOXKITE_MAX_CONCURRENT_SANDBOXES,
+        concurrent_sandboxes_limit=settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES,
     )
 
 

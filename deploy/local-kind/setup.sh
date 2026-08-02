@@ -6,12 +6,12 @@
 #   ./deploy/local-kind/setup.sh reload   # Rebuild images and reload into existing cluster
 #
 # After running this script, start the kubectl proxy and your application:
-#   kubectl proxy --context kind-boxkite-dev --reject-paths='' &
-#   # Then start whatever process embeds boxkite.SandboxManager
+#   kubectl proxy --context kind-boxxkite-dev --reject-paths='' &
+#   # Then start whatever process embeds boxxkite.SandboxManager
 
 set -euo pipefail
 
-CLUSTER_NAME="boxkite-dev"
+CLUSTER_NAME="boxxkite-dev"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
@@ -65,16 +65,16 @@ build_and_load_images() {
     cd "$REPO_ROOT"
 
     info "Building sidecar image..."
-    docker build -f deploy/sidecar.Dockerfile -t boxkite-sidecar:local . 2>&1 | tail -1
+    docker build -f deploy/sidecar.Dockerfile -t boxxkite-sidecar:local . 2>&1 | tail -1
 
     info "Building sandbox image (this takes a few minutes the first time)..."
-    docker build -f deploy/sandbox.Dockerfile -t boxkite-sandbox:local . 2>&1 | tail -1
+    docker build -f deploy/sandbox.Dockerfile -t boxxkite-sandbox:local . 2>&1 | tail -1
 
     info "Loading sidecar image into kind..."
-    kind load docker-image boxkite-sidecar:local --name "$CLUSTER_NAME"
+    kind load docker-image boxxkite-sidecar:local --name "$CLUSTER_NAME"
 
     info "Loading sandbox image into kind (~5GB, may take a minute)..."
-    kind load docker-image boxkite-sandbox:local --name "$CLUSTER_NAME"
+    kind load docker-image boxxkite-sandbox:local --name "$CLUSTER_NAME"
 }
 
 # ── K8s Resources ──────────────────────────────────────────────────────────
@@ -102,8 +102,8 @@ main() {
     echo ""
     echo "  Required environment variables for your process:"
     echo "    RUNTIME_MODE=k8s"
-    echo "    SANDBOX_IMAGE=boxkite-sandbox:local"
-    echo "    SIDECAR_IMAGE=boxkite-sidecar:local"
+    echo "    SANDBOX_IMAGE=boxxkite-sandbox:local"
+    echo "    SIDECAR_IMAGE=boxxkite-sidecar:local"
     echo "    WARM_POOL_SIZE=1"
     echo "    WARM_POOL_MAX=5"
     echo "    SANDBOX_USE_K8S_PROXY=true"

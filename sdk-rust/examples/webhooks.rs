@@ -1,7 +1,7 @@
 //! Runnable end-to-end example against a real hosted control-plane.
 //!
 //! ```bash
-//! BOXKITE_BASE_URL=https://your-control-plane BOXKITE_API_KEY=bxk_live_... \
+//! BOXXKITE_BASE_URL=https://your-control-plane BOXXKITE_API_KEY=bxk_live_... \
 //!     cargo run --example webhooks
 //! ```
 
@@ -11,11 +11,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
-use boxkite_client::{BoxkiteError, Client, CreateWebhookOptions, WebhookEventType};
+use boxxkite_client::{BoxxkiteError, Client, CreateWebhookOptions, WebhookEventType};
 
 type HmacSha256 = Hmac<Sha256>;
 
-/// Verify an `X-Boxkite-Webhook-Signature` header, per docs/WEBHOOKS-DESIGN.md §6.
+/// Verify an `X-Boxxkite-Webhook-Signature` header, per docs/WEBHOOKS-DESIGN.md §6.
 fn verify_signature(
     secret: &str,
     signature_header: &str,
@@ -56,18 +56,18 @@ fn verify_signature(
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let Ok(base_url) = std::env::var("BOXKITE_BASE_URL") else {
-        eprintln!("Set BOXKITE_BASE_URL and BOXKITE_API_KEY first.");
+    let Ok(base_url) = std::env::var("BOXXKITE_BASE_URL") else {
+        eprintln!("Set BOXXKITE_BASE_URL and BOXXKITE_API_KEY first.");
         return ExitCode::FAILURE;
     };
-    let Ok(api_key) = std::env::var("BOXKITE_API_KEY") else {
-        eprintln!("Set BOXKITE_BASE_URL and BOXKITE_API_KEY first.");
+    let Ok(api_key) = std::env::var("BOXXKITE_API_KEY") else {
+        eprintln!("Set BOXXKITE_BASE_URL and BOXXKITE_API_KEY first.");
         return ExitCode::FAILURE;
     };
 
     match run(base_url, api_key).await {
         Ok(()) => ExitCode::SUCCESS,
-        Err(BoxkiteError::Api { code, message, .. }) => {
+        Err(BoxxkiteError::Api { code, message, .. }) => {
             eprintln!("API error: {message} [{code}]");
             ExitCode::FAILURE
         }
@@ -78,12 +78,12 @@ async fn main() -> ExitCode {
     }
 }
 
-async fn run(base_url: String, api_key: String) -> Result<(), BoxkiteError> {
+async fn run(base_url: String, api_key: String) -> Result<(), BoxxkiteError> {
     let client = Client::new(base_url, api_key)?;
 
     let webhook = client
         .create_webhook(
-            "https://example.com/boxkite-webhook",
+            "https://example.com/boxxkite-webhook",
             &[
                 WebhookEventType::SandboxCreated,
                 WebhookEventType::SandboxDestroyed,

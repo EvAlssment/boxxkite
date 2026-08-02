@@ -6,7 +6,7 @@ Covers:
   by list/get.
 - Cross-tenant isolation for delete/deliveries (404, not 403, for a
   foreign id) -- same discipline every other resource in this API follows.
-- 429 once BOXKITE_MAX_WEBHOOKS_PER_ACCOUNT is reached.
+- 429 once BOXXKITE_MAX_WEBHOOKS_PER_ACCOUNT is reached.
 - 422 for a url that resolves to a private/link-local/loopback address at
   registration time (the best-effort creation-time backstop, mirroring
   routers/secrets.py's allowed_hosts check).
@@ -15,7 +15,7 @@ Covers:
 - The KMS envelope-encryption round trip: the persisted ciphertext never
   contains the plaintext signing secret.
 - GitHub issue #125 (SIEM/audit-log export): 'audit_log.entry' is accepted
-  as a registerable event_type, 'payload_format' defaults to 'boxkite_v1'
+  as a registerable event_type, 'payload_format' defaults to 'boxxkite_v1'
   and accepts 'splunk_hec', an invalid payload_format is rejected, and a
   supplied hec_token is envelope-encrypted at rest and never echoed back by
   create/list.
@@ -34,7 +34,7 @@ from sqlalchemy import select
 
 
 async def _register_webhook(
-    client: httpx.AsyncClient, api_key: str, *, url: str = "https://example.com/hooks/boxkite", **kwargs
+    client: httpx.AsyncClient, api_key: str, *, url: str = "https://example.com/hooks/boxxkite", **kwargs
 ) -> httpx.Response:
     body = {"url": url, "event_types": ["sandbox.created", "sandbox.destroyed"]}
     body.update(kwargs)
@@ -47,7 +47,7 @@ async def test_create_webhook_returns_secret_once(client: httpx.AsyncClient):
     resp = await _register_webhook(client, key)
     assert resp.status_code == 201, resp.text
     body = resp.json()
-    assert body["url"] == "https://example.com/hooks/boxkite"
+    assert body["url"] == "https://example.com/hooks/boxxkite"
     assert body["event_types"] == ["sandbox.created", "sandbox.destroyed"]
     assert body["is_active"] is True
     assert body["secret"].startswith("whsec_")
@@ -113,7 +113,7 @@ async def test_delete_unknown_subscription_id_is_404(client: httpx.AsyncClient):
 
 
 async def test_webhook_limit_reached_returns_429(client: httpx.AsyncClient, monkeypatch):
-    monkeypatch.setattr(settings, "BOXKITE_MAX_WEBHOOKS_PER_ACCOUNT", 2)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_WEBHOOKS_PER_ACCOUNT", 2)
     key = await signup_and_get_api_key(client, "webhooks-limit@example.com")
 
     first = await _register_webhook(client, key, url="https://example.com/one")
@@ -174,12 +174,12 @@ async def test_audit_log_entry_is_a_registerable_event_type(client: httpx.AsyncC
     assert resp.json()["event_types"] == ["audit_log.entry"]
 
 
-async def test_payload_format_defaults_to_boxkite_v1(client: httpx.AsyncClient):
+async def test_payload_format_defaults_to_boxxkite_v1(client: httpx.AsyncClient):
     key = await signup_and_get_api_key(client, "webhooks-format-default@example.com")
 
     resp = await _register_webhook(client, key)
     assert resp.status_code == 201, resp.text
-    assert resp.json()["payload_format"] == "boxkite_v1"
+    assert resp.json()["payload_format"] == "boxxkite_v1"
 
 
 async def test_payload_format_accepts_splunk_hec(client: httpx.AsyncClient):

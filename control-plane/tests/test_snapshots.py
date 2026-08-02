@@ -74,8 +74,8 @@ async def test_snapshot_quota_returns_429_snapshot_limit_reached(
     key = await signup_and_get_api_key(client, "snap-quota@example.com")
     session_id = await _create_session_with_file(client, key)
 
-    original_limit = settings.BOXKITE_MAX_SNAPSHOTS_PER_ACCOUNT
-    settings.BOXKITE_MAX_SNAPSHOTS_PER_ACCOUNT = 1
+    original_limit = settings.BOXXKITE_MAX_SNAPSHOTS_PER_ACCOUNT
+    settings.BOXXKITE_MAX_SNAPSHOTS_PER_ACCOUNT = 1
     try:
         first = await client.post(
             f"/v1/sandboxes/{session_id}/snapshots", json={}, headers={"Authorization": f"Bearer {key}"}
@@ -88,7 +88,7 @@ async def test_snapshot_quota_returns_429_snapshot_limit_reached(
         assert second.status_code == 429
         assert second.json()["error"]["code"] == "snapshot_limit_reached"
     finally:
-        settings.BOXKITE_MAX_SNAPSHOTS_PER_ACCOUNT = original_limit
+        settings.BOXXKITE_MAX_SNAPSHOTS_PER_ACCOUNT = original_limit
 
 
 async def test_create_snapshot_storage_failure_marks_snapshot_failed(

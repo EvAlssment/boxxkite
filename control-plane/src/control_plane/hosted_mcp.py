@@ -1,7 +1,7 @@
 """Hosted, remote MCP server — docs/HOSTED-MCP-DESIGN.md, closing GitHub
 issue #85.
 
-Unlike `mcp-server/` (published as `boxkite-mcp` on PyPI), which is a
+Unlike `mcp-server/` (published as `boxxkite-mcp` on PyPI), which is a
 *local*, `stdio`-transport MCP server an MCP client spawns as a subprocess
 on the user's own machine, this module mounts a *remote* MCP endpoint
 (`GET/POST /mcp`, Streamable HTTP transport) directly on the control-plane
@@ -10,11 +10,11 @@ local install. See the design doc for why this uses a static bearer token
 (the same long-lived API keys every other `/v1/*` route already accepts)
 rather than FastMCP's built-in OAuth-oriented `token_verifier`/`AuthSettings`
 hooks, and for why tool implementations call `SandboxManager`/`UsagePolicy`/
-the repositories directly instead of `boxkite_client`'s HTTP wrapper (that
+the repositories directly instead of `boxxkite_client`'s HTTP wrapper (that
 would be a pointless self-loopback from inside the same process).
 
-Tool names and parameter shapes intentionally match `boxkite-mcp`'s
-existing tool set (`mcp-server/src/boxkite_mcp/server.py`) so the same
+Tool names and parameter shapes intentionally match `boxxkite-mcp`'s
+existing tool set (`mcp-server/src/boxxkite_mcp/server.py`) so the same
 agent prompt/tool-calling behavior works against either transport — the
 two share no code, since they run against genuinely different starting
 objects (an HTTP client vs. an in-process manager).
@@ -29,8 +29,8 @@ import logging
 from uuid import uuid4
 
 import jwt
-from boxkite import get_sandbox_manager
-from boxkite.command_whitelist import validate_command_whitelist
+from boxxkite import get_sandbox_manager
+from boxxkite.command_whitelist import validate_command_whitelist
 from fastapi import HTTPException
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -115,13 +115,13 @@ def _expected_mcp_audience(scope) -> str:
     """This deployment's own RFC 8707 resource identifier for `/mcp/` --
     the audience an MCP access token's `aud` claim must match to be
     accepted here (GitHub issue #115). Mirrors `routers/oauth.py`'s
-    `_expected_resource`/`_base_url`: prefers `BOXKITE_PUBLIC_URL` when
+    `_expected_resource`/`_base_url`: prefers `BOXXKITE_PUBLIC_URL` when
     configured (the stable, operator-set identity a real deployment
     should have), else falls back to the incoming request's own origin --
     consistent with what `/oauth/token` embedded as `aud` when it minted
     the token, since both endpoints live on the same deployment."""
-    if settings.BOXKITE_PUBLIC_URL:
-        base = settings.BOXKITE_PUBLIC_URL.rstrip("/")
+    if settings.BOXXKITE_PUBLIC_URL:
+        base = settings.BOXXKITE_PUBLIC_URL.rstrip("/")
     else:
         base = str(_StarletteRequest(scope).base_url).rstrip("/")
     return mcp_resource_identifier(base)
@@ -147,7 +147,7 @@ async def _resolve_account_for_bearer_token(token: str, db, *, expected_audience
     Checks `_reject_if_scim_deactivated` here too, mirroring the API-key
     fallback branch's own check inside `_resolve_account_by_api_key_token`
     -- an MCP access token is a bearer credential minted once at
-    `/oauth/token` (`BOXKITE_MCP_ACCESS_TOKEN_TTL_MINUTES`, default 15) and
+    `/oauth/token` (`BOXXKITE_MCP_ACCESS_TOKEN_TTL_MINUTES`, default 15) and
     then presented on every `/mcp` tool call afterward; without this, a
     token minted before deactivation would keep authenticating every
     subsequent tool call for its full remaining lifetime, the exact
@@ -182,7 +182,7 @@ class BearerTokenAuthMiddleware:
     carry `Authorization: Bearer <token>`, resolved to an `Account` via
     `_resolve_account_for_bearer_token` -- either a static API key
     (`bxk_live_...`, the exact same DB-backed lookup every REST route
-    already uses) or, once `BOXKITE_MCP_OAUTH_ENABLED` is on, an MCP OAuth
+    already uses) or, once `BOXXKITE_MCP_OAUTH_ENABLED` is on, an MCP OAuth
     access token minted by `routers/oauth.py`'s token endpoint (see
     docs/MCP-OAUTH-AND-SOCIAL-LOGIN-DESIGN.md §3.5).
 
@@ -268,9 +268,9 @@ def build_hosted_mcp() -> FastMCP:
     `main.py`."""
 
     mcp = FastMCP(
-        name="boxkite",
+        name="boxxkite",
         instructions=(
-            "Tools for creating, using, and destroying boxkite sandboxes -- "
+            "Tools for creating, using, and destroying boxxkite sandboxes -- "
             "isolated, Kubernetes-backed environments for running shell "
             "commands and editing files. Call create_sandbox first to get a "
             "session_id, pass that session_id to exec/file_create/view/"
@@ -308,7 +308,7 @@ def build_hosted_mcp() -> FastMCP:
         volume_mounts: dict[str, str] | None = None,
         secret_names: list[str] | None = None,
     ) -> str:
-        """Create one or more new boxkite sandboxes and return each one's
+        """Create one or more new boxxkite sandboxes and return each one's
         session id and status. Call this before any other sandbox tool --
         every other tool needs the session_id this returns.
 
@@ -344,7 +344,7 @@ def build_hosted_mcp() -> FastMCP:
         rate_limit_message = await _enforce_mcp_rate_limit(
             bucket="sandbox_lifecycle_ops",
             account=account,
-            limit=settings.BOXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE,
+            limit=settings.BOXXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE,
         )
         if rate_limit_message:
             return rate_limit_message
@@ -381,13 +381,13 @@ def build_hosted_mcp() -> FastMCP:
 
     @mcp.tool()
     async def destroy_sandbox(session_id: str) -> str:
-        """Tear down a boxkite sandbox by session id. Always call this when
+        """Tear down a boxxkite sandbox by session id. Always call this when
         you're done with a sandbox to free the resource."""
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
             bucket="sandbox_lifecycle_ops",
             account=account,
-            limit=settings.BOXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE,
+            limit=settings.BOXXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE,
         )
         if rate_limit_message:
             return rate_limit_message
@@ -408,7 +408,7 @@ def build_hosted_mcp() -> FastMCP:
 
     @mcp.tool()
     async def get_sandbox(session_id: str) -> str:
-        """Look up a single boxkite sandbox's current status by session id."""
+        """Look up a single boxxkite sandbox's current status by session id."""
         account = _current_account_or_raise()
         session_factory = db_module.get_session_factory()
         async with session_factory() as db:
@@ -442,7 +442,7 @@ def build_hosted_mcp() -> FastMCP:
     @mcp.tool()
     async def create_sandbox_image(
         label: str | None = None,
-        base: str = "boxkite-default",
+        base: str = "boxxkite-default",
         python_packages: list[str] | None = None,
         apt_packages: list[str] | None = None,
         npm_packages: list[str] | None = None,
@@ -452,35 +452,35 @@ def build_hosted_mcp() -> FastMCP:
         get_sandbox_image(id) until status is "completed", then pass
         image_id=id to create_sandbox to start a sandbox from it.
 
-        base: base image to build from, one of "boxkite-default" (the
-            operator's standard sandbox image), "boxkite-minimal" (a smaller
-            base with fewer preinstalled tools), "boxkite-node" (drops
+        base: base image to build from, one of "boxxkite-default" (the
+            operator's standard sandbox image), "boxxkite-minimal" (a smaller
+            base with fewer preinstalled tools), "boxxkite-node" (drops
             Python entirely, for pure JS/TS workloads -- only
-            apt_packages/npm_packages are installable), "boxkite-go" (drops
+            apt_packages/npm_packages are installable), "boxxkite-go" (drops
             both Python and Node entirely, for pure Go workloads -- only
-            apt_packages are installable), "boxkite-nextjs" (same
-            Node-only runtime as "boxkite-node", plus a pre-installed
+            apt_packages are installable), "boxxkite-nextjs" (same
+            Node-only runtime as "boxxkite-node", plus a pre-installed
             Next.js App Router starter vendored at /opt/nextjs-template --
-            only apt_packages/npm_packages are installable), or "boxkite-rust"
+            only apt_packages/npm_packages are installable), or "boxxkite-rust"
             (also drops both Python and Node entirely, for pure Rust
             workloads -- only apt_packages are installable). Defaults to
-            "boxkite-default".
+            "boxxkite-default".
         python_packages: packages to pip-install into the image. Each entry
             must be exact-version-pinned ("name==version") -- version ranges
-            or bare names are rejected. Not supported on base="boxkite-node",
-            base="boxkite-nextjs", base="boxkite-go", or base="boxkite-rust".
+            or bare names are rejected. Not supported on base="boxxkite-node",
+            base="boxxkite-nextjs", base="boxxkite-go", or base="boxxkite-rust".
         apt_packages: packages to apt-install into the image. Same
             exact-version-pinning rule as python_packages.
         npm_packages: packages to npm-install into the image. Same
             exact-version-pinning rule as python_packages. Not supported on
-            base="boxkite-go" or base="boxkite-rust".
+            base="boxxkite-go" or base="boxxkite-rust".
         """
-        if not settings.BOXKITE_IMAGE_BUILDER_ENABLED:
+        if not settings.BOXXKITE_IMAGE_BUILDER_ENABLED:
             return "Custom sandbox images are not enabled on this deployment."
 
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
-            bucket="image_build_ops", account=account, limit=settings.BOXKITE_IMAGE_BUILD_RATE_LIMIT_PER_MINUTE
+            bucket="image_build_ops", account=account, limit=settings.BOXXKITE_IMAGE_BUILD_RATE_LIMIT_PER_MINUTE
         )
         if rate_limit_message:
             return rate_limit_message
@@ -500,13 +500,13 @@ def build_hosted_mcp() -> FastMCP:
         async with session_factory() as db:
             images = SandboxImageRepository(db)
             active_count = await images.count_active_for_account(account.id)
-            if active_count >= settings.BOXKITE_MAX_IMAGES_PER_ACCOUNT:
+            if active_count >= settings.BOXXKITE_MAX_IMAGES_PER_ACCOUNT:
                 return (
-                    f"Custom image limit reached ({settings.BOXKITE_MAX_IMAGES_PER_ACCOUNT} at a "
+                    f"Custom image limit reached ({settings.BOXXKITE_MAX_IMAGES_PER_ACCOUNT} at a "
                     "time). Delete an existing image before building another."
                 )
             in_flight_total = await images.count_in_flight_total()
-            if in_flight_total >= settings.BOXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS:
+            if in_flight_total >= settings.BOXXKITE_GLOBAL_MAX_CONCURRENT_IMAGE_BUILDS:
                 return (
                     "This deployment's cluster-wide concurrent build capacity is in use. "
                     "Try again shortly."
@@ -565,7 +565,7 @@ def build_hosted_mcp() -> FastMCP:
     async def get_sandbox_image(image_id: str) -> str:
         """Look up a single custom sandbox image's current build status by
         image id."""
-        if not settings.BOXKITE_IMAGE_BUILDER_ENABLED:
+        if not settings.BOXXKITE_IMAGE_BUILDER_ENABLED:
             return "Custom sandbox images are not enabled on this deployment."
         account = _current_account_or_raise()
         session_factory = db_module.get_session_factory()
@@ -583,7 +583,7 @@ def build_hosted_mcp() -> FastMCP:
     @mcp.tool()
     async def list_sandbox_images() -> str:
         """List custom sandbox images built on this account."""
-        if not settings.BOXKITE_IMAGE_BUILDER_ENABLED:
+        if not settings.BOXXKITE_IMAGE_BUILDER_ENABLED:
             return "Custom sandbox images are not enabled on this deployment."
         account = _current_account_or_raise()
         session_factory = db_module.get_session_factory()
@@ -601,7 +601,7 @@ def build_hosted_mcp() -> FastMCP:
         """Delete a custom sandbox image's control-plane record by image id.
         This only removes the bookkeeping row for the image -- any sandboxes
         already running from that image's digest keep running unaffected."""
-        if not settings.BOXKITE_IMAGE_BUILDER_ENABLED:
+        if not settings.BOXXKITE_IMAGE_BUILDER_ENABLED:
             return "Custom sandbox images are not enabled on this deployment."
         account = _current_account_or_raise()
         session_factory = db_module.get_session_factory()
@@ -625,12 +625,12 @@ def build_hosted_mcp() -> FastMCP:
         size_gb: requested volume size in gigabytes (max 1024). Defaults to
             1.0.
         """
-        if not settings.BOXKITE_VOLUMES_ENABLED:
+        if not settings.BOXXKITE_VOLUMES_ENABLED:
             return "Independent storage volumes are not enabled on this deployment."
 
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
-            bucket="volume_ops", account=account, limit=settings.BOXKITE_IMAGE_BUILD_RATE_LIMIT_PER_MINUTE
+            bucket="volume_ops", account=account, limit=settings.BOXXKITE_IMAGE_BUILD_RATE_LIMIT_PER_MINUTE
         )
         if rate_limit_message:
             return rate_limit_message
@@ -644,9 +644,9 @@ def build_hosted_mcp() -> FastMCP:
         async with session_factory() as db:
             volumes = SandboxVolumeRepository(db)
             active_count = await volumes.count_active_for_account(account.id)
-            if active_count >= settings.BOXKITE_MAX_VOLUMES_PER_ACCOUNT:
+            if active_count >= settings.BOXXKITE_MAX_VOLUMES_PER_ACCOUNT:
                 return (
-                    f"Volume limit reached ({settings.BOXKITE_MAX_VOLUMES_PER_ACCOUNT} at a "
+                    f"Volume limit reached ({settings.BOXXKITE_MAX_VOLUMES_PER_ACCOUNT} at a "
                     "time). Delete an existing volume before creating another."
                 )
             volume_id = str(uuid4())
@@ -672,7 +672,7 @@ def build_hosted_mcp() -> FastMCP:
     async def get_sandbox_volume(volume_id: str) -> str:
         """Look up a single independent storage volume's current status by
         volume id."""
-        if not settings.BOXKITE_VOLUMES_ENABLED:
+        if not settings.BOXXKITE_VOLUMES_ENABLED:
             return "Independent storage volumes are not enabled on this deployment."
         account = _current_account_or_raise()
         session_factory = db_module.get_session_factory()
@@ -688,7 +688,7 @@ def build_hosted_mcp() -> FastMCP:
     @mcp.tool()
     async def list_sandbox_volumes() -> str:
         """List independent storage volumes on this account."""
-        if not settings.BOXKITE_VOLUMES_ENABLED:
+        if not settings.BOXXKITE_VOLUMES_ENABLED:
             return "Independent storage volumes are not enabled on this deployment."
         account = _current_account_or_raise()
         session_factory = db_module.get_session_factory()
@@ -706,7 +706,7 @@ def build_hosted_mcp() -> FastMCP:
         """Delete an independent storage volume's control-plane record and
         underlying storage by volume id. Does not retroactively unmount it
         from any already-running sandbox session."""
-        if not settings.BOXKITE_VOLUMES_ENABLED:
+        if not settings.BOXXKITE_VOLUMES_ENABLED:
             return "Independent storage volumes are not enabled on this deployment."
         account = _current_account_or_raise()
         session_factory = db_module.get_session_factory()
@@ -739,7 +739,7 @@ def build_hosted_mcp() -> FastMCP:
         the exit code if the command failed."""
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
-            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+            bucket="sandbox_ops", account=account, limit=settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
         )
         if rate_limit_message:
             return rate_limit_message
@@ -770,7 +770,7 @@ def build_hosted_mcp() -> FastMCP:
         """Create or overwrite a file in a sandbox's workspace."""
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
-            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+            bucket="sandbox_ops", account=account, limit=settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
         )
         if rate_limit_message:
             return rate_limit_message
@@ -791,7 +791,7 @@ def build_hosted_mcp() -> FastMCP:
         [start, end]), or list a directory's entries, in a sandbox."""
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
-            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+            bucket="sandbox_ops", account=account, limit=settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
         )
         if rate_limit_message:
             return rate_limit_message
@@ -818,7 +818,7 @@ def build_hosted_mcp() -> FastMCP:
         exactly once; set replace_all=true to replace every occurrence."""
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
-            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+            bucket="sandbox_ops", account=account, limit=settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
         )
         if rate_limit_message:
             return rate_limit_message
@@ -847,7 +847,7 @@ def build_hosted_mcp() -> FastMCP:
         round trip."""
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
-            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+            bucket="sandbox_ops", account=account, limit=settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
         )
         if rate_limit_message:
             return rate_limit_message
@@ -870,7 +870,7 @@ def build_hosted_mcp() -> FastMCP:
         workspace, starting from path (defaults to the workspace root)."""
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
-            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+            bucket="sandbox_ops", account=account, limit=settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
         )
         if rate_limit_message:
             return rate_limit_message
@@ -899,7 +899,7 @@ def build_hosted_mcp() -> FastMCP:
         glob optionally restricts which files are searched (e.g. '*.py')."""
         account = _current_account_or_raise()
         rate_limit_message = await _enforce_mcp_rate_limit(
-            bucket="sandbox_ops", account=account, limit=settings.BOXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+            bucket="sandbox_ops", account=account, limit=settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
         )
         if rate_limit_message:
             return rate_limit_message
