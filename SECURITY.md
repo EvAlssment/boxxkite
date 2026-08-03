@@ -61,6 +61,13 @@ technical details, and a maintainer will reach out for a private channel.
   client accept a cert other than the one pinned for that specific pod
   (`src/boxxkite/tls.py`'s `build_pinned_ssl_context`), or that lets a pod's
   sidecar serve plaintext HTTP while `SIDECAR_TLS_DISABLED` is unset/false.
+- Control-plane login CSRF/session-fixation: a social-login or enterprise-SSO
+  flow (`routers/social_login.py`, `routers/enterprise_sso.py`) completing
+  without validating the state nonce bound to the initiating browser.
+- Rate-limit bypass on the hosted MCP tool surface (exec/file-ops, sandbox
+  create/destroy — `hosted_mcp.py`) or on `POST /v1/secrets`/
+  `POST /v1/mcp-connections`: anything that lets a caller exceed the
+  configured ceilings.
 
 ## What's out of scope
 
@@ -79,23 +86,19 @@ technical details, and a maintainer will reach out for a private channel.
 ## Verifying released images
 
 > **⚠️ The current `0.2.x` GHCR images are NOT signed and have no SBOM
-> attestation.** They were published manually (pushed by a maintainer, outside
-> the signed CI pipeline), so the `cosign verify` / `cosign verify-attestation`
-> commands below **will fail** against them — that failure is expected, not a
-> tampering signal, until signed CI builds resume. The commands are kept here so
-> they're ready the moment signing is restored; verify a build's provenance
-> another way (or rebuild from source at the tagged commit) in the meantime. Do
-> not read the claims below as describing the images currently on GHCR.
+> attestation.** They were pushed manually, outside the signed CI pipeline
+> described below, so `cosign verify`/`cosign verify-attestation` **will
+> fail** against them — expected, not a tampering signal, until signed CI
+> builds resume. Verify a build's provenance another way (or rebuild from
+> source at the tagged commit) in the meantime.
 
-`.github/workflows/publish-images.yml` (GitHub issue #227) is *designed* to
-generate an SPDX SBOM and sign both the image and its SBOM keylessly via
+`.github/workflows/publish-images.yml` (GitHub issue #227) generates an SPDX
+SBOM and signs both the image and its SBOM keylessly via
 [cosign](https://github.com/sigstore/cosign)/Sigstore for every image it
-publishes — but see the note above: that pipeline did not produce the current
-`0.2.x` images, which were pushed manually and are unsigned. Keyless signing
-means Fulcio issues a short-lived certificate bound to that specific
-workflow run's GitHub Actions OIDC identity — no long-lived private key is
-generated, stored, or exposed to rotate — and Rekor logs the signature to a
-public, append-only transparency log.
+publishes. Keyless signing means Fulcio issues a short-lived certificate
+bound to that specific workflow run's GitHub Actions OIDC identity — no
+long-lived private key is generated, stored, or exposed to rotate — and
+Rekor logs the signature to a public, append-only transparency log.
 
 ```bash
 # Verify the image signature
