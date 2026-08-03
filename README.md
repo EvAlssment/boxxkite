@@ -14,21 +14,21 @@
 </p>
 
 <p align="center">
-  <a href="https://boxxkite-site.vercel.app">Website</a> ·
+  <a href="https://boxxkite.com">Website</a> ·
   <a href="#quickstart">Quickstart</a> ·
-  <a href="https://boxxkite-site.vercel.app/developers">Docs</a> ·
+  <a href="https://boxxkite.com/developers">Docs</a> ·
   <a href="#self-hosting">Self-hosting</a> ·
   <a href="#security">Security</a> ·
   <a href="examples/">Examples</a>
 </p>
 
 <p align="center">
-  <a href="https://boxxkite-site.vercel.app" title="Watch the boxxkite demo">
+  <a href="https://boxxkite.com" title="Watch the boxxkite demo">
     <img src="assets/boxxkite-platform-poster.jpg" alt="boxxkite platform overview — click to watch the demo" width="800">
   </a>
 </p>
 <p align="center">
-  <a href="https://boxxkite-site.vercel.app">▶ Watch the demo</a>
+  <a href="https://boxxkite.com">▶ Watch the demo</a>
 </p>
 
 **The missing batteries-included, self-hostable sandbox for agent code execution.**
@@ -124,7 +124,7 @@ result = await bash_tool.handler(command="echo hello from boxxkite")
 Framework adapters (`boxxkite.tools.adapters`) convert the same tool specs for
 LangChain, LlamaIndex, the OpenAI Agents SDK, or plain OpenAI/Anthropic/
 Gemini/Mistral function-calling schemas — see the
-[full integration guide](https://boxxkite-site.vercel.app/developers/guides/quickstart)
+[full integration guide](https://boxxkite.com/developers/guides/quickstart)
 and [`examples/`](examples/) for a runnable version of every framework.
 
 ## Self-hosting
@@ -140,7 +140,7 @@ API — is something you deploy yourself:
   the control-plane itself (it has no Deployment/Service) — the per-session
   sandbox pods are created programmatically by the control-plane at runtime.
   Then deploy the `control-plane/` API separately (see the Render button
-  below or the [developer docs](https://boxxkite-site.vercel.app/developers)).
+  below or the [developer docs](https://boxxkite.com/developers)).
   A local `kind` cluster works too: `./deploy/local-kind/setup.sh`.
 - **One-click Render deploy** for the control-plane API —
   [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/EvAlssment/boxxkite)
@@ -155,7 +155,7 @@ API — is something you deploy yourself:
 
 Full walkthroughs for every path above (Kubernetes, Helm, Render, the
 `boxxkite` CLI's hosted mode, secrets, webhooks, MCP, and every SDK) live on
-the [developer docs site](https://boxxkite-site.vercel.app/developers).
+the [developer docs site](https://boxxkite.com/developers).
 
 ### Run the control-plane locally
 
@@ -213,7 +213,7 @@ one of these is meant to stand alone.
 See [SECURITY.md](SECURITY.md) for the full model, known limitations, and
 how to report a vulnerability privately — this project runs arbitrary code,
 so a sandbox-escape report deserves a fast, private path, not a public
-issue. The [security model guide](https://boxxkite-site.vercel.app/developers/guides/security-model)
+issue. The [security model guide](https://boxxkite.com/developers/guides/security-model)
 covers the same ground with runnable examples.
 
 ## Published packages and images

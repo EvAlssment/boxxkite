@@ -85,7 +85,7 @@ services:
       # No browser client origins allowed by default -- set this to your
       # actual frontend's origin(s) if you're pointing a browser-based
       # client at this deployment, e.g.
-      # "https://boxxkite-site.vercel.app,http://localhost:3000".
+      # "https://boxxkite.com,http://localhost:3000".
       - key: CORS_ALLOWED_ORIGINS_RAW
         value: ""
       - key: RUNTIME_MODE
