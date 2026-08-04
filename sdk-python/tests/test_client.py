@@ -1408,6 +1408,41 @@ def test_revoke_preview_url_posts_token_id():
     assert result == {"revoked": True, "token_id": "tok-1"}
 
 
+def test_create_snapshot_posts_optional_label():
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        assert request.url.path == "/v1/sandboxes/sess-1/snapshots"
+        assert json.loads(request.content) == {"label": "before-refactor"}
+        return httpx.Response(201, json={"id": "snap-1", "status": "completed"})
+
+    client = _client_with(handler)
+    result = client.create_snapshot("sess-1", label="before-refactor")
+    assert result["id"] == "snap-1"
+
+
+def test_restore_snapshot_posts_optional_label():
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        assert request.url.path == "/v1/snapshots/snap-1/restore"
+        assert json.loads(request.content) == {"label": "restored-copy"}
+        return httpx.Response(201, json={"id": "sess-9", "status": "active"})
+
+    client = _client_with(handler)
+    result = client.restore_snapshot("snap-1", label="restored-copy")
+    assert result["id"] == "sess-9"
+
+
+def test_list_snapshots_returns_empty_list_when_response_is_null():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/sandboxes/sess-1/snapshots"
+        return httpx.Response(200, content=b"")
+
+    client = _client_with(handler)
+    assert client.list_snapshots("sess-1") == []
+
+
 def test_sandbox_session_wraps_preview_url_methods():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST" and request.url.path == "/v1/sandboxes":

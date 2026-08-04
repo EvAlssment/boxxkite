@@ -18,6 +18,7 @@ from . import (
     cmd_log,
     cmd_mcp,
     cmd_secrets,
+    cmd_snapshots,
     cmd_session,
     cmd_signup,
     cmd_up,
@@ -105,6 +106,20 @@ secrets_app.command("create")(cli_error_boundary(cmd_secrets.create))
 secrets_app.command("ls")(cli_error_boundary(cmd_secrets.ls))
 secrets_app.command("rm")(cli_error_boundary(cmd_secrets.rm))
 app.add_typer(secrets_app, name="secrets")
+
+snapshots_app = typer.Typer(
+    help=(
+        "Manage filesystem snapshots for hosted sandbox sessions. Hosted mode only -- "
+        "local docker-compose mode (`boxkite up`) has no snapshot API of its own."
+    ),
+    no_args_is_help=True,
+)
+snapshots_app.command("create")(cli_error_boundary(cmd_snapshots.create))
+snapshots_app.command("ls")(cli_error_boundary(cmd_snapshots.ls))
+snapshots_app.command("get")(cli_error_boundary(cmd_snapshots.get))
+snapshots_app.command("restore")(cli_error_boundary(cmd_snapshots.restore))
+snapshots_app.command("rm")(cli_error_boundary(cmd_snapshots.rm))
+app.add_typer(snapshots_app, name="snapshots")
 
 images_app = typer.Typer(
     help=(

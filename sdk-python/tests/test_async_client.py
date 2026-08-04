@@ -1250,6 +1250,56 @@ def test_async_revoke_preview_url_posts_token_id():
     assert result == {"revoked": True, "token_id": "tok-1"}
 
 
+def test_async_create_snapshot_posts_optional_label():
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        assert request.url.path == "/v1/sandboxes/sess-1/snapshots"
+        assert json.loads(request.content) == {"label": "before-refactor"}
+        return httpx.Response(201, json={"id": "snap-1", "status": "completed"})
+
+    async def run():
+        client = _client_with(handler)
+        result = await client.create_snapshot("sess-1", label="before-refactor")
+        await client.aclose()
+        return result
+
+    result = asyncio.run(run())
+    assert result["id"] == "snap-1"
+
+
+def test_async_restore_snapshot_posts_optional_label():
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        assert request.url.path == "/v1/snapshots/snap-1/restore"
+        assert json.loads(request.content) == {"label": "restored-copy"}
+        return httpx.Response(201, json={"id": "sess-9", "status": "active"})
+
+    async def run():
+        client = _client_with(handler)
+        result = await client.restore_snapshot("snap-1", label="restored-copy")
+        await client.aclose()
+        return result
+
+    result = asyncio.run(run())
+    assert result["id"] == "sess-9"
+
+
+def test_async_list_snapshots_returns_empty_list_when_response_is_null():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/sandboxes/sess-1/snapshots"
+        return httpx.Response(200, content=b"")
+
+    async def run():
+        client = _client_with(handler)
+        result = await client.list_snapshots("sess-1")
+        await client.aclose()
+        return result
+
+    assert asyncio.run(run()) == []
+
+
 def test_async_sandbox_session_wraps_preview_url_methods():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST" and request.url.path == "/v1/sandboxes":
