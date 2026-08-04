@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "boxxkite-mcp"
-version = "0.2.3"
+version = "0.2.4"
 description = "MCP server exposing a hosted boxxkite control-plane (sandbox lifecycle, exec, files) as native tools for MCP-compatible clients (Claude Code, Claude Desktop, Codex, Cursor, etc.)."
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 dependencies = [
     "boxxkite-client",
-    "mcp>=1.2",
+    "mcp>=1.2,<2",
 ]
 
 [project.optional-dependencies]
