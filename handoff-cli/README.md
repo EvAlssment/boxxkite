@@ -32,3 +32,6 @@ another tool.
 pip install -e ".[dev]"
 pytest
 ```
+
+Questions, bug reports, or need a usage-limit bump? Join the
+[Discord](https://discord.gg/UHVrEvQ46).

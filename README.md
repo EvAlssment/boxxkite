@@ -11,6 +11,7 @@
   <a href="https://www.npmjs.com/package/boxxkite-client"><img alt="npm" src="https://img.shields.io/npm/v/boxxkite-client?label=npm"></a>
   <a href="https://pkg.go.dev/github.com/EvAlssment/boxxkite/sdk-go"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/EvAlssment/boxxkite/sdk-go.svg"></a>
   <a href="https://crates.io/crates/boxxkite-client"><img alt="crates.io" src="https://img.shields.io/crates/v/boxxkite-client.svg"></a>
+  <a href="https://discord.gg/UHVrEvQ46"><img alt="Discord" src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -19,7 +20,8 @@
   <a href="https://boxxkite.com/developers">Docs</a> ·
   <a href="#self-hosting">Self-hosting</a> ·
   <a href="#security">Security</a> ·
-  <a href="examples/">Examples</a>
+  <a href="examples/">Examples</a> ·
+  <a href="https://discord.gg/UHVrEvQ46">Discord</a>
 </p>
 
 <p align="center">
@@ -244,6 +246,12 @@ Container images are published to GHCR (`ghcr.io/evalssment/…`):
 > already forces `platform: linux/amd64` for exactly this reason. The other three
 > images are multi-arch.
 
+## Community
+
+Join the [Discord](https://discord.gg/UHVrEvQ46) — get help from other users and maintainers, report a bug,
+ask for a usage-limit/credit bump, or discuss elevated access if you're a startup (dedicated thread for that
+once you're in).
+
 ## License
 
 [Apache 2.0](LICENSE) — permissive, with an explicit patent grant. Use, modify, self-host, or build a
@@ -252,4 +260,5 @@ competing hosted service on top of boxxkite; there's no restriction.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) — we use the Developer Certificate of
-Origin (`git commit -s`), not a CLA.
+Origin (`git commit -s`), not a CLA. Questions before opening a PR? Ask in the
+[Discord](https://discord.gg/UHVrEvQ46) first.

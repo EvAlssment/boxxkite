@@ -28,10 +28,12 @@ not install `control-plane/`, `sdk-python/`, `sdk-js/`, `sdk-go/`,
 
 For anything beyond a small fix (a new tool, a change to pod security
 context, a new storage backend), please open an issue first to discuss the
-approach. This project touches code-execution isolation; changes to
-`deploy/pod-template.yaml`, `deploy/network-policy.yaml`,
-`sidecar/main.py`'s path/permission handling, or `src/boxxkite/manager.py`'s
-security context construction get extra scrutiny before merge.
+approach — or drop into the [Discord](https://discord.gg/UHVrEvQ46), which is
+usually faster for a quick back-and-forth before you write code. This project
+touches code-execution isolation; changes to `deploy/pod-template.yaml`,
+`deploy/network-policy.yaml`, `sidecar/main.py`'s path/permission handling, or
+`src/boxxkite/manager.py`'s security context construction get extra scrutiny
+before merge.
 
 ## Developer Certificate of Origin (DCO), not a CLA
 

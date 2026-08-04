@@ -97,3 +97,6 @@ to PyPI.
 
 See the [root README](https://github.com/EvAlssment/boxxkite#readme) for
 what boxxkite is and the full self-hosting story.
+
+Questions, bug reports, or need a usage-limit bump? Join the
+[Discord](https://discord.gg/UHVrEvQ46).

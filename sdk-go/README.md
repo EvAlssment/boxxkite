@@ -317,3 +317,6 @@ See the [root README](https://github.com/EvAlssment/boxxkite#readme) for
 what boxxkite is and the full self-hosting story, and
 [`docs/API.md`](https://github.com/EvAlssment/boxxkite/blob/main/docs/API.md)
 for the complete REST API reference this client wraps.
+
+Questions, bug reports, or need a usage-limit bump? Join the
+[Discord](https://discord.gg/UHVrEvQ46).

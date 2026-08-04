@@ -3,3 +3,6 @@ contact_links:
   - name: Security vulnerability
     url: https://github.com/EvAlssment/boxxkite/security/advisories/new
     about: Please report security issues privately — see SECURITY.md. Do not open a public issue.
+  - name: Community Discord
+    url: https://discord.gg/UHVrEvQ46
+    about: Get help, ask questions, request a usage-limit/credit bump, or discuss elevated access for a startup — usually faster than an issue.
