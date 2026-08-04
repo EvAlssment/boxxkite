@@ -81,7 +81,7 @@ dependencies = [
 
 [[package]]
 name = "boxxkite-client"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "async-stream",
  "futures-util",
