@@ -40,13 +40,16 @@ async def get_usage(
     policy: UsagePolicy = Depends(get_usage_policy),
     db: AsyncSession = Depends(get_db),
 ) -> UsageSummary:
-    active_count = await SandboxSessionRepository(db).count_active_for_account(account.id)
+    sessions_repo = SandboxSessionRepository(db)
+    active_count = await sessions_repo.count_active_for_account(account.id)
+    total_count = await sessions_repo.count_total_for_account(account.id)
     hours_used = await policy.monthly_hours_used(account.id)
     return UsageSummary(
         monthly_sandbox_hours_used=round(hours_used, 4),
         monthly_sandbox_hours_limit=settings.BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS,
         concurrent_sandboxes=active_count,
         concurrent_sandboxes_limit=settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES,
+        total_sandboxes_created=total_count,
     )
 
 

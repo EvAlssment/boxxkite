@@ -64,6 +64,13 @@ class AccountOut(BaseModel):
     )
     github_id: str | None = Field(default=None, description="Set once a GitHub identity is linked, via /v1/auth/github or POST /v1/account/link/github/start.")
     google_id: str | None = Field(default=None, description="Set once a Google identity is linked, via /v1/auth/google or POST /v1/account/link/google/start.")
+    is_admin: bool = Field(
+        default=False,
+        description="True only for a DB-granted admin account (docs/ADMIN-ROLE-DESIGN.md) -- "
+        "never self-serve settable. The dashboard uses this to decide whether to show the "
+        "admin nav link/page; the real enforcement is server-side on the admin routes "
+        "themselves, this is only a UX nicety.",
+    )
 
 
 class AccountLinkStartResponse(BaseModel):
@@ -351,6 +358,12 @@ class UsageSummary(BaseModel):
     monthly_sandbox_hours_limit: float
     concurrent_sandboxes: int
     concurrent_sandboxes_limit: int
+    total_sandboxes_created: int = Field(
+        default=0,
+        description="Lifetime sandbox count for this account, active or destroyed. "
+        "0 means a first-time account -- the dashboard uses this to decide whether "
+        "to show onboarding (Quick Start) instead of the regular overview.",
+    )
 
 
 class UsageRollupGroup(BaseModel):
@@ -387,13 +400,14 @@ class AdminAccountUsage(BaseModel):
     """One account's row in GET /v1/admin/metrics's per-account breakdown
     (docs/ADMIN-ROLE-DESIGN.md) -- deliberately a narrower view than the
     account's own GET /v1/usage: no password/API-key material, just the
-    same two numbers /v1/usage already exposes to the account itself,
+    same numbers /v1/usage already exposes to the account itself,
     now visible cross-account to an admin."""
 
     account_id: str
     email: str
     concurrent_sandboxes: int
     monthly_sandbox_hours_used: float
+    total_sandboxes_created: int = 0
 
 
 class AdminClusterMetrics(BaseModel):

@@ -10,13 +10,27 @@ This file covers the three new routes:
 - GET /v1/account/me       (JWT) -- identity, mirrors GET /v1/account
 - GET /v1/account/sandboxes (JWT) -- list, mirrors GET /v1/sandboxes
 - GET /v1/account/usage    (JWT) -- usage, mirrors GET /v1/usage
+- GET /v1/account/admin/metrics (JWT) -- admin cluster metrics, mirrors
+  GET /v1/admin/metrics -- see test_admin_metrics.py for the API-key path
+  and docs/ADMIN-ROLE-DESIGN.md §6 for why both exist.
 """
 
 from __future__ import annotations
 
 import httpx
+from sqlalchemy import select
 
 from conftest import FakeSandboxManager, create_api_key, signup
+from control_plane import db as db_module
+from control_plane.models_orm import Account
+
+
+async def _make_admin(email: str) -> None:
+    async with db_module.get_session_factory()() as db:
+        result = await db.execute(select(Account).where(Account.email == email))
+        account = result.scalar_one()
+        account.is_admin = True
+        await db.commit()
 
 
 async def test_account_me_returns_identity_for_dashboard_jwt(client: httpx.AsyncClient):
@@ -122,6 +136,7 @@ async def test_account_usage_reflects_zero_before_any_sandbox(client: httpx.Asyn
     body = resp.json()
     assert body["concurrent_sandboxes"] == 0
     assert body["monthly_sandbox_hours_used"] == 0.0
+    assert body["total_sandboxes_created"] == 0
     assert "monthly_sandbox_hours_limit" in body
     assert "concurrent_sandboxes_limit" in body
 
@@ -137,6 +152,33 @@ async def test_account_usage_reflects_active_sandbox(
     resp = await client.get("/v1/account/usage", headers={"Authorization": f"Bearer {access_token}"})
     assert resp.status_code == 200
     assert resp.json()["concurrent_sandboxes"] == 1
+    assert resp.json()["total_sandboxes_created"] == 1
+
+
+async def test_account_usage_total_sandboxes_created_survives_destroy(
+    client: httpx.AsyncClient, fake_manager: FakeSandboxManager
+):
+    """total_sandboxes_created is a lifetime count -- it must stay 1 even
+    after the sandbox is destroyed, which is exactly what lets the
+    dashboard tell a first-time signup apart from a returning user whose
+    only sandbox has since ended."""
+    signup_resp = await signup(client, "dash-usage-lifetime@example.com")
+    access_token = signup_resp["access_token"]
+    created = await create_api_key(client, access_token)
+    create_resp = await client.post(
+        "/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {created['key']}"}
+    )
+    session_id = create_resp.json()["id"]
+
+    await client.delete(
+        f"/v1/sandboxes/{session_id}", headers={"Authorization": f"Bearer {created['key']}"}
+    )
+
+    resp = await client.get("/v1/account/usage", headers={"Authorization": f"Bearer {access_token}"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["concurrent_sandboxes"] == 0
+    assert body["total_sandboxes_created"] == 1
 
 
 async def test_account_usage_rejects_api_key(client: httpx.AsyncClient):
@@ -183,3 +225,81 @@ async def test_existing_api_key_usage_route_unaffected(client: httpx.AsyncClient
     )
     assert resp.status_code == 401
     assert resp.json()["error"]["code"] == "wrong_credential_type"
+
+
+async def test_account_me_reports_is_admin(client: httpx.AsyncClient):
+    email = "dash-me-admin@example.com"
+    signup_resp = await signup(client, email)
+    await _make_admin(email)
+
+    resp = await client.get(
+        "/v1/account/me", headers={"Authorization": f"Bearer {signup_resp['access_token']}"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["is_admin"] is True
+
+
+async def test_account_me_reports_is_admin_false_by_default(client: httpx.AsyncClient):
+    signup_resp = await signup(client, "dash-me-not-admin@example.com")
+
+    resp = await client.get(
+        "/v1/account/me", headers={"Authorization": f"Bearer {signup_resp['access_token']}"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["is_admin"] is False
+
+
+async def test_account_admin_metrics_rejects_non_admin_dashboard_session(client: httpx.AsyncClient):
+    signup_resp = await signup(client, "dash-admin-metrics-non-admin@example.com")
+
+    resp = await client.get(
+        "/v1/account/admin/metrics", headers={"Authorization": f"Bearer {signup_resp['access_token']}"}
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "admin_required"
+
+
+async def test_account_admin_metrics_requires_authentication(client: httpx.AsyncClient):
+    resp = await client.get("/v1/account/admin/metrics")
+    assert resp.status_code == 401
+
+
+async def test_account_admin_metrics_rejects_api_key(client: httpx.AsyncClient):
+    email = "dash-admin-metrics-wrong-cred@example.com"
+    signup_resp = await signup(client, email)
+    await _make_admin(email)
+    created = await create_api_key(client, signup_resp["access_token"])
+
+    resp = await client.get(
+        "/v1/account/admin/metrics", headers={"Authorization": f"Bearer {created['key']}"}
+    )
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "wrong_credential_type"
+
+
+async def test_account_admin_metrics_matches_api_key_route_for_an_admin(
+    client: httpx.AsyncClient, fake_manager: FakeSandboxManager
+):
+    """The dashboard-JWT mirror and the API-key route share one aggregation
+    helper (_compute_admin_cluster_metrics) -- this pins that they actually
+    agree, not just that each independently returns a 200."""
+    admin_email = "dash-admin-metrics-parity@example.com"
+    signup_resp = await signup(client, admin_email)
+    await _make_admin(admin_email)
+    admin_key = await create_api_key(client, signup_resp["access_token"])
+
+    other_key = await create_api_key(
+        client, (await signup(client, "dash-admin-metrics-other@example.com"))["access_token"]
+    )
+    await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {other_key['key']}"})
+
+    jwt_resp = await client.get(
+        "/v1/account/admin/metrics", headers={"Authorization": f"Bearer {signup_resp['access_token']}"}
+    )
+    api_key_resp = await client.get(
+        "/v1/admin/metrics", headers={"Authorization": f"Bearer {admin_key['key']}"}
+    )
+
+    assert jwt_resp.status_code == 200
+    assert api_key_resp.status_code == 200
+    assert jwt_resp.json() == api_key_resp.json()

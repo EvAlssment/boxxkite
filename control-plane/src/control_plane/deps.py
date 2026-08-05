@@ -162,6 +162,27 @@ async def get_current_admin_account(
     return account
 
 
+async def get_current_admin_user(
+    request: Request,
+    account: Account = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Account:
+    """Same dashboard-JWT credential as `get_current_user`, plus the same
+    `Account.is_admin` check and `AdminAccessLog` audit trail as
+    `get_current_admin_account` -- the JWT-authenticated mirror of that
+    dependency, for the dashboard's own admin page
+    (docs/ADMIN-ROLE-DESIGN.md). Exists so the browser session (which never
+    holds a raw API key) can drive the same cross-account metrics an
+    operator's own API-key-authenticated tooling already gets from
+    `GET /v1/admin/metrics` -- see `routers/account.py`'s JWT mirrors of
+    `GET /v1/usage` and `GET /v1/sandboxes` for the same "mirror the
+    API-key route under /v1/account, JWT-gated" pattern."""
+    if not account.is_admin:
+        raise ApiError(403, "admin_required", "This endpoint requires an admin account")
+    await AdminAccessLogRepository(db).record(admin_account_id=account.id, endpoint=request.url.path)
+    return account
+
+
 async def get_current_account_and_key_via_api_key(
     authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),

@@ -80,6 +80,28 @@ async def test_admin_metrics_sees_sandboxes_across_all_accounts(client: httpx.As
     )
     assert other_row is not None
     assert other_row["concurrent_sandboxes"] == 1
+    assert other_row["total_sandboxes_created"] == 1
+
+
+async def test_admin_metrics_total_sandboxes_created_survives_destroy(client: httpx.AsyncClient):
+    admin_email = "admin-lifetime@example.com"
+    admin_key = await signup_and_get_api_key(client, admin_email)
+    await _make_admin(admin_email)
+
+    other_key = await signup_and_get_api_key(client, "other-lifetime@example.com")
+    create_resp = await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {other_key}"})
+    session_id = create_resp.json()["id"]
+    await client.delete(f"/v1/sandboxes/{session_id}", headers={"Authorization": f"Bearer {other_key}"})
+
+    resp = await client.get("/v1/admin/metrics", headers={"Authorization": f"Bearer {admin_key}"})
+
+    assert resp.status_code == 200
+    other_row = next(
+        (row for row in resp.json()["accounts"] if row["email"] == "other-lifetime@example.com"), None
+    )
+    assert other_row is not None
+    assert other_row["concurrent_sandboxes"] == 0
+    assert other_row["total_sandboxes_created"] == 1
 
 
 async def test_admin_metrics_pagination_respects_limit(client: httpx.AsyncClient):

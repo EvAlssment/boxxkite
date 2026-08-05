@@ -23,20 +23,22 @@ from __future__ import annotations
 from typing import Literal
 
 from boxxkite.command_whitelist import _compile_patterns, _normalize_rules
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_account_via_api_key, get_current_user, get_usage_policy
+from ..deps import get_current_account_via_api_key, get_current_admin_user, get_current_user, get_usage_policy
 from ..errors import ApiError
 from ..models_orm import Account
 from ..repository import SandboxSessionRepository
+from ..routers.admin import _compute_admin_cluster_metrics
 from ..routers.sandboxes import _to_out
 from ..routers.social_login import _require_github_enabled, _require_google_enabled
 from ..schemas import (
     AccountLinkStartResponse,
     AccountOut,
+    AdminClusterMetrics,
     AllowedCommandsRequest,
     AllowedCommandsResponse,
     SandboxCreateTokenResponse,
@@ -223,14 +225,40 @@ async def get_account_usage(
     policy: UsagePolicy = Depends(get_usage_policy),
     db: AsyncSession = Depends(get_db),
 ) -> UsageSummary:
-    active_count = await SandboxSessionRepository(db).count_active_for_account(account.id)
+    sessions_repo = SandboxSessionRepository(db)
+    active_count = await sessions_repo.count_active_for_account(account.id)
+    total_count = await sessions_repo.count_total_for_account(account.id)
     hours_used = await policy.monthly_hours_used(account.id)
     return UsageSummary(
         monthly_sandbox_hours_used=round(hours_used, 4),
         monthly_sandbox_hours_limit=settings.BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS,
         concurrent_sandboxes=active_count,
         concurrent_sandboxes_limit=settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES,
+        total_sandboxes_created=total_count,
     )
+
+
+@router.get(
+    "/admin/metrics",
+    response_model=AdminClusterMetrics,
+    summary="Cluster-wide usage aggregation across all accounts (admin only, dashboard JWT)",
+    description=(
+        "Same response shape as GET /v1/admin/metrics, but resolves the "
+        "caller from a dashboard session JWT instead of an API key -- the "
+        "browser dashboard's super-admin page uses this mirror since a "
+        "logged-in session never holds a raw API key. Still requires "
+        "Account.is_admin and still logs to admin_access_log the same as "
+        "the API-key route (docs/ADMIN-ROLE-DESIGN.md); 403s for a valid "
+        "session belonging to a non-admin account."
+    ),
+)
+async def get_account_admin_cluster_metrics(
+    limit: int = Query(default=100, ge=1),
+    offset: int = Query(default=0, ge=0),
+    _admin: Account = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> AdminClusterMetrics:
+    return await _compute_admin_cluster_metrics(db=db, limit=limit, offset=offset)
 
 
 @router.post(

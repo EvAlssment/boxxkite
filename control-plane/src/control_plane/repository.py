@@ -460,6 +460,25 @@ class SandboxSessionRepository:
         )
         return {account_id: count for account_id, count in result.all()}
 
+    async def count_total_for_account(self, account_id: str) -> int:
+        """Lifetime session count for this account -- active or destroyed,
+        every sandbox ever created. Backs the "has this account ever made a
+        sandbox" signal (dashboard Quick Start gating) and the admin
+        per-account breakdown, distinct from count_active_for_account which
+        only counts sessions still running right now."""
+        result = await self.db.execute(
+            select(func.count()).select_from(SandboxSession).where(SandboxSession.account_id == account_id)
+        )
+        return int(result.scalar_one())
+
+    async def count_total_by_account(self) -> dict[str, int]:
+        """Lifetime session count grouped by account_id, across ALL accounts
+        -- backs the admin cluster-metrics endpoint's per-account breakdown
+        (docs/ADMIN-ROLE-DESIGN.md). Admin-route-only, same "one deliberate
+        unscoped exception" posture as AccountRepository.list_all above."""
+        result = await self.db.execute(select(SandboxSession.account_id, func.count()).group_by(SandboxSession.account_id))
+        return {account_id: count for account_id, count in result.all()}
+
     async def sessions_created_since_all(self, *, since: datetime) -> list[SandboxSession]:
         """Same as sessions_created_since, but across ALL accounts, no
         account_id scoping -- backs the admin cluster-metrics endpoint's

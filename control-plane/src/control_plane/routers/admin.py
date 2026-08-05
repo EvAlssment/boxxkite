@@ -31,6 +31,48 @@ from ..usage_policy import UsagePolicy
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
 
+async def _compute_admin_cluster_metrics(
+    *, db: AsyncSession, limit: int, offset: int
+) -> AdminClusterMetrics:
+    """Shared aggregation behind both the API-key route below and its
+    dashboard-JWT mirror in `routers/account.py` -- same numbers regardless
+    of which credential the caller used to prove they're an admin."""
+    effective_limit = min(limit, settings.BOXXKITE_ADMIN_METRICS_MAX_ACCOUNTS)
+
+    accounts_repo = AccountRepository(db)
+    sessions_repo = SandboxSessionRepository(db)
+    policy = UsagePolicy(sandbox_manager=None, sessions=sessions_repo)
+
+    total_accounts = await accounts_repo.count_total()
+    global_concurrent = await sessions_repo.count_active_total()
+    total_monthly_hours = await policy.monthly_hours_used_total()
+    active_by_account = await sessions_repo.count_active_by_account()
+    total_by_account = await sessions_repo.count_total_by_account()
+
+    page = await accounts_repo.list_all(limit=effective_limit, offset=offset)
+    account_rows = []
+    for account in page:
+        account_rows.append(
+            AdminAccountUsage(
+                account_id=account.id,
+                email=account.email,
+                concurrent_sandboxes=active_by_account.get(account.id, 0),
+                monthly_sandbox_hours_used=round(
+                    await policy.monthly_hours_used(account.id), 4
+                ),
+                total_sandboxes_created=total_by_account.get(account.id, 0),
+            )
+        )
+
+    return AdminClusterMetrics(
+        total_accounts=total_accounts,
+        global_concurrent_sandboxes=global_concurrent,
+        global_concurrent_sandboxes_limit=settings.BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES,
+        total_monthly_sandbox_hours_used=round(total_monthly_hours, 4),
+        accounts=account_rows,
+    )
+
+
 @router.get(
     "/metrics",
     response_model=AdminClusterMetrics,
@@ -50,38 +92,7 @@ async def get_admin_cluster_metrics(
     _admin: Account = Depends(get_current_admin_account),
     db: AsyncSession = Depends(get_db),
 ) -> AdminClusterMetrics:
-    effective_limit = min(limit, settings.BOXXKITE_ADMIN_METRICS_MAX_ACCOUNTS)
-
-    accounts_repo = AccountRepository(db)
-    sessions_repo = SandboxSessionRepository(db)
-    policy = UsagePolicy(sandbox_manager=None, sessions=sessions_repo)
-
-    total_accounts = await accounts_repo.count_total()
-    global_concurrent = await sessions_repo.count_active_total()
-    total_monthly_hours = await policy.monthly_hours_used_total()
-    active_by_account = await sessions_repo.count_active_by_account()
-
-    page = await accounts_repo.list_all(limit=effective_limit, offset=offset)
-    account_rows = []
-    for account in page:
-        account_rows.append(
-            AdminAccountUsage(
-                account_id=account.id,
-                email=account.email,
-                concurrent_sandboxes=active_by_account.get(account.id, 0),
-                monthly_sandbox_hours_used=round(
-                    await policy.monthly_hours_used(account.id), 4
-                ),
-            )
-        )
-
-    return AdminClusterMetrics(
-        total_accounts=total_accounts,
-        global_concurrent_sandboxes=global_concurrent,
-        global_concurrent_sandboxes_limit=settings.BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES,
-        total_monthly_sandbox_hours_used=round(total_monthly_hours, 4),
-        accounts=account_rows,
-    )
+    return await _compute_admin_cluster_metrics(db=db, limit=limit, offset=offset)
 
 
 @router.get(
