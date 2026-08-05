@@ -147,6 +147,9 @@ API — is something you deploy yourself:
   (still needs a real Kubernetes cluster for actual sandbox execution).
 - **docker-compose**, for local iteration without a cluster — see the
   Quickstart above.
+- **Single-VM production compose**, for a small self-hosted installation that
+  needs HTTPS, resource limits, log rotation, and backups without Kubernetes —
+  see [the production compose guide](deploy/PRODUCTION-COMPOSE.md).
 
 > docker-compose mode shares a PID namespace with the sandbox container and
 > execs into it via `nsenter`, the same mechanism the Kubernetes runtime
