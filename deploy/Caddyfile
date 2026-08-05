@@ -1,0 +1,3 @@
+{$BOXKITE_DOMAIN} {
+    reverse_proxy sidecar:8080
+}
