@@ -70,7 +70,7 @@ def _validate_allowed_hosts(allowed_hosts: list[str]) -> None:
     sidecar/main.py's request-time re-resolution check for that."""
     for host in allowed_hosts:
         if not host or not host.strip():
-            raise ApiError(422, "invalid_allowed_host", f"allowed_hosts entry is empty")
+            raise ApiError(422, "invalid_allowed_host", "allowed_hosts entry is empty")
         if resolve_host_is_unsafe(host.strip()):
             raise ApiError(
                 422,

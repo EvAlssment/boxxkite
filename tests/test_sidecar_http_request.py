@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import httpx
 import main as sidecar_main
+from conftest import requires_tmux
 from fastapi.testclient import TestClient
 
 
@@ -330,6 +331,7 @@ def test_http_request_never_authorizes_via_non_secret_host_source(monkeypatch):
     assert _FakeAsyncClient.last_sent is None
 
 
+@requires_tmux
 def test_recycled_pod_configure_clears_secret_value_cache(monkeypatch, tmp_path):
     """A recycled pod must never serve a previous tenant's cached secret
     value to the new session."""

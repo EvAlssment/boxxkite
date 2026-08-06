@@ -28,6 +28,7 @@ import os
 import shutil
 
 import main as sidecar_main
+from conftest import requires_tmux
 from fastapi.testclient import TestClient
 
 
@@ -245,6 +246,7 @@ def test_node_interpreter_output_is_truncated_past_the_byte_cap(monkeypatch):
         assert len(body["stdout"].encode("utf-8")) <= 16
 
 
+@requires_tmux
 def test_configure_kills_live_node_interpreter_before_wiping_session(monkeypatch, tmp_path):
     """Regression test mirroring
     test_configure_kills_live_interpreter_before_wiping_session for the Node

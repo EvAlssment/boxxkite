@@ -61,6 +61,7 @@ import subprocess
 import main as sidecar_main
 import pytest
 import sidecar_browser
+from conftest import requires_tmux
 from fastapi.testclient import TestClient
 
 AUTH_TOKEN = "the-real-secret"
@@ -445,6 +446,7 @@ async def test_browser_idle_reaper_kills_process_past_timeout(monkeypatch):
     assert handle.proc.returncode is not None
 
 
+@requires_tmux
 def test_configure_kills_live_browser_before_wiping_session(monkeypatch, tmp_path):
     """Regression test mirroring
     test_configure_kills_live_node_interpreter_before_wiping_session: a
@@ -484,6 +486,7 @@ def test_configure_kills_live_browser_before_wiping_session(monkeypatch, tmp_pat
         assert live_handle.proc.returncode is not None
 
 
+@requires_tmux
 def test_configure_kills_live_browser_even_when_flag_is_off(monkeypatch, tmp_path):
     """docs/BROWSER-EXEC-DESIGN.md §4: /configure must kill any live browser
     process UNCONDITIONALLY -- a process started while

@@ -18,7 +18,6 @@ Covers:
 import asyncio
 import http.server
 import threading
-import time
 
 import main as sidecar_main
 from fastapi.testclient import TestClient

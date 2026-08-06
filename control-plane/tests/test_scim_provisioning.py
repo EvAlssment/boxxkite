@@ -39,7 +39,6 @@ import json
 import time
 
 import httpx
-import pytest
 from sqlalchemy import select
 
 from conftest import create_api_key, signup
