@@ -19,7 +19,6 @@ never a broader mock of the entire vendor SDK.
 
 from __future__ import annotations
 
-import base64
 import os
 import sys
 import types

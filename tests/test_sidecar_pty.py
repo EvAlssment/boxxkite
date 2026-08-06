@@ -41,22 +41,15 @@ against a real shell/tmux process.
 """
 
 import asyncio
-import shutil
 import subprocess
 import time
 import uuid
 
-import pytest
-
 import main as sidecar_main
 import sidecar_pty
+from conftest import _TMUX_BIN, requires_tmux
 from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketDisconnect
-
-_TMUX_BIN = shutil.which("tmux")
-requires_tmux = pytest.mark.skipif(
-    _TMUX_BIN is None, reason="tmux is not installed on this test runner"
-)
 
 
 def _short_socket_path(name: str) -> str:

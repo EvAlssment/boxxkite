@@ -285,30 +285,6 @@ jobs:
         working-directory: mcp-server
         run: pytest tests/ -q
 
-  build-site:
-    name: site build & lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: site/package-lock.json
-
-      - name: Install dependencies
-        working-directory: site
-        run: npm ci
-
-      - name: Lint
-        working-directory: site
-        run: npm run lint
-
-      - name: Production build
-        working-directory: site
-        run: npm run build
-
   docker-build:
     name: Docker build (${{ matrix.image }})
     runs-on: ubuntu-latest

@@ -27,6 +27,7 @@ for build_pty_command.
 """
 
 import main as sidecar_main
+from conftest import requires_tmux
 from fastapi.testclient import TestClient
 
 
@@ -189,6 +190,7 @@ def test_interpreter_handles_output_between_64kb_and_256kb(monkeypatch):
         assert body["stdout"] == "a" * output_bytes + "\n"
 
 
+@requires_tmux
 def test_configure_kills_live_interpreter_before_wiping_session(monkeypatch, tmp_path):
     """Regression test for the cross-tenant leak docs/PROCESS-SESSIONS-DESIGN.md
     §2(b) calls out for kept-alive processes: a recycled pod must never hand
