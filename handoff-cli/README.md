@@ -34,4 +34,4 @@ pytest
 ```
 
 Questions, bug reports, or need a usage-limit bump? Join the
-[Discord](https://discord.gg/UHVrEvQ46).
+[Discord](https://boxxkite.com/discord).

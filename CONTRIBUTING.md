@@ -28,7 +28,7 @@ not install `control-plane/`, `sdk-python/`, `sdk-js/`, `sdk-go/`,
 
 For anything beyond a small fix (a new tool, a change to pod security
 context, a new storage backend), please open an issue first to discuss the
-approach — or drop into the [Discord](https://discord.gg/UHVrEvQ46), which is
+approach — or drop into the [Discord](https://boxxkite.com/discord), which is
 usually faster for a quick back-and-forth before you write code. This project
 touches code-execution isolation; changes to `deploy/pod-template.yaml`,
 `deploy/network-policy.yaml`, `sidecar/main.py`'s path/permission handling, or
@@ -72,6 +72,14 @@ pip install -e ".[dev]"
 pip install -r sidecar/requirements.txt
 pytest tests/
 ```
+
+You also need **`tmux` on your PATH** (`brew install tmux`, `apt install tmux`).
+It backs the sidecar's `/pty` takeover session, which the `/configure` route
+tears down when recycling a pod for the next tenant — so a number of sidecar
+tests reach it. Tests that need it are marked `requires_tmux` (defined in
+`tests/conftest.py`) and skip cleanly when it's missing, but you'll be running
+13 fewer tests than CI does. It's already installed in
+`deploy/sidecar.Dockerfile` and on GitHub's runners.
 
 For the sidecar and sandbox containers, see the top-level README's
 quickstart (`deploy/docker-compose.yml`) or `deploy/local-kind/` for a real
@@ -133,6 +141,22 @@ Unit tests mock the control-plane the same way `sdk-python/tests/` does.
 `mcp-server/tests/live_smoke.py` is a separate, non-CI manual script that
 exercises a real running control-plane — don't run it as part of a normal
 test pass.
+
+### bastion/ and handoff-cli/ (separate packages, separate setup)
+
+```bash
+cd bastion        # or: cd handoff-cli
+pip install -e ".[dev]"
+pytest tests/
+```
+
+Both mock their dependencies — `bastion/` doesn't need a real SSH client or a
+running control-plane, and `handoff-cli/` doesn't need a real Claude Code or
+Codex session on disk.
+
+**Neither has a CI job**, so these local runs are the only coverage their
+suites (58 and 102 tests) ever get. If you touch either package, run its tests
+yourself — nothing else will.
 
 ## Fork, branch, PR
 
