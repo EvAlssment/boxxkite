@@ -11,6 +11,7 @@ than mocks.
 import asyncio
 
 import main as sidecar_main
+from conftest import requires_tmux
 from fastapi.testclient import TestClient
 
 AUTH_TOKEN = "the-real-secret"
@@ -384,6 +385,7 @@ async def test_kill_all_processes_kills_running_and_clears_registry(monkeypatch)
     assert proc.returncode is not None
 
 
+@requires_tmux
 def test_configure_kills_tracked_processes_before_wiping(monkeypatch, tmp_path):
     """Regression test for the cross-tenant leak this feature would
     otherwise introduce: /configure (called on pod recycle/claim) must kill

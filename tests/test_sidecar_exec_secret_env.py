@@ -181,7 +181,7 @@ def test_secret_value_is_scrubbed_from_exec_output(monkeypatch):
     async def _fake_exec_in_sandbox(command, timeout, extra_env=None):
         # Simulate a program that (accidentally or otherwise) echoes the
         # credential it was given back to stdout.
-        return (0, f"using key sk-ant-the-real-value\n", "")
+        return (0, "using key sk-ant-the-real-value\n", "")
 
     monkeypatch.setattr(sidecar_main, "exec_in_sandbox", _fake_exec_in_sandbox)
 
