@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from boxxkite_handoff.adapters.opencode import OpencodeAdapter
-from boxxkite_handoff.core import HandoffError
+from boxxkite.handoff.adapters.opencode import OpencodeAdapter
+from boxxkite.handoff.core import HandoffError
 
 
 class FakeRunner:
@@ -66,6 +66,40 @@ def auth_json(tmp_path: Path) -> Path:
 
 def make_adapter(tmp_path: Path, data_dir: Path, runner: FakeRunner) -> OpencodeAdapter:
     return OpencodeAdapter(data_dir=data_dir, runner=runner, export_dir=tmp_path / "exports")
+
+
+def test_locate_session_reports_no_sessions_when_list_returns_empty_string(
+    tmp_path: Path, auth_json: Path
+) -> None:
+    """Regression test: `opencode session list --format json` was found live
+    to print an empty string (not "[]") when there are zero local sessions,
+    which json.loads() would otherwise turn into a misleading "did not
+    return valid JSON" error rather than the real, simple explanation."""
+    runner = FakeRunner({("session", "list"): ""})
+    adapter = make_adapter(tmp_path, auth_json, runner)
+
+    with pytest.raises(HandoffError, match="no local opencode sessions found"):
+        adapter.locate_session()
+
+
+def test_locate_session_reports_no_sessions_when_list_returns_empty_array(
+    tmp_path: Path, auth_json: Path
+) -> None:
+    runner = FakeRunner({("session", "list"): "[]"})
+    adapter = make_adapter(tmp_path, auth_json, runner)
+
+    with pytest.raises(HandoffError, match="no local opencode sessions found"):
+        adapter.locate_session()
+
+
+def test_locate_session_still_reports_invalid_json_for_genuinely_malformed_output(
+    tmp_path: Path, auth_json: Path
+) -> None:
+    runner = FakeRunner({("session", "list"): "not json{"})
+    adapter = make_adapter(tmp_path, auth_json, runner)
+
+    with pytest.raises(HandoffError, match="did not return valid JSON"):
+        adapter.locate_session()
 
 
 def test_locate_session_picks_most_recently_updated_session_when_ref_is_none(

@@ -27,6 +27,22 @@ openai/codex's own source (2026-07), not assumed from CLI docs:
   ChatGPT-plan login with *only* a raw OAuth ``tokens`` entry in
   ``auth.json`` (no API key, no personal access token) is deliberately
   **not** treated as portable -- see ``_resolve_credential``'s docstring.
+- Device-auth fallback for ChatGPT Plus/Pro subscriptions: when no portable
+  credential can be resolved (ChatGPT-OAuth-only, or nothing at all -- both
+  mean this machine authenticates Codex via the subscription rather than an
+  API key), this adapter does not hard-refuse. ``codex login --device-auth``
+  was confirmed live to be a real RFC-8628-style device-code flow (prints a
+  URL + one-time code usable from *any* browser on *any* device, no local
+  browser needed in the sandbox) that mints a brand-new, independent token
+  pair tied to the same ChatGPT account -- **not** a copy of the local
+  session, so there is no refresh-token rotation/replay conflict with the
+  machine this was handed off from. ``locate_session`` returns
+  ``credential=None`` in this case and folds the login into
+  ``resume_command`` itself (``codex login --device-auth && codex resume
+  <id>``), so the human at the takeover terminal completes the login
+  interactively before the session resumes -- this is the one adapter-level
+  case where the handoff isn't fully headless, because subscription auth is
+  inherently a human-in-the-loop flow.
 
 Known limitation: Codex's background rollout-compression worker can rewrite
 cold rollout files to ``.jsonl.zst`` (``codex-rs/rollout/src/compression.rs``).
@@ -99,12 +115,16 @@ class CodexAdapter:
                 rollout.path.name,
             )
         )
+        if credential is not None:
+            resume_command = f"codex resume {session_id}"
+        else:
+            resume_command = f"codex login --device-auth && codex resume {session_id}"
         return LocatedSession(
             tool=self.name,
             session_id=session_id,
             files=(SessionFile(local_path=rollout.path, sandbox_path=sandbox_path),),
             credential=credential,
-            resume_command=f"codex resume {session_id}",
+            resume_command=resume_command,
             workdir=SANDBOX_HOME,
         )
 
@@ -162,8 +182,12 @@ def _iter_rollout_files(sessions_root: Path) -> Iterator[_RolloutFile]:
         yield _RolloutFile(path=path, session_id=match.group("uuid"), year=year, month=month, day=day)
 
 
-def _resolve_credential(codex_home: Path) -> Credential:
-    """Resolve the portable credential Codex should authenticate with.
+def _resolve_credential(codex_home: Path) -> Credential | None:
+    """Resolve the portable credential Codex should authenticate with, or
+    ``None`` when the only option is a subscription (ChatGPT Plus/Pro) login
+    -- in which case ``locate_session`` falls back to a fresh
+    ``codex login --device-auth`` instead of a headless credential push (see
+    the module docstring's "Device-auth fallback" section).
 
     Priority: explicit env vars first (matching Codex's own precedence of
     ``CODEX_API_KEY``/``CODEX_ACCESS_TOKEN`` over persisted auth, plus the
@@ -182,10 +206,15 @@ def _resolve_credential(codex_home: Path) -> Credential:
       *this machine's* logged-in session. This is deliberately **not**
       treated as a usable portable credential: it isn't independently scoped
       or easily revocable the way the two options above are, and copying it
-      elsewhere hands over the same live session used locally. If this is
-      all that's on file, this function raises ``HandoffError`` telling the
-      user to set up an API key or personal access token instead of silently
-      shipping the raw OAuth tokens.
+      elsewhere would hand over the same live session used locally. If this
+      is all that's on file (or nothing is on file at all -- both mean
+      "authenticate via subscription, not an API key"), this function
+      returns ``None`` rather than shipping the raw OAuth tokens or refusing
+      the handoff outright.
+
+    A malformed ``auth.json`` (present but unreadable/invalid JSON) still
+    raises ``HandoffError`` -- that is a real local problem, distinct from
+    "no portable credential configured."
     """
     for env_var in ("OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN"):
         value = os.environ.get(env_var, "").strip()
@@ -207,19 +236,4 @@ def _resolve_credential(codex_home: Path) -> Credential:
         if isinstance(api_key, str) and api_key.strip():
             return Credential(env_var="OPENAI_API_KEY", value=api_key.strip())
 
-        if auth_data.get("tokens"):
-            raise HandoffError(
-                f"{auth_path} only has a ChatGPT-plan OAuth session on file (its "
-                "'tokens' field) -- that access/refresh token pair is this machine's "
-                "own live session, not a portable, independently-revocable "
-                "credential, so this adapter won't copy it into a sandbox. Run "
-                "`codex login --api-key <key>` or generate a personal access token, "
-                "or set OPENAI_API_KEY / CODEX_API_KEY / CODEX_ACCESS_TOKEN in the "
-                "environment, then retry."
-            )
-
-    raise HandoffError(
-        "No usable Codex credential found: set OPENAI_API_KEY (or CODEX_API_KEY / "
-        f"CODEX_ACCESS_TOKEN) in the environment, or log in with `codex login` so "
-        f"{auth_path} contains an API key or personal access token."
-    )
+    return None

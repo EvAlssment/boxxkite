@@ -90,11 +90,9 @@ local, on-disk CLI session state (e.g. Claude Code's
 `~/.claude/projects/...` files) on the *user's own machine*, while an MCP
 tool call runs wherever the MCP client invokes it, and `boxxkite-mcp` itself
 is a thin proxy to the hosted control-plane with no access to the calling
-agent's local filesystem. That's handled instead by a separate, local-only
-companion CLI, `boxxkite-handoff` — see
-[`../docs/handoff-adapters.md`](../docs/handoff-adapters.md) and
-[`../handoff-cli/README.md`](../handoff-cli/README.md) for how it works.
-Not yet published to PyPI.
+agent's local filesystem. That's handled instead by a local-only command in the main CLI,
+`boxxkite handoff <tool>` — see
+[`../docs/handoff-adapters.md`](../docs/handoff-adapters.md) for how it works.
 
 ## Development
 

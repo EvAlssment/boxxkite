@@ -32,8 +32,8 @@ import httpx
 import pytest
 
 from boxxkite_client import BoxxkiteClient
-from boxxkite_handoff.adapters.claude_code import ClaudeCodeAdapter, encode_project_dir
-from boxxkite_handoff.orchestrator import create_handoff_sandbox
+from boxxkite.handoff.adapters.claude_code import ClaudeCodeAdapter, encode_project_dir
+from boxxkite.handoff.orchestrator import create_handoff_sandbox
 
 BASE_URL = "https://boxxkite.example.test"
 API_KEY = "test-api-key-123"
