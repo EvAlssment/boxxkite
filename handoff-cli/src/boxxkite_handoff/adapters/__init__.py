@@ -12,6 +12,7 @@ from .claude_code import ClaudeCodeAdapter
 from .codex import CodexAdapter
 from .cursor import CursorAdapter
 from .opencode import OpencodeAdapter
+from .gemini import GeminiAdapter
 
 ADAPTERS: dict[str, type[HandoffAdapter]] = {}
 
@@ -25,3 +26,4 @@ register(ClaudeCodeAdapter)
 register(CodexAdapter)
 register(OpencodeAdapter)
 register(CursorAdapter)
+register(GeminiAdapter)
