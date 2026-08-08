@@ -199,7 +199,7 @@ One repo, several independently-versioned pieces, kept together deliberately
 | `control-plane/` | Optional hosted-API layer in front of `SandboxManager` — accounts, API keys, fair-use limits. |
 | `sdk-python/`, `sdk-js/`, `sdk-go/`, `sdk-rust/` | Thin HTTP clients for *your own* running control-plane. |
 | `mcp-server/` (`boxxkite-mcp`) | Wraps the Python SDK as an MCP tool source for Claude Code, Claude Desktop, Codex, or Cursor. |
-| `handoff-cli/` (`boxxkite-handoff`) | Moves an in-progress local Claude Code/Codex CLI/opencode session into a fresh sandbox, full conversation history included — see [docs/handoff-adapters.md](docs/handoff-adapters.md). Not yet published. |
+| `src/boxxkite/handoff/` (`boxxkite handoff <tool>`, part of the main CLI) | Moves an in-progress local Claude Code/Codex CLI/opencode/Cursor session into a fresh sandbox, full conversation history included — see [docs/handoff-adapters.md](docs/handoff-adapters.md). |
 | `bastion/` | Standalone SSH server bridging into a session's human-takeover WebSocket. |
 | `deploy/` | Kubernetes manifests, Helm chart, Dockerfiles, docker-compose, Render Blueprint. |
 | `examples/` | Runnable cookbook — LangGraph, LangChain, raw HTTP, OpenAI/Gemini/Mistral function calling, and more. |

@@ -13,6 +13,28 @@ All notable changes to boxxkite are documented here. Format loosely follows
   rename and describe the project as "boxkite" at the time they were written
   — left as-is for historical accuracy.
 
+## v0.3.0 — 2026-08-08
+
+### Added
+- `boxxkite handoff <tool>` is now part of the main CLI (`boxxkite-sandbox`)
+  instead of a separate, never-published `boxxkite-handoff` package — one
+  `pip install boxxkite-sandbox` covers it. See
+  [docs/handoff-adapters.md](docs/handoff-adapters.md).
+- Codex CLI handoff: when the only local login is a ChatGPT Plus/Pro
+  subscription (no portable API key/personal access token on file), the
+  handoff now falls back to `codex login --device-auth` — a real
+  device-code flow that mints a fresh, independent login for the sandbox —
+  instead of refusing the handoff outright.
+
+### Fixed
+- opencode handoff: a genuinely empty local session list no longer surfaces
+  as a misleading "did not return valid JSON" error.
+
+### Changed
+- Cursor handoff adapter's docstring documents a newly found, still-
+  unconfirmed on-disk session lead (`~/.cursor/projects/<encoded-cwd>/`)
+  for a future contributor to pick up.
+
 ## v0.2.2 — 2026-07-25
 
 Relicense release — no functional code changes.

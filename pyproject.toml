@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 # as before. Same split as `beautifulsoup4` (dist name) vs `bs4` (import
 # name) — pip installs "boxxkite-sandbox", code imports "boxxkite".
 name = "boxxkite-sandbox"
-version = "0.2.4"
+version = "0.3.0"
 description = "A self-hostable, Kubernetes-native sandbox for agent code execution — pod-per-session isolation plus a complete bash/python/file tool surface."
 # PYPI_README.md is a short, PyPI-page-specific readme -- deliberately
 # distinct from README.md (the repo's GitHub front door, which stays full
@@ -46,6 +46,13 @@ dependencies = [
     # `boxxkite mcp init codex` writes ~/.codex/config.toml -- reading is
     # stdlib tomllib (3.11+), but tomllib has no writer, hence tomli-w.
     "tomli-w>=1.0,<2",
+    # `boxxkite handoff <tool>` (src/boxxkite/handoff/) is built directly on
+    # BoxxkiteClient -- sandbox creation, file_create, and the takeover
+    # WebSocket (websockets, pulled in transitively) it needs. Merged in
+    # from the formerly-standalone, never-actually-published
+    # `boxxkite-handoff` package rather than reimplementing WS handling
+    # against this package's own plain-httpx `cli/client.py`.
+    "boxxkite-client>=0.2.4,<1",
 ]
 
 [project.urls]

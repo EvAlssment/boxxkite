@@ -1,8 +1,8 @@
 from pathlib import Path
 import pytest
 
-from boxxkite_handoff.adapters.gemini import GeminiAdapter
-from boxxkite_handoff.core import HandoffError
+from boxxkite.handoff.adapters.gemini import GeminiAdapter
+from boxxkite.handoff.core import HandoffError
 
 
 def test_gemini_adapter_no_directory(tmp_path: Path):
