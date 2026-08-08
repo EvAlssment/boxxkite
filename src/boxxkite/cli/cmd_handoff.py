@@ -9,10 +9,12 @@ Everything below composes existing, already-reviewed primitives (sandbox
 creation, file_create, the takeover PTY) — see `../handoff/orchestrator.py`'s
 module docstring for the credential-handling security design.
 
-This command specifically requires hosted mode (`boxxkite config set-url`/
-`set-key`, or `boxxkite signup`) — a handoff needs the takeover WebSocket,
-which only exists on a real control-plane, not the local docker-compose
-sidecar `boxxkite up` drives.
+This command specifically requires hosted mode (`boxxkite config set-key`,
+or `boxxkite signup`) — a handoff needs the takeover WebSocket, which only
+exists on a real control-plane, not the local docker-compose sidecar
+`boxxkite up` drives. `set-key` alone is enough for boxxkite's own hosted
+SaaS (see config_store.DEFAULT_HOSTED_BASE_URL); self-hosters still need
+`boxxkite config set-url <url>` too.
 """
 
 from __future__ import annotations
@@ -61,8 +63,8 @@ def handoff(
             raise CliError(
                 "`boxxkite handoff` needs a hosted control-plane target (it opens a takeover "
                 "WebSocket, which the local docker-compose sidecar doesn't have) — run "
-                "`boxxkite config set-url <url>` and `boxxkite config set-key <key>` "
-                "(or `boxxkite signup`) first, or pass --api-key/--base-url directly."
+                "`boxxkite config set-key <key>` (or `boxxkite signup`) first, or pass "
+                "--api-key/--base-url directly."
             )
         resolved_base_url = base_url.rstrip("/") if base_url else ctx.base_url
         resolved_api_key = api_key or ctx.api_key
