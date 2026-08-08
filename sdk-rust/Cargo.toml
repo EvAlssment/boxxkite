@@ -1,6 +1,6 @@
 [package]
 name = "boxxkite-client"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 rust-version = "1.75"
 description = "Rust client for a hosted boxxkite control-plane (sandboxes, exec, files, audit log, human takeover)"
