@@ -112,7 +112,7 @@ def most_recent_by_mtime(paths: Iterable[Path]) -> Path:
 
 class HandoffAdapter(Protocol):
     """One implementation per coding-agent CLI. `name` is the value users
-    pass as `boxxkite-handoff <name>`."""
+    pass as `boxxkite handoff <name>`."""
 
     name: str
 
