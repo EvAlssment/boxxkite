@@ -3,10 +3,10 @@
 Locates local Gemini CLI sessions and prepares them for resumption in a boxxkite
 sandbox.
 
-Gemini CLI stores session logs under ``~/.gemini/tmp/` (or ``$GEMINI_HOME/tmp/``)
-as JSON / JSONL files.
+Gemini CLI stores session logs under ``$GEMINI_CLI_HOME/tmp/<project-slug>/chats/session-*.jsonl``
+(or ``~/.gemini-cli/tmp/...``).
 Credentials are read from the ``GEMINI_API_KEY`` environment variable or from
-``$GEMINI_HOME/settings.json``.
+``$GEMINI_CLI_HOME/settings.json``.
 """
 
 from __future__ import annotations
@@ -26,8 +26,7 @@ from ..core import (
 )
 
 SANDBOX_HOME = "/workspace"
-GEMINI_HOME_DIR_NAME = ".gemini"
-SESSIONS_SUBDIR = "tmp"
+GEMINI_CLI_HOME_DIR_NAME = ".gemini-cli"
 
 
 @dataclass(frozen=True)
@@ -49,14 +48,14 @@ class GeminiAdapter:
         session_id = validate_identifier(session_file.session_id, what="session id")
         credential = _resolve_credential(self._gemini_home)
 
-        sandbox_path = "/".join(
-            (
-                SANDBOX_HOME,
-                GEMINI_HOME_DIR_NAME,
-                SESSIONS_SUBDIR,
-                session_file.path.name,
-            )
-        )
+        # Calculate relative path from local gemini home to maintain structure in sandbox
+        try:
+            rel_path = session_file.path.relative_to(self._gemini_home)
+        except ValueError:
+            rel_path = session_file.path.name
+
+        sandbox_path = f"{SANDBOX_HOME}/{GEMINI_CLI_HOME_DIR_NAME}/{rel_path}"
+
         return LocatedSession(
             tool=self.name,
             session_id=session_id,
@@ -68,34 +67,85 @@ class GeminiAdapter:
 
 
 def _default_gemini_home() -> Path:
-    override = os.environ.get("GEMINI_HOME", "").strip()
+    override = os.environ.get("GEMINI_CLI_HOME", "").strip()
     if override:
         return Path(override)
-    return Path.home() / GEMINI_HOME_DIR_NAME
+    return Path.home() / GEMINI_CLI_HOME_DIR_NAME
+
+
+def _parse_session_details(file_path: Path) -> tuple[str, bool]:
+    """Extract full sessionId and check if there is at least one completed assistant turn."""
+    session_id = None
+    has_completed_assistant_turn = False
+
+    try:
+        with file_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    if not session_id and isinstance(data, dict):
+                        session_id = data.get("sessionId")
+
+                    role = data.get("role") or (
+                        data.get("message", {}).get("role")
+                        if isinstance(data.get("message"), dict)
+                        else None
+                    )
+                    if role == "assistant":
+                        has_completed_assistant_turn = True
+                except json.JSONDecodeError:
+                    continue
+    except OSError as exc:
+        raise HandoffError(f"Could not read session file at {file_path}: {exc}") from exc
+
+    if not session_id:
+        session_id = file_path.stem
+
+    return session_id, has_completed_assistant_turn
 
 
 def _find_session_file(gemini_home: Path, session_ref: str | None) -> _GeminiSessionFile:
-    sessions_root = gemini_home / SESSIONS_SUBDIR
-    if not sessions_root.is_dir():
+    tmp_root = gemini_home / "tmp"
+    if not tmp_root.is_dir():
         raise HandoffError(
-            f"No Gemini sessions directory found at {sessions_root}. Run Gemini CLI at "
+            f"No Gemini sessions directory found under {gemini_home}. Run Gemini CLI at "
             "least once locally before handing off a session."
         )
 
-    candidates = [
-        _GeminiSessionFile(path=p, session_id=p.stem)
-        for p in sessions_root.glob("*.json")
-        if p.is_file()
-    ]
+    jsonl_files = list(tmp_root.glob("**/chats/session-*.jsonl"))
+    if not jsonl_files:
+        # Fallback to any jsonl under tmp if directory structure varies
+        jsonl_files = list(tmp_root.glob("**/*.jsonl"))
+
+    if not jsonl_files:
+        raise HandoffError(f"No local Gemini session files (*.jsonl) found under {tmp_root}.")
+
+    candidates: list[_GeminiSessionFile] = []
+    for p in jsonl_files:
+        if not p.is_file():
+            continue
+        session_id, has_assistant_turn = _parse_session_details(p)
+        if not has_assistant_turn:
+            # Skip sessions with no completed assistant turns as gemini --resume fails on them
+            continue
+        candidates.append(_GeminiSessionFile(path=p, session_id=session_id))
+
     if not candidates:
-        raise HandoffError(f"No local Gemini session files (*.json) found under {sessions_root}.")
+        raise HandoffError(
+            f"No valid Gemini sessions with completed assistant turns found under {tmp_root}."
+        )
 
     if session_ref is not None:
-        matches = [c for c in candidates if c.session_id == session_ref]
+        matches = [
+            c for c in candidates if c.session_id == session_ref or c.path.stem == session_ref
+        ]
         if not matches:
             raise HandoffError(
                 f"No local Gemini session file found for session id {session_ref!r} "
-                f"under {sessions_root}."
+                f"under {tmp_root}."
             )
         return matches[0]
 
