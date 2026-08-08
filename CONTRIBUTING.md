@@ -42,6 +42,10 @@ instead of a Contributor License Agreement. It's a lightweight way to certify
 that you wrote the code (or otherwise have the right to submit it) — no
 paperwork, no assignment of copyright.
 
+A `DCO` check runs on every PR and fails if any commit is missing this —
+separate from the other CI workflows (still `disabled_manually`), so it
+runs even though those don't.
+
 Sign off every commit with `git commit -s`, which appends:
 
 ```
