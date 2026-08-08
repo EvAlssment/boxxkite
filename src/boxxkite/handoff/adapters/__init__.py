@@ -25,3 +25,6 @@ register(ClaudeCodeAdapter)
 register(CodexAdapter)
 register(OpencodeAdapter)
 register(CursorAdapter)
+# Gemini: intentionally not registered here yet -- see PR #122, left for the
+# original contributor to land against this package's new location
+# (src/boxxkite/handoff/adapters/) rather than shipped as a silent replacement.

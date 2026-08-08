@@ -13,6 +13,7 @@ from . import (
     cmd_config,
     cmd_exec,
     cmd_files,
+    cmd_handoff,
     cmd_images,
     cmd_keys,
     cmd_log,
@@ -175,6 +176,7 @@ app.command("signup")(cli_error_boundary(cmd_signup.signup))
 app.command("whoami")(cli_error_boundary(cmd_whoami.whoami))
 app.command("log")(cli_error_boundary(cmd_log.log))
 app.command("watch")(cli_error_boundary(cmd_log.watch))
+app.command("handoff")(cli_error_boundary(cmd_handoff.handoff))
 
 
 def main() -> None:

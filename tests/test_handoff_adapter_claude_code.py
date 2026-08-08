@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from boxxkite_handoff.adapters.claude_code import ClaudeCodeAdapter, encode_project_dir
-from boxxkite_handoff.core import HandoffError
+from boxxkite.handoff.adapters.claude_code import ClaudeCodeAdapter, encode_project_dir
+from boxxkite.handoff.core import HandoffError
 
 SANDBOX_HOME_ENCODED = "-workspace"
 

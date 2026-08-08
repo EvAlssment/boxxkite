@@ -54,6 +54,12 @@ the trusted operator's own tool and must hold the raw value to authenticate
 at all, same as it would running locally. `HISTFILE` is still redirected
 before the export so the token also never lands in shell history, on top
 of (not instead of) the file-based fix above.
+
+`session.credential` can be `None` (currently only codex.py's device-auth
+fallback for ChatGPT Plus/Pro subscriptions) -- in that case there is no
+value to push or export at all, and `resume_command` carries the whole
+interactive login+resume sequence for the human at the takeover terminal to
+drive themselves. See `_start_resume`.
 """
 
 from __future__ import annotations
@@ -99,10 +105,13 @@ def create_handoff_sandbox(
     sandbox_id = sandbox["session_id"]
     logger.info("Provisioned sandbox %s for %s session %s", sandbox_id, session.tool, session.session_id)
 
-    credential_path = CREDENTIAL_FILE_TEMPLATE.format(suffix=secrets.token_hex(16))
+    credential_path = None
+    if session.credential is not None:
+        credential_path = CREDENTIAL_FILE_TEMPLATE.format(suffix=secrets.token_hex(16))
     try:
         _push_session_files(client, sandbox_id, session)
-        client.file_create(sandbox_id, credential_path, session.credential.value)
+        if session.credential is not None and credential_path is not None:
+            client.file_create(sandbox_id, credential_path, session.credential.value)
     finally:
         if session.cleanup is not None:
             session.cleanup()
@@ -118,17 +127,24 @@ def _push_session_files(client: BoxxkiteClient, sandbox_id: str, session: Locate
         client.file_create(sandbox_id, f.sandbox_path, content)
 
 
-def _start_resume(ws: Any, session: LocatedSession, credential_path: str) -> None:
+def _start_resume(ws: Any, session: LocatedSession, credential_path: str | None) -> None:
     """Type the cwd change and resume command into the takeover shell,
     plus a credential export that reads the value from the file
     `create_handoff_sandbox` already pushed and deletes it immediately
-    after -- never the literal value itself (see module docstring)."""
+    after -- never the literal value itself (see module docstring).
+
+    When `session.credential` is `None` (a subscription-only tool falling
+    back to an interactive login -- see core.py's `LocatedSession.credential`
+    docstring), there is no file to reference: `resume_command` itself
+    already contains whatever login step is needed, and the human at the
+    takeover terminal drives it directly."""
     _send_line(ws, "unset HISTFILE")
-    _send_line(
-        ws,
-        f"export {session.credential.env_var}=\"$(cat {_shell_quote(credential_path)})\"; "
-        f"rm -f {_shell_quote(credential_path)}",
-    )
+    if session.credential is not None and credential_path is not None:
+        _send_line(
+            ws,
+            f"export {session.credential.env_var}=\"$(cat {_shell_quote(credential_path)})\"; "
+            f"rm -f {_shell_quote(credential_path)}",
+        )
     _send_line(ws, f"cd {_shell_quote(session.workdir)}")
     _send_line(ws, session.resume_command)
 

@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from boxxkite_handoff.adapters.codex import CodexAdapter
-from boxxkite_handoff.core import HandoffError
+from boxxkite.handoff.adapters.codex import CodexAdapter
+from boxxkite.handoff.core import HandoffError
 
 UUID_OLD = "5973b6c0-94b8-487b-a530-2aeb6098ae0e"
 UUID_NEW = "123e4567-e89b-12d3-a456-426614174000"
@@ -310,9 +310,13 @@ def test_credential_falls_back_to_auth_json_openai_api_key_field(
     assert located.credential.value == "sk-from-file"
 
 
-def test_credential_raises_clear_error_for_chatgpt_oauth_only_auth_json(
+def test_chatgpt_oauth_only_auth_json_falls_back_to_device_auth(
     codex_home: Path,
 ) -> None:
+    """A ChatGPT-plan login (`tokens` only, no API key/PAT) means this
+    machine authenticates Codex via subscription, not an API key -- rather
+    than refusing, this should fall back to a fresh device-auth login typed
+    into the takeover terminal instead of shipping the raw OAuth tokens."""
     (codex_home / "auth.json").write_text(
         json.dumps({"tokens": {"access_token": "raw-oauth-access-token"}}),
         encoding="utf-8",
@@ -327,11 +331,39 @@ def test_credential_raises_clear_error_for_chatgpt_oauth_only_auth_json(
     )
     adapter = CodexAdapter(codex_home=codex_home)
 
-    with pytest.raises(HandoffError, match="not.*portable|ChatGPT"):
-        adapter.locate_session()
+    located = adapter.locate_session()
+
+    assert located.credential is None
+    assert located.resume_command == f"codex login --device-auth && codex resume {UUID_NEW}"
 
 
-def test_credential_raises_when_nothing_available(codex_home: Path) -> None:
+def test_nothing_available_falls_back_to_device_auth(codex_home: Path) -> None:
+    """No env var, no auth.json at all -- still a subscription-auth
+    situation (Codex requires being logged in some way to have recorded the
+    rollout in the first place), so this also falls back to device-auth
+    rather than refusing the handoff outright."""
+    _write_rollout(
+        codex_home,
+        year="2026",
+        month="07",
+        day="20",
+        timestamp="2026-07-20T09-00-00",
+        session_uuid=UUID_NEW,
+    )
+    adapter = CodexAdapter(codex_home=codex_home)
+
+    located = adapter.locate_session()
+
+    assert located.credential is None
+    assert located.resume_command == f"codex login --device-auth && codex resume {UUID_NEW}"
+
+
+def test_malformed_auth_json_still_raises(codex_home: Path) -> None:
+    """Unlike the ChatGPT-only/nothing-available cases above, a present but
+    unreadable auth.json is a real local problem, not just "no portable
+    credential configured" -- this should still raise rather than silently
+    falling back to device-auth."""
+    (codex_home / "auth.json").write_text("not valid json{", encoding="utf-8")
     _write_rollout(
         codex_home,
         year="2026",
@@ -344,6 +376,33 @@ def test_credential_raises_when_nothing_available(codex_home: Path) -> None:
 
     with pytest.raises(HandoffError):
         adapter.locate_session()
+
+
+def test_credential_is_used_normally_when_available_alongside_a_chatgpt_session(
+    codex_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A portable credential still wins over device-auth even if auth.json
+    also happens to have a ChatGPT tokens entry on file."""
+    (codex_home / "auth.json").write_text(
+        json.dumps({"tokens": {"access_token": "raw-oauth-access-token"}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-real-key")
+    _write_rollout(
+        codex_home,
+        year="2026",
+        month="07",
+        day="20",
+        timestamp="2026-07-20T09-00-00",
+        session_uuid=UUID_NEW,
+    )
+    adapter = CodexAdapter(codex_home=codex_home)
+
+    located = adapter.locate_session()
+
+    assert located.credential is not None
+    assert located.credential.value == "sk-real-key"
+    assert located.resume_command == f"codex resume {UUID_NEW}"
 
 
 def test_default_codex_home_honors_codex_home_env_var(

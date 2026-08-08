@@ -141,6 +141,12 @@ class OpencodeAdapter:
 
     def _find_most_recent_session_id(self) -> str:
         raw = self._runner([self._opencode_bin, "session", "list", "--format", "json"])
+        if not raw.strip():
+            # Verified live: opencode prints an empty string (not "[]") when
+            # there are zero local sessions, so this must be checked before
+            # json.loads -- otherwise it surfaces as a confusing "did not
+            # return valid JSON" instead of the real, simple explanation.
+            raise HandoffError("no local opencode sessions found")
         try:
             sessions = json.loads(raw)
         except json.JSONDecodeError as exc:

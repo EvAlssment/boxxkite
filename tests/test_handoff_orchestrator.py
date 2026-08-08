@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from boxxkite_handoff.core import Credential, LocatedSession, SessionFile
-from boxxkite_handoff.orchestrator import create_handoff_sandbox
+from boxxkite.handoff.core import Credential, LocatedSession, SessionFile
+from boxxkite.handoff.orchestrator import create_handoff_sandbox
 
 
 class FakeWebsocket:
@@ -258,3 +258,46 @@ def test_create_handoff_sandbox_tolerates_no_cleanup_set(located_session: Locate
     client = FakeBoxxkiteClient()
 
     create_handoff_sandbox(client, located_session)  # must not raise
+
+
+def test_create_handoff_sandbox_skips_credential_push_when_credential_is_none(
+    session_file: Path,
+) -> None:
+    """codex.py's device-auth fallback (no portable credential -- see
+    core.py's LocatedSession.credential docstring) has nothing to push: no
+    file_create for a credential, no export/cat/rm typed into the takeover
+    shell."""
+    client = FakeBoxxkiteClient()
+    session = LocatedSession(
+        tool="codex",
+        session_id="abc123",
+        files=(SessionFile(local_path=session_file, sandbox_path="/workspace/.codex/sessions/x.jsonl"),),
+        credential=None,
+        resume_command="codex login --device-auth && codex resume abc123",
+        workdir="/workspace",
+    )
+
+    create_handoff_sandbox(client, session)
+
+    assert len(client.files_created) == 1  # only the session file, no credential file
+    assert not any(b"export" in line for line in client._ws.sent)
+    assert not any(b"cat " in line for line in client._ws.sent)
+
+
+def test_create_handoff_sandbox_still_cds_and_resumes_when_credential_is_none(
+    session_file: Path,
+) -> None:
+    client = FakeBoxxkiteClient()
+    session = LocatedSession(
+        tool="codex",
+        session_id="abc123",
+        files=(SessionFile(local_path=session_file, sandbox_path="/workspace/.codex/sessions/x.jsonl"),),
+        credential=None,
+        resume_command="codex login --device-auth && codex resume abc123",
+        workdir="/workspace",
+    )
+
+    create_handoff_sandbox(client, session)
+
+    assert b"cd '/workspace'\n" in client._ws.sent
+    assert client._ws.sent[-1] == b"codex login --device-auth && codex resume abc123\n"
