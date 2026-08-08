@@ -143,8 +143,9 @@ def _find_oauth_token() -> str:
     token = os.environ.get(OAUTH_TOKEN_ENV_VAR)
     if not token:
         raise HandoffError(
-            f"{OAUTH_TOKEN_ENV_VAR} is not set. Run `claude setup-token` locally once to mint a "
-            f"long-lived, scoped token, then export {OAUTH_TOKEN_ENV_VAR} before running "
-            "boxxkite-handoff (see docs/handoff-adapters.md's credential table)."
+            f"{OAUTH_TOKEN_ENV_VAR} is not set. Run these two commands, then retry:\n"
+            "  1. claude setup-token   (prints a long-lived, scoped token -- needs an active "
+            "Claude subscription)\n"
+            f"  2. export {OAUTH_TOKEN_ENV_VAR}=<the token setup-token just printed>"
         )
     return token

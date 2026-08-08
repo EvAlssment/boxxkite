@@ -1,4 +1,4 @@
-"""Adapter registry -- `boxxkite-handoff <name>` looks up `name` here.
+"""Adapter registry -- `boxxkite handoff <name>` looks up `name` here.
 
 Adding a new tool: implement HandoffAdapter in its own module in this
 package, then register an instance (or a zero-arg factory) below. See
