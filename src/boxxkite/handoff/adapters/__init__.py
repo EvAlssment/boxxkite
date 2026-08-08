@@ -13,6 +13,7 @@ from .codex import CodexAdapter
 from .cursor import CursorAdapter
 from .gemini import GeminiAdapter
 from .opencode import OpencodeAdapter
+from .kimi import KimiAdapter
 
 ADAPTERS: dict[str, type[HandoffAdapter]] = {}
 
@@ -27,3 +28,4 @@ register(CodexAdapter)
 register(OpencodeAdapter)
 register(CursorAdapter)
 register(GeminiAdapter)
+register(KimiAdapter)
