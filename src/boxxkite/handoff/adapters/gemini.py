@@ -50,13 +50,8 @@ class GeminiAdapter:
         session_id = validate_identifier(session_file.session_id, what="session id")
         credential = _resolve_credential(self._gemini_home)
 
-        # Calculate relative path from local gemini home to maintain structure in sandbox
-        try:
-            rel_path = session_file.path.relative_to(self._gemini_home)
-        except ValueError:
-            rel_path = session_file.path.name
-
-        sandbox_path = f"{SANDBOX_HOME}/{GEMINI_CLI_HOME_DIR_NAME}/{rel_path}"
+        sandbox_project_slug = Path(SANDBOX_HOME).name
+        sandbox_path = f"{SANDBOX_HOME}/{GEMINI_CLI_HOME_DIR_NAME}/tmp/{sandbox_project_slug}/chats/{session_file.path.name}"
 
         return LocatedSession(
             tool=self.name,
@@ -96,7 +91,11 @@ def _parse_session_details(file_path: Path) -> tuple[str, bool]:
                     if not session_id and isinstance(data, dict):
                         session_id = data.get("sessionId")
 
-                    if data.get("type") == "gemini" and isinstance(data.get("content"), str) and data["content"]:
+                    if (
+                        data.get("type") == "gemini"
+                        and isinstance(data.get("content"), str)
+                        and data["content"]
+                    ):
                         has_completed_assistant_turn = True
                 except json.JSONDecodeError:
                     continue
