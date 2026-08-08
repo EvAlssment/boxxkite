@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .config_store import read_hosted_config, write_hosted_config
+from .config_store import DEFAULT_HOSTED_BASE_URL, read_hosted_config, write_hosted_config
 
 _MASK_VISIBLE_CHARS = 10
 
@@ -33,7 +33,7 @@ def set_url(
 def show() -> None:
     """Show the currently configured hosted-mode target. The API key is masked."""
     cfg = read_hosted_config()
-    base_url = cfg.base_url or "(not set)"
+    base_url = cfg.base_url or f"{DEFAULT_HOSTED_BASE_URL} (default -- not explicitly set)"
     if cfg.api_key and len(cfg.api_key) > _MASK_VISIBLE_CHARS:
         masked = cfg.api_key[:_MASK_VISIBLE_CHARS] + "..."
     elif cfg.api_key:

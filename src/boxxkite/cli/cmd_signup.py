@@ -13,7 +13,7 @@ from __future__ import annotations
 import httpx
 import typer
 
-from .config_store import read_hosted_config, validate_base_url_scheme, write_hosted_config
+from .config_store import DEFAULT_HOSTED_BASE_URL, read_hosted_config, validate_base_url_scheme, write_hosted_config
 from .errors import CliError
 
 DEFAULT_KEY_NAME = "boxxkite-cli"
@@ -36,7 +36,10 @@ def signup(
         ..., "--password", prompt=True, hide_input=True, confirmation_prompt=True, help="Account password (minimum 8 characters)."
     ),
     url: str | None = typer.Option(
-        None, "--url", help="Base URL of the hosted control-plane. Defaults to a previously configured URL (`boxxkite config set-url`)."
+        None,
+        "--url",
+        help=f"Base URL of the hosted control-plane. Defaults to a previously configured URL "
+        f"(`boxxkite config set-url`), or {DEFAULT_HOSTED_BASE_URL} if none is configured.",
     ),
     key_name: str = typer.Option(DEFAULT_KEY_NAME, "--key-name", help="Name to give the API key created for you."),
 ) -> None:
@@ -45,9 +48,7 @@ def signup(
     Runs signup -> login-token -> create-api-key and saves the resulting
     base_url + api_key the same way `boxxkite config set-url`/`set-key` would.
     """
-    base_url = (url or read_hosted_config().base_url or "").rstrip("/")
-    if not base_url:
-        raise CliError("Pass --url, or run `boxxkite config set-url <url>` first.")
+    base_url = (url or read_hosted_config().base_url or DEFAULT_HOSTED_BASE_URL).rstrip("/")
     # Validated here, BEFORE the signup/api-key requests below, not just at
     # the final write_hosted_config() call -- otherwise the freshly-issued
     # JWT (line ~53) and the new API key itself (line ~62) would already
