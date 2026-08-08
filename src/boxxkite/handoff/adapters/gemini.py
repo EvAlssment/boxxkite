@@ -4,7 +4,9 @@ Locates local Gemini CLI sessions and prepares them for resumption in a boxxkite
 sandbox.
 
 Gemini CLI stores session logs under ``$GEMINI_CLI_HOME/tmp/<project-slug>/chats/session-*.jsonl``
-(or ``~/.gemini-cli/tmp/...``).
+(``GEMINI_CLI_HOME`` defaults to ``~/.gemini`` -- confirmed directly against
+the installed CLI's own bundled source: ``process.env["GEMINI_CLI_HOME"] ||
+join(os.homedir(), ".gemini")``).
 Credentials are read from the ``GEMINI_API_KEY`` environment variable or from
 ``$GEMINI_CLI_HOME/settings.json``.
 """
@@ -26,7 +28,7 @@ from ..core import (
 )
 
 SANDBOX_HOME = "/workspace"
-GEMINI_CLI_HOME_DIR_NAME = ".gemini-cli"
+GEMINI_CLI_HOME_DIR_NAME = ".gemini"
 
 
 @dataclass(frozen=True)
@@ -74,7 +76,12 @@ def _default_gemini_home() -> Path:
 
 
 def _parse_session_details(file_path: Path) -> tuple[str, bool]:
-    """Extract full sessionId and check if there is at least one completed assistant turn."""
+    """Extract full sessionId and check if there is at least one completed
+    assistant turn -- gemini-cli's own resumability check
+    (`isResumableMessageRecord` in the installed CLI's bundled source) keys
+    off a message's ``type`` field, not ``role``: a real record looks like
+    ``{"type": "gemini", "content": "..."}`` for a completed reply, never
+    ``{"role": "assistant"}``."""
     session_id = None
     has_completed_assistant_turn = False
 
@@ -89,12 +96,7 @@ def _parse_session_details(file_path: Path) -> tuple[str, bool]:
                     if not session_id and isinstance(data, dict):
                         session_id = data.get("sessionId")
 
-                    role = data.get("role") or (
-                        data.get("message", {}).get("role")
-                        if isinstance(data.get("message"), dict)
-                        else None
-                    )
-                    if role == "assistant":
+                    if data.get("type") == "gemini" and isinstance(data.get("content"), str) and data["content"]:
                         has_completed_assistant_turn = True
                 except json.JSONDecodeError:
                     continue
