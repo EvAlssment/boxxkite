@@ -17,6 +17,7 @@ from . import (
     cmd_images,
     cmd_keys,
     cmd_log,
+    cmd_login,
     cmd_mcp,
     cmd_secrets,
     cmd_session,
@@ -33,7 +34,8 @@ app = typer.Typer(
     help=(
         "CLI for boxxkite, a self-hostable sandbox for agent code execution. "
         "Use `boxxkite up` for local docker-compose dev, or `boxxkite signup` "
-        "(or `boxxkite config set-url`/`set-key`) to target a hosted control-plane."
+        "(new account) / `boxxkite login` (existing account) / "
+        "`boxxkite config set-url`/`set-key` to target a hosted control-plane."
     ),
     no_args_is_help=True,
 )
@@ -173,6 +175,7 @@ app.add_typer(audit_app, name="audit")
 app.command("up")(cli_error_boundary(cmd_up.up))
 app.command("exec")(cli_error_boundary(cmd_exec.exec_cmd))
 app.command("signup")(cli_error_boundary(cmd_signup.signup))
+app.command("login")(cli_error_boundary(cmd_login.login))
 app.command("whoami")(cli_error_boundary(cmd_whoami.whoami))
 app.command("log")(cli_error_boundary(cmd_log.log))
 app.command("watch")(cli_error_boundary(cmd_log.watch))
