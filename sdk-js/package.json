@@ -1,6 +1,6 @@
 {
   "name": "boxxkite-client",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "TypeScript/JavaScript client for a hosted boxxkite control-plane (sandbox creation, exec, files).",
   "license": "Apache-2.0",
   "repository": {

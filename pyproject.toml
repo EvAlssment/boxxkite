@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 # as before. Same split as `beautifulsoup4` (dist name) vs `bs4` (import
 # name) — pip installs "boxxkite-sandbox", code imports "boxxkite".
 name = "boxxkite-sandbox"
-version = "0.3.1"
+version = "0.4.0"
 description = "A self-hostable, Kubernetes-native sandbox for agent code execution — pod-per-session isolation plus a complete bash/python/file tool surface."
 # PYPI_README.md is a short, PyPI-page-specific readme -- deliberately
 # distinct from README.md (the repo's GitHub front door, which stays full
