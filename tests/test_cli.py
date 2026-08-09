@@ -244,6 +244,66 @@ def test_signup_rejects_plain_http_before_sending_any_request(monkeypatch):
     assert "cleartext" in result.output
 
 
+def test_login_defaults_to_hosted_saas_url_when_none_configured(monkeypatch):
+    captured_urls = []
+
+    def _fake_post(url, **kwargs):
+        captured_urls.append(url)
+        if url.endswith("/v1/auth/login"):
+            return FakeResponse(200, json_data={"access_token": "jwt-token"})
+        return FakeResponse(200, json_data={"key": "bxk_live_new"})
+
+    monkeypatch.setattr("httpx.post", _fake_post)
+
+    result = runner.invoke(
+        app,
+        ["login", "--email", "test@example.com", "--password", "correcthorse123"],
+    )
+
+    assert result.exit_code == 0
+    assert all(url.startswith(config_store.DEFAULT_HOSTED_BASE_URL) for url in captured_urls)
+    assert config_store.read_hosted_config().base_url == config_store.DEFAULT_HOSTED_BASE_URL
+    assert config_store.read_hosted_config().api_key == "bxk_live_new"
+
+
+def test_login_rejects_plain_http_before_sending_any_request(monkeypatch):
+    def _boom(*args, **kwargs):
+        raise AssertionError("must not send any request for a rejected base_url")
+
+    monkeypatch.setattr("httpx.post", _boom)
+
+    result = runner.invoke(
+        app,
+        [
+            "login",
+            "--email",
+            "test@example.com",
+            "--password",
+            "correcthorse123",
+            "--url",
+            "http://cp.example.com",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "cleartext" in result.output
+
+
+def test_login_surfaces_invalid_credentials_error(monkeypatch):
+    def _fake_post(url, **kwargs):
+        return FakeResponse(401, json_data={"error": {"message": "Incorrect email or password", "code": "invalid_credentials"}})
+
+    monkeypatch.setattr("httpx.post", _fake_post)
+
+    result = runner.invoke(
+        app,
+        ["login", "--email", "test@example.com", "--password", "wrongpassword", "--url", "https://cp.example.com"],
+    )
+
+    assert result.exit_code == 1
+    assert "Incorrect email or password" in result.output
+
+
 # ── resolve_session_id: zero / one / many active sessions ───────────────
 def _hosted_ctx() -> Context:
     return Context(mode="hosted", base_url="https://cp.example.com", api_key="bxk_live_x")
@@ -597,6 +657,7 @@ COMMAND_HELP_PATHS = [
     ["up"],
     ["exec"],
     ["signup"],
+    ["login"],
     ["config"],
     ["config", "set-key"],
     ["config", "set-url"],
