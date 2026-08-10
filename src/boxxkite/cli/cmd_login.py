@@ -1,11 +1,11 @@
-"""`boxxkite signup` — one command that chains
-POST /v1/auth/signup -> POST /v1/api-keys and stores the resulting URL + key,
-so the caller is immediately ready to run `boxxkite session create`.
+"""`boxxkite login` — authenticate an existing account and mint a fresh API
+key, saved the same way `boxxkite signup`/`boxxkite config set-key` would.
 
-Signup alone only returns a short-lived dashboard JWT (see
-control-plane/src/control_plane/routers/auth.py); a usable API key requires
-the extra POST /v1/api-keys call authenticated with that JWT, exactly as
-control-plane/tests/test_api_keys.py exercises.
+For someone who already has an account (ran `signup` here before, on
+another machine, or via the dashboard) and just needs the CLI reconnected
+-- as opposed to `signup`, which creates a brand-new account. Mirrors
+`signup`'s own POST /v1/auth/login -> POST /v1/api-keys chain, just
+exchanging an existing email+password instead of registering a new one.
 """
 
 from __future__ import annotations
@@ -30,10 +30,10 @@ def _extract_error(resp: httpx.Response) -> str:
     return f"HTTP {resp.status_code}"
 
 
-def signup(
+def login(
     email: str = typer.Option(..., "--email", prompt=True, help="Account email."),
     password: str = typer.Option(
-        ..., "--password", prompt=True, hide_input=True, confirmation_prompt=True, help="Account password (minimum 8 characters)."
+        ..., "--password", prompt=True, hide_input=True, help="Account password."
     ),
     url: str | None = typer.Option(
         None,
@@ -41,28 +41,23 @@ def signup(
         help=f"Base URL of the hosted control-plane. Defaults to a previously configured URL "
         f"(`boxxkite config set-url`), or {DEFAULT_HOSTED_BASE_URL} if none is configured.",
     ),
-    key_name: str = typer.Option(DEFAULT_KEY_NAME, "--key-name", help="Name to give the API key created for you."),
+    key_name: str = typer.Option(DEFAULT_KEY_NAME, "--key-name", help="Name to give the new API key."),
 ) -> None:
-    """Sign up for a hosted control-plane account and provision an API key in one step.
+    """Log in to an existing account and mint a fresh API key.
 
-    Runs signup -> login-token -> create-api-key and saves the resulting
-    base_url + api_key the same way `boxxkite config set-url`/`set-key` would.
+    Runs login -> create-api-key and saves the resulting base_url + api_key
+    the same way `boxxkite config set-url`/`set-key` would.
     """
     base_url = (url or read_hosted_config().base_url or DEFAULT_HOSTED_BASE_URL).rstrip("/")
-    # Validated here, BEFORE the signup/api-key requests below, not just at
-    # the final write_hosted_config() call -- otherwise the freshly-issued
-    # JWT (line ~53) and the new API key itself (line ~62) would already
-    # have been sent to a non-https base_url in cleartext by the time that
-    # later check ever ran.
     validate_base_url_scheme(base_url)
 
     try:
-        signup_resp = httpx.post(f"{base_url}/v1/auth/signup", json={"email": email, "password": password}, timeout=30)
+        login_resp = httpx.post(f"{base_url}/v1/auth/login", json={"email": email, "password": password}, timeout=30)
     except httpx.HTTPError as exc:
         raise CliError(f"Could not reach {base_url}: {exc}") from exc
-    if signup_resp.status_code >= 400:
-        raise CliError(_extract_error(signup_resp))
-    access_token = signup_resp.json()["access_token"]
+    if login_resp.status_code >= 400:
+        raise CliError(_extract_error(login_resp))
+    access_token = login_resp.json()["access_token"]
 
     try:
         key_resp = httpx.post(
@@ -78,5 +73,5 @@ def signup(
     api_key = key_resp.json()["key"]
 
     write_hosted_config(base_url=base_url, api_key=api_key)
-    typer.secho(f"Account created and API key saved for {base_url}.", fg=typer.colors.GREEN)
+    typer.secho(f"Logged in and API key saved for {base_url}.", fg=typer.colors.GREEN)
     typer.echo("You're ready to run: boxxkite session create")

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from boxxkite_handoff.core import HandoffError, most_recent_by_mtime, validate_identifier
+from boxxkite.handoff.core import HandoffError, most_recent_by_mtime, validate_identifier
 
 
 @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from boxxkite_handoff.terminal import _pump_stdin_to_ws, _pump_ws_to_stdout
+from boxxkite.handoff.terminal import _pump_stdin_to_ws, _pump_ws_to_stdout
 
 
 class FakeWebsocket:

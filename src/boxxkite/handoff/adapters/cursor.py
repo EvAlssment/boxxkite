@@ -36,6 +36,19 @@ package and reading its bundled source, not just its docs):
   achievable here (no `CURSOR_API_KEY` available to test with, and
   `agent ls`/interactive resume require a real TTY).
 
+New lead found in a later pass (2026-08), still unconfirmed -- a real
+`CURSOR_API_KEY` (get one at https://cursor.com/dashboard/api) is needed to
+finish this: `cursor-agent` itself, independent of any editor, creates
+`~/.cursor/projects/<encoded-cwd>/` the first time it runs in a directory
+(the encoding matches Claude Code's own slash-to-dash scheme). This showed
+up live in a real test run, but the directory came back empty, because the
+test API call failed before any exchange completed -- so whether it ever
+holds a real, copyable per-session file (and if so, in what shape) is still
+open. One confirmed dead end along the way: `.cursor/projects/*/agent-
+transcripts/` and the `agent transcript <id>` command are for cloud/
+Background Agents' transcripts, a separate feature from local interactive
+session state, so that particular path is not the answer.
+
 Per the "degrade honestly, don't fake it" rule this doc lays out, this
 adapter does not guess at that mapping. `locate_session` always raises
 `HandoffError` rather than fabricate a `local_path`/`sandbox_path` that was

@@ -1,4 +1,4 @@
-"""Adapter registry -- `boxxkite-handoff <name>` looks up `name` here.
+"""Adapter registry -- `boxxkite handoff <name>` looks up `name` here.
 
 Adding a new tool: implement HandoffAdapter in its own module in this
 package, then register an instance (or a zero-arg factory) below. See
@@ -11,6 +11,7 @@ from ..core import HandoffAdapter
 from .claude_code import ClaudeCodeAdapter
 from .codex import CodexAdapter
 from .cursor import CursorAdapter
+from .gemini import GeminiAdapter
 from .opencode import OpencodeAdapter
 
 ADAPTERS: dict[str, type[HandoffAdapter]] = {}
@@ -25,3 +26,4 @@ register(ClaudeCodeAdapter)
 register(CodexAdapter)
 register(OpencodeAdapter)
 register(CursorAdapter)
+register(GeminiAdapter)

@@ -1,10 +1,12 @@
 # Handoff adapters: moving a local coding-agent session into a boxxkite sandbox
 
-`boxxkite-handoff` lets someone running Claude Code, Codex CLI, opencode, or
-Cursor locally move their **in-progress, full-history conversation** into a
-fresh boxxkite sandbox and keep interacting with it from there — the CLI
-keeps running under the user's own (portable, scoped) credential, not a
-copy of their laptop's raw login session.
+`boxxkite handoff <tool>` (part of the main `boxxkite` CLI — `pip install
+boxxkite-sandbox` is the only install step, no separate package) lets someone
+running Claude Code, Codex CLI, opencode, or Cursor locally move their
+**in-progress, full-history conversation** into a fresh boxxkite sandbox and
+keep interacting with it from there — the CLI keeps running under the user's
+own (portable, scoped) credential, not a copy of their laptop's raw login
+session.
 
 This doc defines the adapter contract so new tools can be added without
 touching the shared orchestration code, and records the architecture
@@ -49,7 +51,7 @@ requires zero changes to `sidecar/` or `control-plane/`.
 ```mermaid
 flowchart LR
     subgraph local["Your machine"]
-        cli["boxxkite-handoff CLI"]
+        cli["boxxkite handoff CLI"]
         adapter["HandoffAdapter\n(locate_session)"]
         files["Local session files\n(~/.claude/projects/...,\n~/.codex/sessions/...)"]
         cli --> adapter --> files
@@ -86,7 +88,7 @@ sequenceDiagram
     participant CP as control-plane
     participant SB as Sandbox pod
 
-    U->>A: boxxkite-handoff claude-code
+    U->>A: boxxkite handoff claude-code
     A->>A: locate local session file +\nportable credential (setup-token, etc.)
     A-->>O: LocatedSession
     O->>CP: create_sandbox()
@@ -150,9 +152,10 @@ Concretely:
 | Tool | Portable credential |
 |---|---|
 | Claude Code | `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN` (model-requests-only scope, ~1yr, independently revocable) |
-| Codex CLI | `OPENAI_API_KEY`, or Codex's own portable auth file if using a ChatGPT-plan login |
+| Codex CLI | `OPENAI_API_KEY` / `CODEX_API_KEY` / `CODEX_ACCESS_TOKEN`, or Codex's own portable auth file. If the only local login is a ChatGPT Plus/Pro subscription (no portable credential on file), this adapter does not refuse the handoff — it falls back to `codex login --device-auth`, a real RFC-8628 device-code flow that mints a fresh, independent token pair for the sandbox rather than copying the local session. See `codex.py`'s module docstring. |
 | opencode | provider API key from `~/.local/share/opencode/auth.json` |
 | Cursor | `CURSOR_API_KEY` |
+| Gemini CLI | `GEMINI_API_KEY` — adapter not yet merged, see PR #122 |
 
 Why this is safe to authenticate with in the sandbox at all: this
 credential authenticates the CLI process itself — the same process that
@@ -189,7 +192,7 @@ see `claude_code.py`, `codex.py`, and `opencode.py` for the pattern.
 
 ## The `HandoffAdapter` contract
 
-See `public/handoff-cli/src/boxxkite_handoff/core.py`. One adapter per tool,
+See `public/src/boxxkite/handoff/core.py`. One adapter per tool,
 each providing a single `locate_session(session_ref=None)` call that
 returns a `LocatedSession`:
 
@@ -219,9 +222,9 @@ backlog. To add one:
    or an API a client can point at) — if it only supports "start fresh and
    describe the task," it doesn't fit this contract; that's a different
    feature.
-2. Implement `HandoffAdapter` in `boxxkite_handoff/adapters/<tool>.py`,
+2. Implement `HandoffAdapter` in `src/boxxkite/handoff/adapters/<tool>.py`,
    returning a `LocatedSession`.
-3. Register it in `boxxkite_handoff/adapters/__init__.py`'s `ADAPTERS` dict.
+3. Register it in `src/boxxkite/handoff/adapters/__init__.py`'s `ADAPTERS` dict.
 4. Add unit tests covering locate-session logic against a fixture session
    file/directory — no live sandbox or network call should be needed to
    test an adapter.
@@ -240,6 +243,7 @@ backlog. To add one:
 | Tool | Status | Notes |
 |---|---|---|
 | Claude Code | reference adapter | JSONL under `~/.claude/projects/<encoded-cwd>/`, cwd-sensitive resume |
-| Codex CLI | reference adapter | JSONL rollout under `~/.codex/sessions/`, path-based resume (not cwd-sensitive) |
+| Codex CLI | reference adapter | JSONL rollout under `~/.codex/sessions/`, path-based resume (not cwd-sensitive); falls back to `codex login --device-auth` when only a ChatGPT Plus/Pro subscription login is available locally |
 | opencode | reference adapter | client/server split — may attach live instead of a file push; see the adapter's own docstring for which path it took |
 | Cursor | stub -- always raises `HandoffError` | verified directly against the shipped `cursor-agent` binary that its local resume mechanism is backed by an IDE-shared `state.vscdb` store, not a portable per-session file this adapter could confidently copy; see the adapter's own docstring for the full verification record and what it would take to implement this for real |
+| Gemini CLI | not yet merged | open community PR (#122) in progress; see the PR for the verified session-file layout and known correctness issues being worked through |

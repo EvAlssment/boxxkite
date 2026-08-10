@@ -134,13 +134,11 @@ since `wiremock` is HTTP-only.
 
 ## Related tools
 
-Moving an in-progress local Claude Code/Codex CLI/opencode session (full
-conversation history, not just a diff) into a fresh boxxkite sandbox is
-handled by the separate `boxxkite-handoff` CLI (Python, built on
-`sdk-python`, not this crate) — see
-[`../docs/handoff-adapters.md`](../docs/handoff-adapters.md) and
-[`../handoff-cli/README.md`](../handoff-cli/README.md). Not yet published
-to PyPI.
+Moving an in-progress local Claude Code/Codex CLI/opencode/Cursor session
+(full conversation history, not just a diff) into a fresh boxxkite sandbox
+is handled by `boxxkite handoff <tool>` (Python, part of the main
+`boxxkite` CLI, built on `sdk-python`, not this crate) — see
+[`../docs/handoff-adapters.md`](../docs/handoff-adapters.md).
 
 See the [root README](https://github.com/EvAlssment/boxxkite#readme) for
 what boxxkite is and the full self-hosting story.

@@ -14,7 +14,7 @@ from typer.testing import CliRunner
 from boxxkite.cli import app
 from boxxkite.cli import client as client_module
 from boxxkite.cli import config_store
-from boxxkite.cli.context import Context
+from boxxkite.cli.context import Context, resolve_context
 from boxxkite.cli.errors import CliError
 
 runner = CliRunner()
@@ -144,6 +144,78 @@ def test_config_set_url_allows_http_localhost_for_local_dev():
     assert cfg.base_url == "http://localhost:8090"
 
 
+def test_config_show_reports_default_base_url_when_unset():
+    runner.invoke(app, ["config", "set-key", "bxk_live_abc"])
+
+    result = runner.invoke(app, ["config", "show"])
+
+    assert config_store.DEFAULT_HOSTED_BASE_URL in result.output
+    assert "default" in result.output
+
+
+def test_config_show_reports_explicit_base_url_without_default_annotation():
+    runner.invoke(app, ["config", "set-url", "https://cp.example.com"])
+    runner.invoke(app, ["config", "set-key", "bxk_live_abc"])
+
+    result = runner.invoke(app, ["config", "show"])
+
+    assert "https://cp.example.com" in result.output
+    assert "default" not in result.output
+
+
+# ── resolve_context: base_url defaults to the hosted SaaS ───────────────
+def test_resolve_context_defaults_base_url_when_only_api_key_configured():
+    """A fresh `pip install boxxkite-sandbox` + `boxxkite config set-key
+    <key>` alone should be enough to reach hosted mode -- no separate
+    `set-url` step for boxxkite's own SaaS."""
+    config_store.write_hosted_config(api_key="bxk_live_abc")
+
+    ctx = resolve_context()
+
+    assert ctx.mode == "hosted"
+    assert ctx.base_url == config_store.DEFAULT_HOSTED_BASE_URL
+    assert ctx.api_key == "bxk_live_abc"
+
+
+def test_resolve_context_prefers_explicit_base_url_over_default():
+    config_store.write_hosted_config(base_url="https://cp.example.com", api_key="bxk_live_abc")
+
+    ctx = resolve_context()
+
+    assert ctx.base_url == "https://cp.example.com"
+
+
+def test_resolve_context_does_not_force_hosted_mode_without_an_api_key():
+    """Defaulting base_url must not, by itself, make hosted mode look
+    configured when only local mode (`boxxkite up`) was ever set up."""
+    config_store.write_local_env(token="tok123", sidecar_url="http://localhost:8080")
+
+    ctx = resolve_context()
+
+    assert ctx.mode == "local"
+
+
+def test_signup_defaults_to_hosted_saas_url_when_none_configured(monkeypatch):
+    captured_urls = []
+
+    def _fake_post(url, **kwargs):
+        captured_urls.append(url)
+        if url.endswith("/v1/auth/signup"):
+            return FakeResponse(200, json_data={"access_token": "jwt-token"})
+        return FakeResponse(200, json_data={"key": "bxk_live_new"})
+
+    monkeypatch.setattr("httpx.post", _fake_post)
+
+    result = runner.invoke(
+        app,
+        ["signup", "--email", "test@example.com", "--password", "correcthorse123"],
+    )
+
+    assert result.exit_code == 0
+    assert all(url.startswith(config_store.DEFAULT_HOSTED_BASE_URL) for url in captured_urls)
+    assert config_store.read_hosted_config().base_url == config_store.DEFAULT_HOSTED_BASE_URL
+
+
 def test_signup_rejects_plain_http_before_sending_any_request(monkeypatch):
     """The scheme must be validated BEFORE the signup/api-key requests --
     not just at the final config-save step -- otherwise the freshly-issued
@@ -170,6 +242,66 @@ def test_signup_rejects_plain_http_before_sending_any_request(monkeypatch):
 
     assert result.exit_code == 1
     assert "cleartext" in result.output
+
+
+def test_login_defaults_to_hosted_saas_url_when_none_configured(monkeypatch):
+    captured_urls = []
+
+    def _fake_post(url, **kwargs):
+        captured_urls.append(url)
+        if url.endswith("/v1/auth/login"):
+            return FakeResponse(200, json_data={"access_token": "jwt-token"})
+        return FakeResponse(200, json_data={"key": "bxk_live_new"})
+
+    monkeypatch.setattr("httpx.post", _fake_post)
+
+    result = runner.invoke(
+        app,
+        ["login", "--email", "test@example.com", "--password", "correcthorse123"],
+    )
+
+    assert result.exit_code == 0
+    assert all(url.startswith(config_store.DEFAULT_HOSTED_BASE_URL) for url in captured_urls)
+    assert config_store.read_hosted_config().base_url == config_store.DEFAULT_HOSTED_BASE_URL
+    assert config_store.read_hosted_config().api_key == "bxk_live_new"
+
+
+def test_login_rejects_plain_http_before_sending_any_request(monkeypatch):
+    def _boom(*args, **kwargs):
+        raise AssertionError("must not send any request for a rejected base_url")
+
+    monkeypatch.setattr("httpx.post", _boom)
+
+    result = runner.invoke(
+        app,
+        [
+            "login",
+            "--email",
+            "test@example.com",
+            "--password",
+            "correcthorse123",
+            "--url",
+            "http://cp.example.com",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "cleartext" in result.output
+
+
+def test_login_surfaces_invalid_credentials_error(monkeypatch):
+    def _fake_post(url, **kwargs):
+        return FakeResponse(401, json_data={"error": {"message": "Incorrect email or password", "code": "invalid_credentials"}})
+
+    monkeypatch.setattr("httpx.post", _fake_post)
+
+    result = runner.invoke(
+        app,
+        ["login", "--email", "test@example.com", "--password", "wrongpassword", "--url", "https://cp.example.com"],
+    )
+
+    assert result.exit_code == 1
+    assert "Incorrect email or password" in result.output
 
 
 # ── resolve_session_id: zero / one / many active sessions ───────────────
@@ -525,6 +657,7 @@ COMMAND_HELP_PATHS = [
     ["up"],
     ["exec"],
     ["signup"],
+    ["login"],
     ["config"],
     ["config", "set-key"],
     ["config", "set-url"],

@@ -24,6 +24,15 @@ CONFIG_DIR = Path.home() / ".boxxkite"
 CONFIG_FILE = CONFIG_DIR / "config.toml"
 LOCAL_ENV_FILE = CONFIG_DIR / "local.env"
 
+# The hosted SaaS target most `pip install boxxkite-sandbox` users actually
+# want -- applied by callers (context.resolve_context(), cmd_signup.py) when
+# no base_url has been explicitly configured, so `boxxkite config set-key
+# <key>` alone is enough to reach hosted mode. read_hosted_config() itself
+# stays honest about what's actually persisted (None means "not set") --
+# self-hosters overriding this via `boxxkite config set-url` still works
+# exactly the same way.
+DEFAULT_HOSTED_BASE_URL = "https://api.boxxkite.com"
+
 _LOCALHOST_HOSTNAMES = {"localhost", "127.0.0.1", "::1"}
 
 

@@ -48,12 +48,19 @@ class LocatedSession:
     succeeds) -- for an adapter that materializes a temporary local copy of
     session data (see opencode.py's exported-session file) rather than
     pointing straight at an existing on-disk file, so that copy doesn't
-    linger on the local machine after it's served its purpose."""
+    linger on the local machine after it's served its purpose.
+
+    `credential` is `None` only for a tool whose sole available auth is a
+    subscription login with no portable, independently-revocable form (see
+    codex.py's device-auth fallback) -- in that case `resume_command` itself
+    must contain whatever interactive login step the sandbox's takeover
+    terminal should run before resuming, since there is no credential for
+    the orchestrator to push."""
 
     tool: str
     session_id: str
     files: tuple[SessionFile, ...]
-    credential: Credential
+    credential: Credential | None
     resume_command: str
     workdir: str
     cleanup: Callable[[], None] | None = None
@@ -105,7 +112,7 @@ def most_recent_by_mtime(paths: Iterable[Path]) -> Path:
 
 class HandoffAdapter(Protocol):
     """One implementation per coding-agent CLI. `name` is the value users
-    pass as `boxxkite-handoff <name>`."""
+    pass as `boxxkite handoff <name>`."""
 
     name: str
 
