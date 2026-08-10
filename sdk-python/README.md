@@ -38,7 +38,9 @@ preview URLs for exposing a port, an audit-log feed (`get_log`/`watch`),
 interactive human takeover over a raw WebSocket, desktop (GUI) takeover
 over the same raw-WebSocket pattern, secret management
 (`create_secret`/`list_secrets`/`delete_secret`, for use via
-`create_sandbox(secret_names=[...])`), and a `create_sandbox_tools()`
+`create_sandbox(secret_names=[...])`), filesystem snapshot management
+(`create_snapshot`/`list_snapshots`/`get_snapshot`/`restore_snapshot`/
+`delete_snapshot`), and a `create_sandbox_tools()`
 LangChain factory. Full reference with examples
 for all of these: [`docs/API.md`](https://github.com/EvAlssment/boxxkite/blob/main/docs/API.md).
 
