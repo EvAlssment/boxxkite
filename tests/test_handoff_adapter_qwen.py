@@ -16,7 +16,7 @@ def _write_session(root: Path, project: str, session_id: str) -> Path:
     chats.mkdir(parents=True, exist_ok=True)
     session = chats / f"{session_id}.jsonl"
     session.write_text(
-        '{"sessionId":"' + session_id + '","type":"user","message":"hello"}\n',
+        '{"sessionId":"' + session_id + '","type":"user","message":"hello","cwd":"/original/project"}\n',
         encoding="utf-8",
     )
     return session
@@ -33,12 +33,19 @@ def test_locates_latest_session_and_maps_to_sandbox(tmp_path: Path, monkeypatch:
 
     assert located.tool == "qwen"
     assert located.session_id == SESSION_B
-    assert located.files[0].local_path == newer
+    assert located.files[0].local_path != newer
+    assert '"cwd":"/workspace"' in located.files[0].local_path.read_text(encoding="utf-8")
+    assert '"cwd":"/original/project"' in newer.read_text(encoding="utf-8")
     assert located.files[0].sandbox_path == (
         f"/workspace/.qwen/projects/-workspace/chats/{SESSION_B}.jsonl"
     )
     assert located.credential.env_var == "DASHSCOPE_API_KEY"
     assert located.resume_command == f"qwen --resume {SESSION_B}"
+
+    rewritten = located.files[0].local_path
+    assert located.cleanup is not None
+    located.cleanup()
+    assert not rewritten.exists()
 
 
 def test_selects_explicit_session_across_projects(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -48,7 +55,8 @@ def test_selects_explicit_session_across_projects(tmp_path: Path, monkeypatch: p
 
     located = QwenAdapter(qwen_runtime_dir=tmp_path).locate_session(session_ref=SESSION_A)
 
-    assert located.files[0].local_path == selected
+    assert located.files[0].local_path != selected
+    assert '"cwd":"/workspace"' in located.files[0].local_path.read_text(encoding="utf-8")
     assert located.credential.env_var == "OPENAI_API_KEY"
 
 
