@@ -11,7 +11,7 @@
   <a href="https://www.npmjs.com/package/boxxkite-client"><img alt="npm" src="https://img.shields.io/npm/v/boxxkite-client?label=npm"></a>
   <a href="https://pkg.go.dev/github.com/EvAlssment/boxxkite/sdk-go"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/EvAlssment/boxxkite/sdk-go.svg"></a>
   <a href="https://crates.io/crates/boxxkite-client"><img alt="crates.io" src="https://img.shields.io/crates/v/boxxkite-client.svg"></a>
-  <a href="https://discord.gg/UHVrEvQ46"><img alt="Discord" src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white"></a>
+  <a href="https://discord.gg/JntfAx7cg5"><img alt="Discord" src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
   <a href="#self-hosting">Self-hosting</a> ·
   <a href="#security">Security</a> ·
   <a href="examples/">Examples</a> ·
-  <a href="https://discord.gg/UHVrEvQ46">Discord</a>
+  <a href="https://discord.gg/JntfAx7cg5">Discord</a>
 </p>
 
 <p align="center">
@@ -248,7 +248,7 @@ Container images are published to GHCR (`ghcr.io/evalssment/…`):
 
 ## Community
 
-Join the [Discord](https://discord.gg/UHVrEvQ46) — get help from other users and maintainers, report a bug,
+Join the [Discord](https://discord.gg/JntfAx7cg5) — get help from other users and maintainers, report a bug,
 ask for a usage-limit/credit bump, or discuss elevated access if you're a startup (dedicated thread for that
 once you're in).
 
@@ -261,4 +261,4 @@ competing hosted service on top of boxxkite; there's no restriction.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) — we use the Developer Certificate of
 Origin (`git commit -s`), not a CLA. Questions before opening a PR? Ask in the
-[Discord](https://discord.gg/UHVrEvQ46) first.
+[Discord](https://discord.gg/JntfAx7cg5) first.
