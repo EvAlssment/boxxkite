@@ -119,6 +119,8 @@ def test_whoami_shows_email_and_usage(monkeypatch):
                     "monthly_sandbox_hours_limit": 20.0,
                     "concurrent_sandboxes": 1,
                     "concurrent_sandboxes_limit": 2,
+                    "sandbox_ops_rate_limit_remaining": 55,
+                    "sandbox_ops_rate_limit": 60,
                 },
             )
         raise AssertionError(f"unexpected request: {method} {url}")
@@ -131,6 +133,41 @@ def test_whoami_shows_email_and_usage(monkeypatch):
     assert "me@example.com" in result.output
     assert "1.5" in result.output
     assert "20.0" in result.output
+    assert "55/60" in result.output
+
+
+def test_whoami_against_an_older_control_plane_omits_rate_limit_line(monkeypatch):
+    """This CLI ships on PyPI independently of the hosted deploy -- a
+    caller could be talking to a control-plane that predates
+    sandbox_ops_rate_limit_remaining/sandbox_ops_rate_limit. That must not
+    raise a raw KeyError (cli_error_boundary only catches CliError/
+    httpx.HTTPError), just omit the line."""
+    config_store.write_hosted_config(base_url="https://cp.example.com", api_key="bxk_live_x")
+
+    def fake_request(method, url, **kwargs):
+        if url.endswith("/v1/account"):
+            return FakeResponse(
+                200, json_data={"id": "acct-1", "email": "me@example.com", "created_at": "2026-01-01T00:00:00Z"}
+            )
+        if url.endswith("/v1/usage"):
+            return FakeResponse(
+                200,
+                json_data={
+                    "monthly_sandbox_hours_used": 1.5,
+                    "monthly_sandbox_hours_limit": 20.0,
+                    "concurrent_sandboxes": 1,
+                    "concurrent_sandboxes_limit": 2,
+                },
+            )
+        raise AssertionError(f"unexpected request: {method} {url}")
+
+    monkeypatch.setattr(client_module.httpx, "request", fake_request)
+
+    result = runner.invoke(app, ["whoami"])
+
+    assert result.exit_code == 0
+    assert "me@example.com" in result.output
+    assert "rate limit" not in result.output
 
 
 def test_whoami_in_local_mode_explains_capability_gap():

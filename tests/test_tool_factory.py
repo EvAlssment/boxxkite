@@ -57,6 +57,34 @@ def test_create_sandbox_tools_returns_the_full_tool_set():
     assert len(tools) == 15
 
 
+def test_create_sandbox_tools_omits_budget_status_by_default():
+    # No hosted_api_key -- budget_status has nothing to report on, so it
+    # must not be in the tool list at all (not just a stub that always
+    # says "not available"), matching every other opt-in tool's convention.
+    tools = create_sandbox_tools(
+        sandbox_manager=_FakeSandboxManager(),
+        organization_id=uuid4(),
+        work_item_id=uuid4(),
+        session_id="session-1",
+    )
+
+    assert "budget_status" not in {t.name for t in tools}
+
+
+def test_create_sandbox_tools_with_hosted_api_key_includes_budget_status():
+    tools = create_sandbox_tools(
+        sandbox_manager=_FakeSandboxManager(),
+        organization_id=uuid4(),
+        work_item_id=uuid4(),
+        session_id="session-1",
+        hosted_api_key="test-key",
+    )
+
+    tool_names = {t.name for t in tools}
+    assert "budget_status" in tool_names
+    assert len(tools) == 16
+
+
 def test_create_sandbox_tools_run_tests_is_off_by_default():
     tools = create_sandbox_tools(
         sandbox_manager=_FakeSandboxManager(),

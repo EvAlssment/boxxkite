@@ -22,6 +22,24 @@ async def test_usage_reflects_zero_before_any_sandbox(client: httpx.AsyncClient)
     assert "concurrent_sandboxes_limit" in body
 
 
+async def test_usage_reports_rate_limit_headroom(client: httpx.AsyncClient):
+    """GitHub issue #75: GET /v1/usage exposes sandbox_ops rate-limit
+    headroom -- a read-only peek that doesn't itself count as a hit."""
+    from control_plane.config import settings
+
+    key = await signup_and_get_api_key(client, "usage-rate-limit@example.com")
+
+    first = await client.get("/v1/usage", headers={"Authorization": f"Bearer {key}"})
+    assert first.status_code == 200
+    body = first.json()
+    assert body["sandbox_ops_rate_limit"] == settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+    assert body["sandbox_ops_rate_limit_remaining"] == settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+
+    # Checking usage itself must never consume from the bucket it's peeking.
+    second = await client.get("/v1/usage", headers={"Authorization": f"Bearer {key}"})
+    assert second.json()["sandbox_ops_rate_limit_remaining"] == settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+
+
 async def test_usage_reflects_active_sandbox(client: httpx.AsyncClient, fake_manager: FakeSandboxManager):
     key = await signup_and_get_api_key(client, "usage-active@example.com")
     await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {key}"})
