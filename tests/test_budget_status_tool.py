@@ -102,6 +102,28 @@ async def test_reports_http_error_status(monkeypatch):
     assert "401" in result
 
 
+async def test_degrades_gracefully_against_an_older_control_plane(monkeypatch):
+    """GitHub issue #75 review: this package ships on PyPI independently
+    of the hosted control-plane. A caller could be talking to a server
+    that predates sandbox_ops_rate_limit_remaining/sandbox_ops_rate_limit
+    -- that must omit the rate-limit line, not raise a KeyError."""
+    old_body = {
+        "monthly_sandbox_hours_used": 12.5,
+        "monthly_sandbox_hours_limit": 100.0,
+        "concurrent_sandboxes": 1,
+        "concurrent_sandboxes_limit": 5,
+        "total_sandboxes_created": 3,
+    }
+    _patch_client(monkeypatch, response=_FakeResponse(200, old_body))
+    spec = create_budget_status_tool_spec(hosted_api_key="test-key")
+
+    result = await spec.handler()
+
+    assert "12.50 / 100.00" in result
+    assert "1 / 5" in result
+    assert "Rate-limit headroom" not in result
+
+
 async def test_reports_transport_error(monkeypatch):
     class _BrokenClient:
         def __init__(self, *args, **kwargs):

@@ -227,7 +227,13 @@ async def peek_remaining(*, bucket: str, subject: str, limit: int) -> int:
     """
     if settings.BOXXKITE_RATE_LIMIT_BACKEND == "postgres":
         window_start = int(time.time() // _WINDOW_SECONDS) * int(_WINDOW_SECONDS)
-        factory = get_session_factory()
+        # Via _postgres_limiter._factory(), not get_session_factory() directly,
+        # so this respects an injected session_factory the same way
+        # hit_and_count() does -- they must agree on which DB they're reading/
+        # writing, or a test (or future caller) injecting a factory into
+        # _postgres_limiter would see peek_remaining silently read from a
+        # different database than hit_and_count writes to.
+        factory = _postgres_limiter._factory()
         async with factory() as session:
             result = await session.execute(
                 text("SELECT count FROM rate_limit_windows WHERE key = :key AND window_start = :window_start"),

@@ -107,12 +107,13 @@ def create_sandbox_tool_specs(
     - (opt-in, see enable_run_tests) run_tests: Run a test command and parse
       its output into a structured schema instead of raw stdout (see
       run_tests_tool.py; only pytest output is parsed so far)
-    - budget_status: Remaining hosted-account sandbox-hours, concurrency,
-      and rate-limit headroom (see budget_status_tool.py). The one tool
-      here that does NOT go through sandbox_manager -- it calls the hosted
-      control-plane's GET /v1/usage directly with hosted_api_key, and
-      degrades to a plain "not available" message (not an error) when
-      hosted_api_key isn't set.
+    - (opt-in, present only when hosted_api_key is set) budget_status:
+      Remaining hosted-account sandbox-hours, concurrency, and rate-limit
+      headroom (see budget_status_tool.py). The one tool here that does
+      NOT go through sandbox_manager -- it calls the hosted
+      control-plane's GET /v1/usage directly with hosted_api_key. Not
+      registered at all without a hosted_api_key, since a self-hosted
+      deployment with no hosted account has no budget concept to report on.
 
     Each ToolSpec's `handler` is a plain async callable — no LangChain,
     LangGraph, CrewAI, or AutoGen import anywhere in this call path. Call
@@ -122,8 +123,8 @@ def create_sandbox_tool_specs(
     `to_openai_functions`).
 
     All execution routes through SandboxManager HTTP calls to the sidecar,
-    except budget_status (see above). Files are stored in the sidecar's
-    own S3/Azure storage at:
+    except the opt-in budget_status (see above). Files are stored in the
+    sidecar's own S3/Azure storage at:
         work-items/{org_id}/{work_item_id}/workspace/{path}
 
     Args:
@@ -218,11 +219,12 @@ def create_sandbox_tool_specs(
             full-document sync only (every call resends the whole current
             file, no incremental didChange deltas) -- see the scoping doc
             for the explicit list of what's deferred.
-        hosted_api_key: Hosted control-plane API key for the budget_status
-            tool (GitHub issue #75) to check usage against. Optional --
-            when omitted (e.g. a self-hosted deployment with no hosted
-            account), budget_status's handler returns a plain "not
-            available" message rather than failing.
+        hosted_api_key: Hosted control-plane API key for the opt-in
+            budget_status tool (GitHub issue #75) to check usage against.
+            budget_status is only added to the returned list when this is
+            set -- omit it (e.g. a self-hosted deployment with no hosted
+            account) to leave budget_status out entirely, rather than
+            shipping a tool with nothing useful to report.
         hosted_base_url: Hosted control-plane base URL for budget_status.
             Defaults to the public hosted SaaS.
 
@@ -405,16 +407,24 @@ def create_sandbox_tool_specs(
             session_id=effective_session_id,
             lazy_runtime=lazy_runtime,
         ),
-
-        # 16. Hosted-account budget/rate-limit check (read-only, GitHub issue #75).
-        # Not a SandboxManager call at all -- see the tool module's own docstring
-        # for why. Degrades to a plain "not available" message, not an error,
-        # when hosted_api_key isn't set (e.g. a self-hosted deployment).
-        create_budget_status_tool_spec(
-            hosted_api_key=hosted_api_key,
-            hosted_base_url=hosted_base_url,
-        ),
     ]
+
+    if hosted_api_key:
+        # Hosted-account budget/rate-limit check (read-only, GitHub issue #75).
+        # Gated on hosted_api_key being set, unlike the always-on tools above:
+        # a self-hosted deployment with no hosted account has no budget concept
+        # at all, so there's nothing this tool could usefully report -- rather
+        # than shipping a permanently-dead tool in every agent's tool list
+        # (context cost on every call, and an invitation for the model to call
+        # it for nothing), it's only registered when there's a real account to
+        # check. Not a SandboxManager call at all -- see the tool module's own
+        # docstring for why.
+        specs.append(
+            create_budget_status_tool_spec(
+                hosted_api_key=hosted_api_key,
+                hosted_base_url=hosted_base_url,
+            )
+        )
 
     if enable_http_request_tool:
         # Secrets-broker HTTP request tool (opt-in, see enable_http_request_tool's

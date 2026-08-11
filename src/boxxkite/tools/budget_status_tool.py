@@ -48,13 +48,37 @@ BUDGET_STATUS_PARAMETERS = {
 
 
 def _format_budget_status(usage: dict) -> str:
-    lines = [
-        f"Monthly sandbox-hours: {usage['monthly_sandbox_hours_used']:.2f} / "
-        f"{usage['monthly_sandbox_hours_limit']:.2f} used",
-        f"Concurrent sandboxes: {usage['concurrent_sandboxes']} / {usage['concurrent_sandboxes_limit']}",
-        f"Rate-limit headroom (exec/file-ops): {usage['sandbox_ops_rate_limit_remaining']} / "
-        f"{usage['sandbox_ops_rate_limit']} remaining this minute",
-    ]
+    """Formats whatever fields are actually present.
+
+    Uses .get(), not usage[...]: this package ships on PyPI independently
+    of the hosted control-plane deployment, so a caller could be talking
+    to a control-plane that predates sandbox_ops_rate_limit* (added after
+    the rest of this response shape) or, in principle, an even older one
+    missing other fields. Missing pieces are omitted from the summary
+    rather than raising -- consistent with this tool degrading to a
+    plain message instead of erroring when hosted_api_key itself is
+    unset.
+    """
+    lines = []
+    hours_used = usage.get("monthly_sandbox_hours_used")
+    hours_limit = usage.get("monthly_sandbox_hours_limit")
+    if hours_used is not None and hours_limit is not None:
+        lines.append(f"Monthly sandbox-hours: {hours_used:.2f} / {hours_limit:.2f} used")
+
+    concurrent = usage.get("concurrent_sandboxes")
+    concurrent_limit = usage.get("concurrent_sandboxes_limit")
+    if concurrent is not None and concurrent_limit is not None:
+        lines.append(f"Concurrent sandboxes: {concurrent} / {concurrent_limit}")
+
+    rate_remaining = usage.get("sandbox_ops_rate_limit_remaining")
+    rate_limit = usage.get("sandbox_ops_rate_limit")
+    if rate_remaining is not None and rate_limit is not None:
+        lines.append(
+            f"Rate-limit headroom (exec/file-ops): {rate_remaining} / {rate_limit} remaining this minute"
+        )
+
+    if not lines:
+        return "Budget status response didn't contain any recognized usage fields."
     return "\n".join(lines)
 
 
@@ -95,14 +119,15 @@ def create_budget_status_tool_spec(
                     f"{hosted_base_url.rstrip('/')}/v1/usage",
                     headers={"Authorization": f"Bearer {hosted_api_key}"},
                 )
+            if resp.status_code != 200:
+                return f"Error checking budget status: HTTP {resp.status_code}"
+            return _format_budget_status(resp.json())
         except Exception as e:
+            # Covers the request itself, a non-JSON body, and anything
+            # _format_budget_status doesn't already tolerate -- this tool
+            # promises to degrade to a message, never raise.
             logger.error(f"[budget_status] Error: {e}", exc_info=True)
             return f"Error checking budget status: {str(e)}"
-
-        if resp.status_code != 200:
-            return f"Error checking budget status: HTTP {resp.status_code}"
-
-        return _format_budget_status(resp.json())
 
     return ToolSpec(
         name="budget_status",
