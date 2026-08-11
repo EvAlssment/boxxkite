@@ -379,10 +379,22 @@ class UsagePolicy:
         restore_from_snapshot_id: str | None = None,
         secret_names: list[str] | None = None,
         image_ref: str | None = None,
+        image_id: str | None = None,
         volume_mounts: list[dict] | None = None,
+        raw_volume_mounts: dict[str, str] | None = None,
         mcp_connection_names: list[str] | None = None,
         gpu_count: int | None = None,
     ) -> tuple[SandboxSession, dict]:
+        # image_id/raw_volume_mounts are the caller-facing identifiers
+        # (SandboxCreateRequest's own fields), persisted onto the new
+        # SandboxSession row as-is so a later snapshot/restore (GitHub issue
+        # #26) can re-resolve them through the same ownership/status checks
+        # a fresh create already does -- image_ref/volume_mounts above are
+        # the already-resolved values this method actually hands to
+        # SandboxManager, which is a lossy, resolution-time-only form not
+        # safe to persist and replay later against a possibly-deleted
+        # image/volume.
+
         # Validated before ever acquiring _create_session_lock -- these are
         # cheap, purely config-driven checks that don't need the
         # count-check-then-reserve critical section below.
@@ -523,7 +535,17 @@ class UsagePolicy:
             # soon as this transaction commits -- the row exists (and counts
             # as active) well before any pod does.
             row = await self._sessions.create(
-                session_id=session_id, account_id=account.id, pod_name=None, label=label
+                session_id=session_id,
+                account_id=account.id,
+                pod_name=None,
+                label=label,
+                size=size,
+                storage_gb=storage_gb,
+                image_id=image_id,
+                secret_names=secret_names,
+                volume_mounts=raw_volume_mounts,
+                mcp_connection_names=mcp_connection_names,
+                gpu_count=gpu_count,
             )
 
         # Lock released. NOTE (judgment call, see the top-level report):

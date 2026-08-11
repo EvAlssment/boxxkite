@@ -471,7 +471,9 @@ async def _create_one_sandbox(
         lifetime_minutes=body.lifetime_minutes,
         secret_names=body.secret_names,
         image_ref=image_ref,
+        image_id=body.image_id,
         volume_mounts=volume_mounts,
+        raw_volume_mounts=body.volume_mounts,
         mcp_connection_names=body.mcp_connection_names,
         gpu_count=body.gpu_count,
     )
