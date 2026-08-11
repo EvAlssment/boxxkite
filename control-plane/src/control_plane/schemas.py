@@ -823,6 +823,48 @@ class SandboxLogResponse(BaseModel):
     total: int = Field(description="Total matching rows for this session, independent of limit/offset.")
 
 
+class SandboxDiagnosticsContainer(BaseModel):
+    name: str | None = None
+    ready: bool = False
+    restart_count: int = 0
+    state: str | None = None
+    reason: str | None = None
+    message: str | None = None
+    exit_code: int | None = None
+    signal: int | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class SandboxDiagnosticsLog(BaseModel):
+    container: str
+    output: str = ""
+    error: str | None = None
+
+
+class SandboxDiagnosticsEvent(BaseModel):
+    type: str | None = None
+    reason: str | None = None
+    message: str | None = None
+    count: int | None = None
+    first_timestamp: datetime | None = None
+    last_timestamp: datetime | None = None
+    source: str | None = None
+
+
+class SandboxDiagnosticsResponse(BaseModel):
+    session_id: str
+    status: Literal["active", "destroyed"]
+    why: str
+    runtime: str
+    pod: dict | None = None
+    containers: list[SandboxDiagnosticsContainer] = Field(default_factory=list)
+    logs: list[SandboxDiagnosticsLog] = Field(default_factory=list)
+    events: list[SandboxDiagnosticsEvent] = Field(default_factory=list)
+    audit_entries: list[ExecLogEntryOut] = Field(default_factory=list)
+    unavailable: str | None = None
+
+
 # ── Admin audit-log aggregation (docs/ADMIN-ROLE-DESIGN.md, closing
 # GitHub issue #140) ─────────────────────────────────────────────────────
 # `GET /v1/admin/audit-log` is the cross-account counterpart to
