@@ -291,12 +291,31 @@ async def restore_snapshot(
             "Failed to seed the new sandbox session from this snapshot.",
         ) from exc
 
-    row, _manager_result = await policy.create_session(
-        account,
-        label=body.label,
-        session_id=new_session_id,
-        restore_from_snapshot_id=snapshot.id,
-    )
+    try:
+        row, _manager_result = await policy.create_session(
+            account,
+            label=body.label,
+            session_id=new_session_id,
+            restore_from_snapshot_id=snapshot.id,
+        )
+    except Exception:
+        # The seed copy above already landed real objects at dest_prefix --
+        # without this, a failure here (concurrency/usage limit, a
+        # SandboxManager error) leaves that copy behind forever with
+        # nothing referencing it, since no SandboxSession row for
+        # new_session_id was ever created. Best-effort: a cleanup failure
+        # is logged, not raised, so it never masks the original error the
+        # caller needs to see.
+        try:
+            await snapshot_storage.delete_prefix(prefix=dest_prefix)
+        except Exception as cleanup_exc:
+            logger.warning(
+                "[snapshots] failed to clean up orphaned restore seed at %s for snapshot %s: %s",
+                dest_prefix,
+                snapshot_id,
+                cleanup_exc,
+            )
+        raise
 
     active_count = await SandboxSessionRepository(db).count_active_for_account(account.id)
     hours_used = await policy.monthly_hours_used(account.id)
