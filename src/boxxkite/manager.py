@@ -928,6 +928,139 @@ class SandboxManager(
             self._compose_url = env_url or "http://localhost:8080"
             logger.info(f"[SandboxManager] Running in Docker Compose mode, sidecar at {self._compose_url}")
 
+    async def diagnostics(self, session_id: str, *, tail_lines: int = 200, event_limit: int = 100) -> dict:
+        """Collect best-effort pod diagnostics for one sandbox.
+
+        This is intentionally a read-only public manager method.  The control
+        plane authenticates and account-scopes the session before calling it;
+        the manager owns the Kubernetes details and keeps them out of router
+        code.  Individual log/event failures are returned as data so a broken
+        pod can still be diagnosed when only some Kubernetes resources remain.
+        """
+        if self._use_docker_compose:
+            return {
+                "runtime": "compose",
+                "pod": None,
+                "containers": [],
+                "logs": [],
+                "events": [],
+                "unavailable": "Docker Compose mode does not expose a per-session Kubernetes pod.",
+            }
+
+        await self._init_k8s()
+        if self._k8s_core_api is None:
+            return {
+                "runtime": "kubernetes",
+                "pod": None,
+                "containers": [],
+                "logs": [],
+                "events": [],
+                "unavailable": "Kubernetes diagnostics are unavailable because the cluster client could not be initialized.",
+            }
+
+        pod_name = None
+        try:
+            pods = await self._k8s_core_api.list_namespaced_pod(
+                namespace=SANDBOX_NAMESPACE,
+                label_selector=f"session-id={_to_k8s_label_value(session_id, prefix='session')}",
+            )
+            items = getattr(pods, "items", []) or []
+            if items:
+                pod_name = getattr(getattr(items[0], "metadata", None), "name", None)
+        except Exception as exc:
+            logger.warning("[SandboxManager] diagnostics pod lookup failed for %s: %s", session_id, exc)
+
+        if pod_name is None:
+            return {
+                "runtime": "kubernetes",
+                "pod": None,
+                "containers": [],
+                "logs": [],
+                "events": [],
+                "unavailable": "No Kubernetes pod was found for this sandbox. It may have already been deleted.",
+            }
+
+        pod = None
+        try:
+            pod = await self._k8s_core_api.read_namespaced_pod(name=pod_name, namespace=SANDBOX_NAMESPACE)
+        except Exception as exc:
+            return {
+                "runtime": "kubernetes", "pod": {"name": pod_name}, "containers": [],
+                "logs": [], "events": [], "unavailable": f"The pod could not be inspected: {exc}",
+            }
+
+        status = getattr(pod, "status", None)
+        metadata = getattr(pod, "metadata", None)
+        pod_data = {
+            "name": pod_name,
+            "namespace": SANDBOX_NAMESPACE,
+            "phase": getattr(status, "phase", None),
+            "reason": getattr(status, "reason", None),
+            "message": getattr(status, "message", None),
+            "pod_ip": getattr(status, "pod_ip", None),
+            "start_time": getattr(status, "start_time", None),
+            "deletion_timestamp": getattr(metadata, "deletion_timestamp", None),
+        }
+        containers = []
+        for state_group in ("container_statuses", "init_container_statuses"):
+            for item in getattr(status, state_group, None) or []:
+                state = getattr(item, "state", None)
+                current = getattr(state, "running", None) or getattr(state, "waiting", None) or getattr(state, "terminated", None)
+                containers.append({
+                    "name": getattr(item, "name", None),
+                    "ready": getattr(item, "ready", False),
+                    "restart_count": getattr(item, "restart_count", 0),
+                    "state": next((name for name in ("running", "waiting", "terminated") if getattr(state, name, None) is not None), None),
+                    "reason": getattr(current, "reason", None),
+                    "message": getattr(current, "message", None),
+                    "exit_code": getattr(current, "exit_code", None),
+                    "signal": getattr(current, "signal", None),
+                    "started_at": getattr(current, "started_at", None),
+                    "finished_at": getattr(current, "finished_at", None),
+                })
+
+        logs = []
+        for container in containers:
+            name = container.get("name")
+            if not name:
+                continue
+            try:
+                output = await self._k8s_core_api.read_namespaced_pod_log(
+                    name=pod_name, namespace=SANDBOX_NAMESPACE, container=name, tail_lines=tail_lines,
+                )
+                logs.append({"container": name, "output": output or "", "error": None})
+            except Exception as exc:
+                logs.append({"container": name, "output": "", "error": str(exc)})
+
+        events = []
+        try:
+            event_list = await self._k8s_core_api.list_namespaced_event(namespace=SANDBOX_NAMESPACE)
+            def event_sort_key(event):
+                value = getattr(event, "last_timestamp", None) or getattr(event, "event_time", None)
+                return value.timestamp() if value is not None and hasattr(value, "timestamp") else 0
+
+            for item in sorted(
+                getattr(event_list, "items", []) or [],
+                key=event_sort_key,
+                reverse=True,
+            ):
+                involved = getattr(item, "involved_object", None)
+                if getattr(involved, "name", None) != pod_name:
+                    continue
+                events.append({
+                    "type": getattr(item, "type", None), "reason": getattr(item, "reason", None),
+                    "message": getattr(item, "message", None), "count": getattr(item, "count", None),
+                    "first_timestamp": getattr(item, "first_timestamp", None),
+                    "last_timestamp": getattr(item, "last_timestamp", None) or getattr(item, "event_time", None),
+                    "source": getattr(getattr(item, "source", None), "component", None),
+                })
+                if len(events) >= event_limit:
+                    break
+        except Exception as exc:
+            events.append({"type": "Warning", "reason": "DiagnosticsUnavailable", "message": str(exc)})
+
+        return {"runtime": "kubernetes", "pod": pod_data, "containers": containers, "logs": logs, "events": events}
+
 
 
 # Singleton instance (optional, for simple usage)

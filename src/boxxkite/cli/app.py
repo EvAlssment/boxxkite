@@ -11,6 +11,7 @@ from . import (
     cmd_allowlist,
     cmd_audit,
     cmd_config,
+    cmd_diagnostics,
     cmd_exec,
     cmd_files,
     cmd_handoff,
@@ -61,6 +62,16 @@ session_app.command("ls")(cli_error_boundary(cmd_session.ls))
 session_app.command("get")(cli_error_boundary(cmd_session.get))
 session_app.command("rm")(cli_error_boundary(cmd_session.rm))
 app.add_typer(session_app, name="session")
+
+diagnostics_app = typer.Typer(
+    help="Inspect hosted sandbox logs, pod state, lifecycle events, and failure reasons.",
+    no_args_is_help=True,
+)
+diagnostics_app.command("summary")(cli_error_boundary(cmd_diagnostics.summary))
+diagnostics_app.command("logs")(cli_error_boundary(cmd_diagnostics.logs))
+diagnostics_app.command("inspect")(cli_error_boundary(cmd_diagnostics.inspect))
+diagnostics_app.command("events")(cli_error_boundary(cmd_diagnostics.events))
+app.add_typer(diagnostics_app, name="diagnostics")
 
 files_app = typer.Typer(
     help="View, create, edit, and search files in a sandbox (hosted session or local docker-compose sidecar).",
