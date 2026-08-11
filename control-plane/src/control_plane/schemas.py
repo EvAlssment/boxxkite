@@ -366,6 +366,23 @@ class UsageSummary(BaseModel):
     )
 
 
+class UsageDetail(UsageSummary):
+    """GET /v1/usage's own response -- UsageSummary plus rate-limit
+    headroom (GitHub issue #75), which the inline usage on sandbox
+    creation/restore responses doesn't include, since peeking it isn't
+    free and every create/restore already computes UsageSummary today."""
+
+    sandbox_ops_rate_limit_remaining: int = Field(
+        description="Remaining exec/file-op calls allowed against this account in the "
+        "current 60-second window, from the same 'sandbox_ops' rate-limit bucket "
+        "POST/GET .../exec and .../files enforce. A read-only peek -- checking this "
+        "never itself counts as a hit."
+    )
+    sandbox_ops_rate_limit: int = Field(
+        description="The 'sandbox_ops' bucket's configured limit (BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE)."
+    )
+
+
 class UsageRollupGroup(BaseModel):
     """One row in GET /v1/usage/rollup's breakdown. What `key` holds
     depends on the request's `group_by`: a session id, an ISO calendar day
