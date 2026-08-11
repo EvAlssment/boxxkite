@@ -2,7 +2,8 @@
 
 `boxxkite handoff <tool>` (part of the main `boxxkite` CLI — `pip install
 boxxkite-sandbox` is the only install step, no separate package) lets someone
-running Claude Code, Codex CLI, opencode, or Cursor locally move their
+running Claude Code, Codex CLI, opencode, Cursor, Gemini CLI, Kimi Code CLI,
+or Qwen Code locally move their
 **in-progress, full-history conversation** into a fresh boxxkite sandbox and
 keep interacting with it from there — the CLI keeps running under the user's
 own (portable, scoped) credential, not a copy of their laptop's raw login
@@ -156,6 +157,7 @@ Concretely:
 | opencode | provider API key from `~/.local/share/opencode/auth.json` |
 | Cursor | `CURSOR_API_KEY` |
 | Gemini CLI | `GEMINI_API_KEY` — adapter not yet merged, see PR #122 |
+| Qwen Code | `DASHSCOPE_API_KEY`, or `OPENAI_API_KEY` for an OpenAI-compatible provider |
 
 Why this is safe to authenticate with in the sandbox at all: this
 credential authenticates the CLI process itself — the same process that
