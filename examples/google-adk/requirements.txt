@@ -1,0 +1,6 @@
+# Install boxxkite with the google-adk extra:
+#   pip install -e "../..[google-adk]"
+#
+# The google-adk package bundles google-genai as a dependency; no need to
+# pin it separately here.
+google-adk>=0.1.0,<1
