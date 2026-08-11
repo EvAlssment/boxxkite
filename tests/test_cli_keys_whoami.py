@@ -119,6 +119,8 @@ def test_whoami_shows_email_and_usage(monkeypatch):
                     "monthly_sandbox_hours_limit": 20.0,
                     "concurrent_sandboxes": 1,
                     "concurrent_sandboxes_limit": 2,
+                    "sandbox_ops_rate_limit_remaining": 55,
+                    "sandbox_ops_rate_limit": 60,
                 },
             )
         raise AssertionError(f"unexpected request: {method} {url}")
@@ -131,6 +133,7 @@ def test_whoami_shows_email_and_usage(monkeypatch):
     assert "me@example.com" in result.output
     assert "1.5" in result.output
     assert "20.0" in result.output
+    assert "55/60" in result.output
 
 
 def test_whoami_in_local_mode_explains_capability_gap():

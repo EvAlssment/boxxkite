@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 from ..audit import AuditSink
 from .bash_tool import create_bash_tool_spec
+from .budget_status_tool import DEFAULT_HOSTED_BASE_URL, create_budget_status_tool_spec
 from .browser_tools import create_browser_tool_specs
 from .file_tools import (
     create_file_create_tool_spec,
@@ -77,6 +78,8 @@ def create_sandbox_tool_specs(
     enable_run_tests: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
+    hosted_api_key: Optional[str] = None,
+    hosted_base_url: str = DEFAULT_HOSTED_BASE_URL,
 ) -> list[ToolSpec]:
     """
     Create the complete, framework-agnostic set of sandbox ToolSpecs.
@@ -104,6 +107,12 @@ def create_sandbox_tool_specs(
     - (opt-in, see enable_run_tests) run_tests: Run a test command and parse
       its output into a structured schema instead of raw stdout (see
       run_tests_tool.py; only pytest output is parsed so far)
+    - budget_status: Remaining hosted-account sandbox-hours, concurrency,
+      and rate-limit headroom (see budget_status_tool.py). The one tool
+      here that does NOT go through sandbox_manager -- it calls the hosted
+      control-plane's GET /v1/usage directly with hosted_api_key, and
+      degrades to a plain "not available" message (not an error) when
+      hosted_api_key isn't set.
 
     Each ToolSpec's `handler` is a plain async callable — no LangChain,
     LangGraph, CrewAI, or AutoGen import anywhere in this call path. Call
@@ -112,8 +121,9 @@ def create_sandbox_tool_specs(
     adapter from boxxkite.tools.adapters (`to_langchain_tools`,
     `to_openai_functions`).
 
-    All execution routes through SandboxManager HTTP calls to the sidecar.
-    Files are stored in the sidecar's own S3/Azure storage at:
+    All execution routes through SandboxManager HTTP calls to the sidecar,
+    except budget_status (see above). Files are stored in the sidecar's
+    own S3/Azure storage at:
         work-items/{org_id}/{work_item_id}/workspace/{path}
 
     Args:
@@ -208,6 +218,13 @@ def create_sandbox_tool_specs(
             full-document sync only (every call resends the whole current
             file, no incremental didChange deltas) -- see the scoping doc
             for the explicit list of what's deferred.
+        hosted_api_key: Hosted control-plane API key for the budget_status
+            tool (GitHub issue #75) to check usage against. Optional --
+            when omitted (e.g. a self-hosted deployment with no hosted
+            account), budget_status's handler returns a plain "not
+            available" message rather than failing.
+        hosted_base_url: Hosted control-plane base URL for budget_status.
+            Defaults to the public hosted SaaS.
 
     Returns:
         List of ToolSpec
@@ -388,6 +405,15 @@ def create_sandbox_tool_specs(
             session_id=effective_session_id,
             lazy_runtime=lazy_runtime,
         ),
+
+        # 16. Hosted-account budget/rate-limit check (read-only, GitHub issue #75).
+        # Not a SandboxManager call at all -- see the tool module's own docstring
+        # for why. Degrades to a plain "not available" message, not an error,
+        # when hosted_api_key isn't set (e.g. a self-hosted deployment).
+        create_budget_status_tool_spec(
+            hosted_api_key=hosted_api_key,
+            hosted_base_url=hosted_base_url,
+        ),
     ]
 
     if enable_http_request_tool:
@@ -538,6 +564,8 @@ def create_sandbox_tools(
     enable_run_tests: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
+    hosted_api_key: Optional[str] = None,
+    hosted_base_url: str = DEFAULT_HOSTED_BASE_URL,
 ) -> list:
     """
     Create all sandbox tools for an agent, as LangChain tools.
@@ -592,6 +620,8 @@ def create_sandbox_tools(
         enable_run_tests=enable_run_tests,
         enable_browser_tool=enable_browser_tool,
         enable_lsp_tools=enable_lsp_tools,
+        hosted_api_key=hosted_api_key,
+        hosted_base_url=hosted_base_url,
     )
     return to_langchain_tools(specs)
 

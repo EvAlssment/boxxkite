@@ -47,7 +47,7 @@ def test_http_request_tool_present_when_enabled():
     )
     names = {t.name for t in tools}
     assert "http_request" in names
-    assert len(tools) == 16
+    assert len(tools) == 17
 
 
 @pytest.mark.asyncio

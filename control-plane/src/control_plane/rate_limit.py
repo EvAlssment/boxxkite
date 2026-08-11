@@ -216,6 +216,37 @@ async def enforce_rate_limit(
         response.headers["X-RateLimit-Remaining"] = str(remaining)
 
 
+async def peek_remaining(*, bucket: str, subject: str, limit: int) -> int:
+    """Read-only: how many more requests `subject` can make against
+    `bucket` in the current window, without recording a hit -- unlike
+    `enforce_rate_limit`, which always counts the call it's guarding.
+
+    Used by `GET /v1/usage` (GitHub issue #75) so an agent can check its
+    remaining headroom before making a call, rather than only finding out
+    via a 429 on the call itself.
+    """
+    if settings.BOXXKITE_RATE_LIMIT_BACKEND == "postgres":
+        window_start = int(time.time() // _WINDOW_SECONDS) * int(_WINDOW_SECONDS)
+        factory = get_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                text("SELECT count FROM rate_limit_windows WHERE key = :key AND window_start = :window_start"),
+                {"key": f"{bucket}:{subject}", "window_start": window_start},
+            )
+            row = result.first()
+            count = row[0] if row is not None else 0
+        return max(0, limit - count)
+
+    now = time.monotonic()
+    key = f"{bucket}:{subject}"
+    window = _hits.get(key)
+    if window is None:
+        return limit
+    while window and now - window[0] > _WINDOW_SECONDS:
+        window.popleft()
+    return max(0, limit - len(window))
+
+
 def reset_rate_limits_for_tests() -> None:
     """Test-only helper to avoid cross-test bleed of the in-memory limiter state.
 

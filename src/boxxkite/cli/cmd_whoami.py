@@ -32,3 +32,7 @@ def whoami() -> None:
     typer.echo(
         f"concurrent sandboxes: {usage['concurrent_sandboxes']}/{usage['concurrent_sandboxes_limit']}"
     )
+    typer.echo(
+        f"exec/file-op rate limit: {usage['sandbox_ops_rate_limit_remaining']}/"
+        f"{usage['sandbox_ops_rate_limit']} remaining this minute"
+    )
