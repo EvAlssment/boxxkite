@@ -255,6 +255,25 @@ class SandboxSession(Base):
     # informational.
     destroyed_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
+    # The rest of this table is the session's own requested config, mirrored
+    # onto `Snapshot` at snapshot-creation time so a restore can recreate an
+    # equivalent session (GitHub issue #26) -- a snapshot must outlive its
+    # source session, so this can't just be looked up here at restore time.
+    # All nullable: rows created before this column set existed have none of
+    # this, and a restore falls back to defaults for those, same as today.
+    size: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    storage_gb: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Caller-facing resource ids (SandboxCreateRequest.image_id/volume_mounts),
+    # not the resolved registry_ref/pvc_name SandboxManager is actually given --
+    # a restore re-resolves these through the same ownership/status checks a
+    # fresh create does, rather than replaying a possibly-stale resolved
+    # reference to a since-deleted image or volume.
+    image_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    secret_names: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    volume_mounts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    mcp_connection_names: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    gpu_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     account: Mapped["Account"] = relationship(back_populates="sandbox_sessions")
 
 
@@ -543,6 +562,20 @@ class Snapshot(Base):
     # DELETE .../snapshots/{id} sets this AND deletes the underlying
     # storage objects; it never merely hides the row.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Mirrors the source SandboxSession's own config at the moment this
+    # snapshot was taken (see SandboxSession's matching fields) -- a
+    # snapshot must outlive its source session, so this can't be read live
+    # off that row at restore time. Nullable: a snapshot taken before this
+    # column set existed has none of this, and restoring it falls back to
+    # defaults, same as today.
+    size: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    storage_gb: Mapped[float | None] = mapped_column(Float, nullable=True)
+    image_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    secret_names: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    volume_mounts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    mcp_connection_names: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    gpu_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class SandboxImage(Base):
