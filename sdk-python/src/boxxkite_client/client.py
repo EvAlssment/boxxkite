@@ -24,7 +24,7 @@ import httpx
 import websockets
 import websockets.sync.client
 
-from .exceptions import BoxxkiteApiError, BoxxkiteConnectionError
+from .exceptions import BoxxkiteApiError, BoxxkiteConnectionError, api_error_type
 
 DEFAULT_TIMEOUT = 30.0
 EXEC_TIMEOUT_HEADROOM = 15.0
@@ -192,7 +192,16 @@ def _raise_for_error(resp: httpx.Response) -> None:
         if isinstance(err, dict):
             code = err.get("code", code)
             message = err.get("message", message)
-    raise BoxxkiteApiError(status_code=resp.status_code, code=code, message=message)
+    err = payload.get("error", {}) if isinstance(payload, dict) else {}
+    error_cls = api_error_type(code, resp.status_code)
+    raise error_cls(
+        status_code=resp.status_code,
+        code=code,
+        message=message,
+        retryable=bool(err.get("retryable", resp.status_code >= 500)),
+        remediation=err.get("remediation"),
+        details=err.get("details"),
+    )
 
 
 class BoxxkiteClient:

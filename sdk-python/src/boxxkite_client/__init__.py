@@ -17,7 +17,12 @@ from .client import (
     RetryConfig,
     SandboxSession,
 )
-from .exceptions import BoxxkiteApiError, BoxxkiteConnectionError, BoxxkiteError
+from .exceptions import (
+    BoxxkiteApiError, BoxxkiteCapabilityDeniedError, BoxxkiteConnectionError,
+    BoxxkiteEgressDeniedError, BoxxkiteError, BoxxkiteQuotaExceededError,
+    BoxxkiteReadonlyFilesystemError, BoxxkiteSandboxCrashedError,
+    BoxxkiteSandboxNotReadyError, BoxxkiteServiceUnavailableError,
+)
 
 __all__ = [
     "AsyncBoxxkiteClient",
@@ -25,7 +30,14 @@ __all__ = [
     "BoxxkiteApiError",
     "BoxxkiteClient",
     "BoxxkiteConnectionError",
+    "BoxxkiteCapabilityDeniedError",
+    "BoxxkiteEgressDeniedError",
     "BoxxkiteError",
+    "BoxxkiteQuotaExceededError",
+    "BoxxkiteReadonlyFilesystemError",
+    "BoxxkiteSandboxCrashedError",
+    "BoxxkiteSandboxNotReadyError",
+    "BoxxkiteServiceUnavailableError",
     "RetryConfig",
     "SandboxSession",
 ]

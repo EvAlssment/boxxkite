@@ -18,6 +18,8 @@ pub enum BoxxkiteError {
         status: u16,
         code: String,
         message: String,
+        retryable: bool,
+        remediation: Option<String>,
     },
 
     /// The request never reached the control-plane, or its response
@@ -93,6 +95,14 @@ impl BoxxkiteError {
             _ => None,
         }
     }
+
+    pub fn retryable(&self) -> bool {
+        match self { BoxxkiteError::Api { retryable, .. } => *retryable, _ => false }
+    }
+
+    pub fn remediation(&self) -> Option<&str> {
+        match self { BoxxkiteError::Api { remediation, .. } => remediation.as_deref(), _ => None }
+    }
 }
 
 /// Parsed shape of this API's error envelope: `{"error": {"code", "message"}}`.
@@ -107,6 +117,10 @@ pub(crate) struct ErrorBody {
     pub code: String,
     #[serde(default)]
     pub message: Option<String>,
+    #[serde(default)]
+    pub retryable: bool,
+    #[serde(default)]
+    pub remediation: Option<String>,
 }
 
 fn default_error_code() -> String {
@@ -119,14 +133,16 @@ fn default_error_code() -> String {
 /// regular request path and `watch`'s Server-Sent Events path, which both
 /// need to turn a non-2xx response into the same `BoxxkiteError::Api` shape.
 pub(crate) fn api_error_from_bytes(status: u16, bytes: &[u8]) -> BoxxkiteError {
-    let (code, message) = serde_json::from_slice::<ErrorEnvelope>(bytes)
-        .ok()
-        .map(|env| (env.error.code, env.error.message.unwrap_or_default()))
-        .unwrap_or_else(|| ("error".to_string(), format!("HTTP {status}")));
+    let parsed = serde_json::from_slice::<ErrorEnvelope>(bytes).ok();
+    let (code, message, retryable, remediation) = parsed
+        .map(|env| (env.error.code, env.error.message.unwrap_or_default(), env.error.retryable, env.error.remediation))
+        .unwrap_or_else(|| ("error".to_string(), format!("HTTP {status}"), status >= 500, None));
     BoxxkiteError::Api {
         status,
         code,
         message,
+        retryable,
+        remediation,
     }
 }
 
