@@ -58,7 +58,7 @@ from ..deps import (
     get_usage_policy,
     _reject_if_scim_deactivated,
 )
-from ..errors import ApiError
+from ..errors import ApiError, error_metadata
 from ..pty_recording import PtyRecordingBuffer, finalize_takeover_recording
 from ..models_orm import Account, ApiKey, SandboxSession
 from ..rate_limit import enforce_rate_limit
@@ -375,11 +375,20 @@ def _sandbox_operation_error(operation: str, exc: Exception) -> ApiError:
     """Translate a SandboxManager/sidecar failure into this service's error
     envelope. Never leaks the raw exception (which can include internal pod
     names, stack traces, or transport details) to the caller."""
+    signal = str(exc).lower()
+    if isinstance(exc, PermissionError) or "read-only file system" in signal:
+        return ApiError(403, "readonly_filesystem", "The sandbox filesystem rejected this write.")
+    if any(term in signal for term in ("egress denied", "network is unreachable", "connection refused")):
+        return ApiError(403, "egress_denied", "The sandbox isolation policy denied this network operation.")
+    if any(term in signal for term in ("not ready", "no running pod", "pod not found")):
+        return ApiError(503, "sandbox_not_ready", "The sandbox is not ready to accept this operation.")
     return ApiError(
         502,
         "sandbox_operation_failed",
         f"Failed to run '{operation}' against the sandbox session. It may have "
         "become unavailable; try again or create a new session.",
+        remediation="Inspect sandbox diagnostics for logs, events, and resource failures.",
+        retryable=True,
     )
 
 
@@ -1538,6 +1547,17 @@ def _diagnostics_why(runtime: dict) -> str:
     return str(runtime.get("unavailable") or "failed: inspect pod events and container logs")
 
 
+def _diagnostics_code(why: str) -> str | None:
+    if why.startswith("killed:"): return "sandbox_crashed"
+    if why.startswith("cannot start:"): return "sandbox_not_ready"
+    if why.startswith("restarting:"): return "sandbox_crashed"
+    if why.startswith("evicted:"): return "sandbox_crashed"
+    if why.startswith("denied:"): return "egress_denied"
+    if why.startswith("waiting:"): return "sandbox_not_ready"
+    if why.startswith("failed:"): return "sandbox_crashed"
+    return None
+
+
 async def _build_diagnostics_response(*, session: SandboxSession, manager, db: AsyncSession, section: str) -> SandboxDiagnosticsResponse:
     try:
         runtime = await manager.diagnostics(str(session.id))
@@ -1548,10 +1568,16 @@ async def _build_diagnostics_response(*, session: SandboxSession, manager, db: A
     recent = await repo.list_for_session(
         session_id=str(session.id), limit=SANDBOX_LOG_MAX_LIMIT, offset=max(0, total - SANDBOX_LOG_MAX_LIMIT)
     )
+    why = _diagnostics_why(runtime)
+    code = _diagnostics_code(why)
+    metadata = error_metadata(code or "error")
     return SandboxDiagnosticsResponse(
         session_id=str(session.id),
         status="destroyed" if session.destroyed_at is not None else "active",
-        why=_diagnostics_why(runtime),
+        why=why,
+        error_code=code,
+        retryable=metadata.retryable if code else False,
+        remediation=metadata.remediation if code else None,
         runtime=runtime.get("runtime", "unknown"),
         pod=runtime.get("pod") if section in ("summary", "inspect") else None,
         containers=[SandboxDiagnosticsContainer.model_validate(item) for item in runtime.get("containers", [])]

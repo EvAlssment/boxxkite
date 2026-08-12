@@ -252,7 +252,15 @@ async def validation_error_handler(_request, exc: RequestValidationError) -> JSO
     ]
     return JSONResponse(
         status_code=422,
-        content={"error": {"code": "validation_error", "message": "Invalid request", "details": safe_details}},
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Invalid request",
+                "retryable": False,
+                "remediation": "Correct the fields listed in details and submit the request again.",
+                "details": safe_details,
+            }
+        },
     )
 
 
