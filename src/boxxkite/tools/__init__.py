@@ -104,6 +104,7 @@ from .search_tools import (
     create_grep_tool_spec,
 )
 from .budget_status_tool import create_budget_status_tool_spec
+from .adapters import to_google_adk_tools
 from .factory import (
     create_sandbox_tools,
     create_sandbox_tools_with_manager,
@@ -113,6 +114,7 @@ from .factory import (
 __all__ = [
     "ToolSpec",
     "ToolImageResult",
+    "to_google_adk_tools",
     "create_bash_tool",
     "create_bash_tool_spec",
     "create_file_create_tool",

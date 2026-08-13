@@ -30,6 +30,15 @@ that's:
   drives directly) — see docs/E2B-COMPARISON.md §5 for why that deeper
   integration is intentionally not attempted yet (it depends on the
   agent-callable PTY and volume-mount gaps tracked there).
+- `to_google_adk_tools`: `google.adk.tools.FunctionTool` objects for
+  Google ADK `Agent(tools=[...])`. Requires the `google-adk` extra
+  (`google-adk`); imported lazily. Each ToolSpec handler is wrapped in a
+  dynamically-named async function (so ADK can extract the tool name from
+  `func.__name__` and the description from `func.__doc__`) and handed to
+  `FunctionTool(func=...)`. NOTE: raw `google-genai` function-calling
+  without ADK does not need this adapter — use `to_openai_functions` to
+  get a JSON schema dict and unwrap it into `FunctionDeclaration` objects
+  yourself, the same way `examples/gemini_function_calling/agent.py` does.
 
 CrewAI, AutoGen, and hand-rolled agent loops don't need a bespoke adapter
 here: a `ToolSpec`'s `handler` is already a plain callable, and its
@@ -37,6 +46,8 @@ here: a `ToolSpec`'s `handler` is already a plain callable, and its
 frameworks want.
 """
 
+import functools
+import inspect
 from typing import Any
 
 from .types import ToolImageResult, ToolSpec
@@ -73,6 +84,7 @@ def to_langchain_tools(specs: list[ToolSpec]) -> list:
 
 
 def _to_langchain_tool(spec: ToolSpec):
+    """Convert a single ToolSpec into a LangChain BaseTool object."""
     if spec.returns_multimodal:
         return _to_multimodal_langchain_tool(spec)
 
@@ -139,6 +151,7 @@ def to_llamaindex_tools(specs: list[ToolSpec]) -> list:
 
 
 def _to_llamaindex_tool(spec: ToolSpec):
+    """Convert a single ToolSpec into a LlamaIndex FunctionTool object."""
     from llama_index.core.tools import FunctionTool
 
     fn_schema = _json_schema_to_pydantic_model(spec.name, spec.parameters)
@@ -215,6 +228,7 @@ def to_openai_agents_tools(specs: list[ToolSpec]) -> list:
 
 
 def _to_openai_agents_tool(spec: ToolSpec):
+    """Convert a single ToolSpec into an OpenAI Agents SDK FunctionTool object."""
     import json
 
     from agents.tool import FunctionTool
@@ -241,3 +255,59 @@ def _to_openai_agents_tool(spec: ToolSpec):
         on_invoke_tool=_on_invoke_tool,
         strict_json_schema=False,
     )
+
+
+def to_google_adk_tools(specs: list[ToolSpec]) -> list:
+    """Convert ToolSpecs into Google ADK `FunctionTool` objects.
+
+    Requires the `google-adk` extra: `pip install boxxkite-sandbox[google-adk]`.
+    Imports `google.adk` lazily so nothing outside this function ever requires
+    it to be installed.
+
+    NOTE: if you are using raw `google-genai` without the ADK framework, do not
+    use this adapter — use `to_openai_functions()` to get a JSON schema dict
+    and convert it to `FunctionDeclaration` objects yourself (see
+    `examples/gemini_function_calling/agent.py` for the canonical pattern).
+    """
+    return [_to_google_adk_tool(spec) for spec in specs]
+
+
+def _to_google_adk_tool(spec: ToolSpec):
+    """Convert a single ToolSpec into a Google ADK FunctionTool object."""
+    try:
+        from google.adk.tools import FunctionTool
+    except ImportError:
+        raise ImportError(
+            "google-adk is required to use to_google_adk_tools: "
+            "pip install boxxkite-sandbox[google-adk]"
+        )
+
+    handler = spec.handler
+    tool_name = spec.name
+    tool_description = spec.description
+
+    # ADK's FunctionTool(func=...) inspects func's name (__name__), docstring
+    # (__doc__), and parameter signature (__signature__) to build the tool
+    # declaration for Gemini function-calling.
+    @functools.wraps(handler)
+    async def _adk_fn(**kwargs: Any) -> dict:
+        result = await handler(**kwargs)
+        if isinstance(result, ToolImageResult):
+            # ADK tool return channel is text/dict-only; surface path + mime
+            # type rather than silently dropping the image data.
+            return {
+                "result": (
+                    f"[image content omitted from Google ADK tool result: "
+                    f"{result.file_path}, {result.mime_type}]"
+                )
+            }
+        return {"result": result}
+
+    _adk_fn.__name__ = tool_name
+    _adk_fn.__doc__ = tool_description
+    try:
+        _adk_fn.__signature__ = inspect.signature(handler)
+    except (ValueError, TypeError):
+        pass
+
+    return FunctionTool(func=_adk_fn)

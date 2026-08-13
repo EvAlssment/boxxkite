@@ -124,8 +124,8 @@ result = await bash_tool.handler(command="echo hello from boxxkite")
 ```
 
 Framework adapters (`boxxkite.tools.adapters`) convert the same tool specs for
-LangChain, LlamaIndex, the OpenAI Agents SDK, or plain OpenAI/Anthropic/
-Gemini/Mistral function-calling schemas — see the
+LangChain, LlamaIndex, the OpenAI Agents SDK, Google ADK, or plain OpenAI/
+Anthropic/Gemini/Mistral function-calling schemas — see the
 [full integration guide](https://boxxkite.com/developers/guides/quickstart)
 and [`examples/`](examples/) for a runnable version of every framework.
 
