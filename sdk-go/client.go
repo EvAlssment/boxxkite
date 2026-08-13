@@ -287,12 +287,27 @@ func apiErrorFromResponse(statusCode int, body []byte) error {
 	switch {
 	case strings.HasSuffix(code, "_limit_reached"), strings.HasSuffix(code, "_capacity_reached"):
 		return &QuotaExceededError{APIError: base}
-	case code == "egress_denied": return &EgressDeniedError{APIError: base}
-	case code == "sandbox_not_ready": return &SandboxNotReadyError{APIError: base}
-	case code == "capability_denied", code == "command_not_allowed": return &CapabilityDeniedError{APIError: base}
-	case code == "readonly_filesystem": return &ReadonlyFilesystemError{APIError: base}
-	case code == "sandbox_crashed": return &SandboxCrashedError{APIError: base}
-	case statusCode >= 500: return &ServiceUnavailableError{APIError: base}
+	case code == "egress_denied":
+		base.Taxonomy = "egress_denied"
+		return &EgressDeniedError{APIError: base}
+	case code == "sandbox_not_ready":
+		base.Taxonomy = "sandbox_not_ready"
+		return &SandboxNotReadyError{APIError: base}
+	case code == "capability_denied":
+		base.Taxonomy = "capability_denied"
+		return &CapabilityDeniedError{APIError: base}
+	case code == "command_not_allowed":
+		base.Taxonomy = "capability_denied"
+		return &base
+	case code == "readonly_filesystem":
+		base.Taxonomy = "readonly_filesystem"
+		return &ReadonlyFilesystemError{APIError: base}
+	case code == "sandbox_crashed":
+		base.Taxonomy = "sandbox_crashed"
+		return &SandboxCrashedError{APIError: base}
+	case statusCode >= 500:
+		base.Taxonomy = "service_unavailable"
+		return &base
 	default: return &base
 	}
 }

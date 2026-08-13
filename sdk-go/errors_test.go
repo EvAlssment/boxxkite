@@ -14,6 +14,47 @@ func TestAPIError_ErrorStringIncludesCodeAndStatus(t *testing.T) {
 	}
 }
 
+func TestAPIErrorCompatibilityPathsExposeTaxonomy(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		body   string
+		want   string
+		as     any
+	}{
+		{
+			name:   "command not allowed",
+			status: 403,
+			body:   `{"error":{"code":"command_not_allowed","message":"Command not in allowlist."}}`,
+			want:   "capability_denied",
+			as:     new(*CapabilityDeniedError),
+		},
+		{
+			name:   "generic server error",
+			status: 502,
+			body:   `{"error":{"code":"upstream_error","message":"Upstream unavailable."}}`,
+			want:   "service_unavailable",
+			as:     new(*ServiceUnavailableError),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := apiErrorFromResponse(tt.status, []byte(tt.body))
+			apiErr, ok := err.(*APIError)
+			if !ok {
+				t.Fatalf("expected compatibility *APIError, got %T", err)
+			}
+			if apiErr.Taxonomy != tt.want {
+				t.Fatalf("taxonomy = %q, want %q", apiErr.Taxonomy, tt.want)
+			}
+			if !errors.As(err, tt.as) {
+				t.Fatalf("errors.As(%T) failed for %T", tt.as, err)
+			}
+		})
+	}
+}
+
 func TestConnectionError_ErrorAndUnwrap(t *testing.T) {
 	inner := errors.New("dial tcp: connection refused")
 	err := &ConnectionError{Message: "boom", Err: inner}

@@ -13,10 +13,29 @@ type APIError struct {
 	Retryable  bool
 	Remediation string
 	Details    any
+	Taxonomy   string
 }
 
 func (e *APIError) Error() string {
 	return fmt.Sprintf("%s [%s] (HTTP %d)", e.Message, e.Code, e.StatusCode)
+}
+
+// As exposes the typed taxonomy without changing the historical concrete
+// return type of compatibility paths.
+func (e *APIError) As(target any) bool {
+	switch target := target.(type) {
+	case **CapabilityDeniedError:
+		if e.Taxonomy == "capability_denied" {
+			*target = &CapabilityDeniedError{APIError: *e}
+			return true
+		}
+	case **ServiceUnavailableError:
+		if e.Taxonomy == "service_unavailable" {
+			*target = &ServiceUnavailableError{APIError: *e}
+			return true
+		}
+	}
+	return false
 }
 
 // Named errors allow callers to use errors.As for the most actionable
