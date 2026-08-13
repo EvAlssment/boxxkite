@@ -93,6 +93,10 @@ from ..schemas import (
     SandboxHttpRequestRequest,
     SandboxHttpRequestResponse,
     SandboxLogResponse,
+    SandboxDiagnosticsContainer,
+    SandboxDiagnosticsEvent,
+    SandboxDiagnosticsLog,
+    SandboxDiagnosticsResponse,
     SandboxLsRequest,
     SandboxLsResponse,
     SandboxLspCompletionRequest,
@@ -1501,6 +1505,101 @@ async def stop_process_in_sandbox(
 # session to still be active (`_get_owned_session_or_404`, not
 # `_get_active_session_or_404`) -- a recording is durable object-storage
 # content outliving the pod it was captured from.
+
+
+def _diagnostics_why(runtime: dict) -> str:
+    """Turn common runtime failure signals into a concise operator reason."""
+    pod = runtime.get("pod") or {}
+    text = [str(pod.get("reason") or ""), str(pod.get("message") or "")]
+    for container in runtime.get("containers") or []:
+        text.extend(str(container.get(key) or "") for key in ("reason", "message"))
+        if container.get("exit_code") == 137:
+            text.append("OOMKilled")
+    for event in runtime.get("events") or []:
+        text.extend(str(event.get(key) or "") for key in ("reason", "message"))
+    signal = " ".join(text).lower()
+    if "oom" in signal or "out of memory" in signal or "memory limit" in signal:
+        return "killed: exceeded memory limit"
+    if "imagepullbackoff" in signal or "errimagepull" in signal or "image pull" in signal:
+        return "cannot start: container image could not be pulled"
+    if "crashloopbackoff" in signal or any((c.get("restart_count") or 0) >= 3 for c in runtime.get("containers") or []):
+        return "restarting: container is crash-looping"
+    if "evicted" in signal:
+        return "evicted: node resource pressure forced the sandbox to stop"
+    if any(word in signal for word in ("networkpolicy", "egress denied", "egress blocked", "connection denied")):
+        return "denied: network egress is blocked by the default-deny policy"
+    phase = str(pod.get("phase") or "").lower()
+    if phase == "running":
+        return "running normally"
+    if phase == "pending":
+        return "waiting: pod has not been scheduled"
+    if phase == "succeeded":
+        return "completed normally"
+    return str(runtime.get("unavailable") or "failed: inspect pod events and container logs")
+
+
+async def _build_diagnostics_response(*, session: SandboxSession, manager, db: AsyncSession, section: str) -> SandboxDiagnosticsResponse:
+    try:
+        runtime = await manager.diagnostics(str(session.id))
+    except Exception as exc:
+        runtime = {"runtime": "unknown", "pod": None, "containers": [], "logs": [], "events": [], "unavailable": str(exc)}
+    repo = ExecLogEntryRepository(db)
+    total = await repo.count_for_session(session_id=str(session.id))
+    recent = await repo.list_for_session(
+        session_id=str(session.id), limit=SANDBOX_LOG_MAX_LIMIT, offset=max(0, total - SANDBOX_LOG_MAX_LIMIT)
+    )
+    return SandboxDiagnosticsResponse(
+        session_id=str(session.id),
+        status="destroyed" if session.destroyed_at is not None else "active",
+        why=_diagnostics_why(runtime),
+        runtime=runtime.get("runtime", "unknown"),
+        pod=runtime.get("pod") if section in ("summary", "inspect") else None,
+        containers=[SandboxDiagnosticsContainer.model_validate(item) for item in runtime.get("containers", [])]
+        if section in ("summary", "inspect") else [],
+        logs=[SandboxDiagnosticsLog.model_validate(item) for item in runtime.get("logs", [])]
+        if section in ("summary", "logs") else [],
+        events=[SandboxDiagnosticsEvent.model_validate(item) for item in runtime.get("events", [])]
+        if section in ("summary", "events") else [],
+        audit_entries=[ExecLogEntryOut.model_validate(entry) for entry in recent]
+        if section in ("summary", "logs") else [],
+        unavailable=runtime.get("unavailable"),
+    )
+
+
+@router.get("/{session_id}/diagnostics/summary", response_model=SandboxDiagnosticsResponse)
+async def get_sandbox_diagnostics_summary(
+    session_id: str = Path(...), account: Account = Depends(get_current_account_via_api_key),
+    db: AsyncSession = Depends(get_db), manager=Depends(get_manager),
+) -> SandboxDiagnosticsResponse:
+    session = await _get_owned_session_or_404(session_id=session_id, account=account, db=db)
+    return await _build_diagnostics_response(session=session, manager=manager, db=db, section="summary")
+
+
+@router.get("/{session_id}/diagnostics/logs", response_model=SandboxDiagnosticsResponse)
+async def get_sandbox_diagnostics_logs(
+    session_id: str = Path(...), account: Account = Depends(get_current_account_via_api_key),
+    db: AsyncSession = Depends(get_db), manager=Depends(get_manager),
+) -> SandboxDiagnosticsResponse:
+    session = await _get_owned_session_or_404(session_id=session_id, account=account, db=db)
+    return await _build_diagnostics_response(session=session, manager=manager, db=db, section="logs")
+
+
+@router.get("/{session_id}/diagnostics/inspect", response_model=SandboxDiagnosticsResponse)
+async def get_sandbox_diagnostics_inspect(
+    session_id: str = Path(...), account: Account = Depends(get_current_account_via_api_key),
+    db: AsyncSession = Depends(get_db), manager=Depends(get_manager),
+) -> SandboxDiagnosticsResponse:
+    session = await _get_owned_session_or_404(session_id=session_id, account=account, db=db)
+    return await _build_diagnostics_response(session=session, manager=manager, db=db, section="inspect")
+
+
+@router.get("/{session_id}/diagnostics/events", response_model=SandboxDiagnosticsResponse)
+async def get_sandbox_diagnostics_events(
+    session_id: str = Path(...), account: Account = Depends(get_current_account_via_api_key),
+    db: AsyncSession = Depends(get_db), manager=Depends(get_manager),
+) -> SandboxDiagnosticsResponse:
+    session = await _get_owned_session_or_404(session_id=session_id, account=account, db=db)
+    return await _build_diagnostics_response(session=session, manager=manager, db=db, section="events")
 
 
 @router.get(

@@ -368,6 +368,17 @@ class FakeSandboxManager:
             "auth_token": "fake-sidecar-token",
         }
 
+    async def diagnostics(self, session_id: str, **_kwargs) -> dict:
+        return {
+            "runtime": "kubernetes",
+            "pod": {"name": f"fake-pod-{session_id[:8]}", "namespace": "default", "phase": "Failed"},
+            "containers": [
+                {"name": "sandbox", "ready": False, "restart_count": 0, "state": "terminated", "reason": "OOMKilled", "exit_code": 137}
+            ],
+            "logs": [{"container": "sandbox", "output": "process killed"}],
+            "events": [{"type": "Warning", "reason": "OOMKilled", "message": "container exceeded memory limit"}],
+        }
+
     async def proxy_preview_request(
         self,
         session_id: str,
