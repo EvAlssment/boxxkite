@@ -10,13 +10,13 @@
 services:
   caddy:
     image: caddy:2.10-alpine
-    container_name: boxkite-caddy
+    container_name: boxxkite-caddy
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     environment:
-      BOXKITE_DOMAIN: "${BOXKITE_DOMAIN:?Set BOXKITE_DOMAIN to the public hostname}"
+      BOXXKITE_DOMAIN: "${BOXXKITE_DOMAIN:?Set BOXXKITE_DOMAIN to the public hostname}"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -36,6 +36,10 @@ services:
 
   sidecar:
     restart: unless-stopped
+    # Replace the base compose publication so the sidecar is only reachable
+    # locally; public traffic must enter through Caddy for automatic TLS.
+    ports: !override
+      - "127.0.0.1:8080:8080"
     mem_limit: 2g
     cpus: 1.50
     logging: *prod-logging
@@ -57,7 +61,7 @@ services:
 
   backup:
     image: postgres:16-alpine
-    container_name: boxkite-backup
+    container_name: boxxkite-backup
     profiles: ["backup"]
     environment:
       DATABASE_URL: "${DATABASE_URL:-}"
@@ -72,8 +76,8 @@ services:
       - tmp:/source/tmp:ro
       - minio-data:/source/minio-data:ro
       - backups:/backups
-      - ./backup.sh:/usr/local/bin/boxkite-backup:ro
-    entrypoint: ["/usr/local/bin/boxkite-backup"]
+      - ./backup.sh:/usr/local/bin/boxxkite-backup:ro
+    entrypoint: ["/usr/local/bin/boxxkite-backup"]
     restart: "no"
     mem_limit: 512m
     cpus: 1.00

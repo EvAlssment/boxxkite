@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eu
+set -euo pipefail
 
 backup_dir="/backups/$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 mkdir -p "$backup_dir"
