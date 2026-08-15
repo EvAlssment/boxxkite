@@ -49,6 +49,7 @@ from .process_tools import (
 )
 from .python_interpreter_tool import create_python_interpreter_tool_spec
 from .run_tests_tool import create_run_tests_tool_spec
+from .scratch_memory_tool import create_scratch_memory_tool_spec
 from .search_tools import (
     create_ls_tool_spec,
     create_glob_tool_spec,
@@ -76,6 +77,7 @@ def create_sandbox_tool_specs(
     enable_agent_pty: bool = False,
     enable_node_interpreter: bool = False,
     enable_run_tests: bool = False,
+    enable_scratch_memory: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
     hosted_api_key: Optional[str] = None,
@@ -107,6 +109,9 @@ def create_sandbox_tool_specs(
     - (opt-in, see enable_run_tests) run_tests: Run a test command and parse
       its output into a structured schema instead of raw stdout (see
       run_tests_tool.py; only pytest output is parsed so far)
+    - (opt-in, see enable_scratch_memory) scratch_memory: Session-scoped
+      key/value bookkeeping for the agent's own working state, kept out of
+      the workspace filesystem entirely (see scratch_memory_tool.py)
     - (opt-in, present only when hosted_api_key is set) budget_status:
       Remaining hosted-account sandbox-hours, concurrency, and rate-limit
       headroom (see budget_status_tool.py). The one tool here that does
@@ -181,6 +186,12 @@ def create_sandbox_tool_specs(
             path) introduced after this project's "flag new surface off by
             default" convention was established, so it doesn't inherit
             python_interpreter's always-on precedent.
+        enable_scratch_memory: Opt in to the `scratch_memory` tool
+            (GitHub issue #74) -- a session-scoped key/value store for the
+            agent's own bookkeeping, kept out of the workspace so those
+            notes never land in file_glob results or get flushed to the
+            session's storage prefix. Off by default: an agent that doesn't
+            need it shouldn't pay for the extra tool in its context.
         enable_run_tests: Opt in to the `run_tests` tool
             (src/boxxkite/tools/run_tests_tool.py, docs/issue #123) -- runs a
             test command through the exact same exec primitive and command
@@ -497,6 +508,18 @@ def create_sandbox_tool_specs(
             )
         )
 
+    if enable_scratch_memory:
+        # scratch_memory (opt-in, see enable_scratch_memory's docstring above).
+        # Takes no allowed_commands: it runs no commands at all, it only
+        # reads/writes the sidecar's own in-memory key/value store.
+        specs.append(
+            create_scratch_memory_tool_spec(
+                sandbox_manager=sandbox_manager,
+                session_id=effective_session_id,
+                lazy_runtime=lazy_runtime,
+            )
+        )
+
     if enable_browser_tool:
         # browser_navigate/browser_exec/browser_screenshot/browser_close
         # (opt-in, see enable_browser_tool's docstring above). Also requires
@@ -572,6 +595,7 @@ def create_sandbox_tools(
     enable_agent_pty: bool = False,
     enable_node_interpreter: bool = False,
     enable_run_tests: bool = False,
+    enable_scratch_memory: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
     hosted_api_key: Optional[str] = None,
@@ -628,6 +652,7 @@ def create_sandbox_tools(
         enable_agent_pty=enable_agent_pty,
         enable_node_interpreter=enable_node_interpreter,
         enable_run_tests=enable_run_tests,
+        enable_scratch_memory=enable_scratch_memory,
         enable_browser_tool=enable_browser_tool,
         enable_lsp_tools=enable_lsp_tools,
         hosted_api_key=hosted_api_key,

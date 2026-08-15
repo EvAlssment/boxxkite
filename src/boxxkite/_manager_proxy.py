@@ -1010,6 +1010,96 @@ class SidecarProxyMixin:
         )
 
     # =========================================================================
+    # Agent scratch memory (proxy to sidecar /scratch/*)
+    #
+    # See sidecar/sidecar_scratch.py. Session-scoped key/value bookkeeping
+    # that deliberately is not the workspace filesystem, so it never shows up
+    # in file_glob/file_grep results or gets flushed to the session's storage
+    # prefix (GitHub issue #74).
+    # =========================================================================
+
+    async def scratch_set(self, session_id: str, key: str, value: str) -> dict:
+        """
+        Store `value` under `key` in this session's scratch memory.
+
+        Returns:
+            Dict with key, bytes_stored, keys
+        """
+        async def _request() -> dict:
+            pod_name, pod_ip = await self._resolve_session(session_id)
+            http_client = self._get_http_client(pod_name, pod_ip)
+            response = await http_client.post("/scratch/set", json={"key": key, "value": value})
+            response.raise_for_status()
+            return response.json()
+
+        return await self._call_sidecar_with_recovery(
+            session_id=session_id,
+            operation="scratch_set",
+            request_fn=_request,
+        )
+
+    async def scratch_get(self, session_id: str, key: str) -> dict:
+        """
+        Read `key` from this session's scratch memory.
+
+        Returns:
+            Dict with key, value, found -- a missing key is found=False, not
+            an error (see the sidecar route's own docstring).
+        """
+        async def _request() -> dict:
+            pod_name, pod_ip = await self._resolve_session(session_id)
+            http_client = self._get_http_client(pod_name, pod_ip)
+            response = await http_client.get("/scratch/get", params={"key": key})
+            response.raise_for_status()
+            return response.json()
+
+        return await self._call_sidecar_with_recovery(
+            session_id=session_id,
+            operation="scratch_get",
+            request_fn=_request,
+        )
+
+    async def scratch_delete(self, session_id: str, key: str) -> dict:
+        """
+        Delete `key` from this session's scratch memory.
+
+        Returns:
+            Dict with key, deleted, keys
+        """
+        async def _request() -> dict:
+            pod_name, pod_ip = await self._resolve_session(session_id)
+            http_client = self._get_http_client(pod_name, pod_ip)
+            response = await http_client.post("/scratch/delete", json={"key": key})
+            response.raise_for_status()
+            return response.json()
+
+        return await self._call_sidecar_with_recovery(
+            session_id=session_id,
+            operation="scratch_delete",
+            request_fn=_request,
+        )
+
+    async def scratch_list(self, session_id: str) -> dict:
+        """
+        List this session's scratch keys and their sizes (not their values).
+
+        Returns:
+            Dict with entries, keys, total_bytes, max_keys, max_total_bytes
+        """
+        async def _request() -> dict:
+            pod_name, pod_ip = await self._resolve_session(session_id)
+            http_client = self._get_http_client(pod_name, pod_ip)
+            response = await http_client.get("/scratch/list")
+            response.raise_for_status()
+            return response.json()
+
+        return await self._call_sidecar_with_recovery(
+            session_id=session_id,
+            operation="scratch_list",
+            request_fn=_request,
+        )
+
+    # =========================================================================
     # Network ingress preview (proxy to sidecar /preview/{port}/...)
     #
     # See docs/NETWORK-INGRESS-DESIGN.md. Deliberately NOT wrapped in
