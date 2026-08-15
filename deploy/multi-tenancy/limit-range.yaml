@@ -1,0 +1,32 @@
+# Per-pod floor/ceiling inside one tenant's namespace
+# (docs/SELF-HOSTED-MULTI-TENANCY.md).
+#
+# Complements the ResourceQuota rather than duplicating it: the quota bounds
+# the tenant in aggregate, this bounds any single pod, so one oversized pod
+# can't consume the tenant's whole allowance in one go.
+#
+# `max` must be at least as large as the biggest SANDBOX_SIZE_PRESET that
+# tenant is allowed to request (see BOXXKITE_MAX_SANDBOX_SIZE), or creating
+# that size fails admission.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: boxxkite-tenant-limits
+  namespace: boxxkite-TENANT
+spec:
+  limits:
+    - type: Container
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 10m
+        memory: 64Mi
+      # Applied to containers that specify neither -- boxxkite always sets
+      # both explicitly, so this only catches anything else you run here.
+      default:
+        cpu: "1"
+        memory: 2Gi
+      defaultRequest:
+        cpu: 250m
+        memory: 512Mi

@@ -1,0 +1,24 @@
+# One namespace per tenant -- the supported multi-tenancy model for a
+# self-hosted install (docs/SELF-HOSTED-MULTI-TENANCY.md).
+#
+# The namespace IS the tenant boundary here, because sandbox pods carry no
+# tenant label of their own: they're labelled `app: sandbox` plus pool/status/
+# size, and nothing identifies which account they belong to. Every
+# namespace-scoped control in this directory depends on that.
+#
+# Replace TENANT throughout, then point that tenant's control-plane at this
+# namespace with SANDBOX_NAMESPACE=boxxkite-TENANT.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: boxxkite-TENANT
+  labels:
+    boxxkite.dev/tenant: TENANT
+    # Pod Security Admission. boxxkite's pod specs are written for
+    # `restricted`; a weaker level admits more than the isolation model
+    # assumes. GA from Kubernetes 1.25 -- below that these labels are
+    # ignored, which `boxxkite doctor` reports.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

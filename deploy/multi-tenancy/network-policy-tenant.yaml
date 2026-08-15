@@ -1,0 +1,56 @@
+# Cross-tenant network isolation for a namespace-per-tenant install
+# (docs/SELF-HOSTED-MULTI-TENANCY.md).
+#
+# This is a TENANT boundary, deliberately separate from
+# deploy/network-policy.yaml, which is the per-sandbox boundary and still
+# applies inside this namespace. Apply both: this one keeps tenant B's pods
+# from reaching tenant A's namespace at all, the other keeps sandboxes
+# network-dark within it.
+#
+# ENFORCEMENT IS CNI-DEPENDENT. Several managed setups serve the
+# NetworkPolicy API without enforcing it (GKE Autopilot without Dataplane V2,
+# EKS's default VPC CNI without an add-on like Calico), and an unenforced
+# policy fails open silently -- you get no error, just no isolation. Verify
+# against your own cluster before relying on this; deploy/network-policy.yaml
+# has the same warning and lists the setups this is known to affect.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: boxxkite-tenant-isolation
+  namespace: boxxkite-TENANT
+spec:
+  # Every pod in the tenant's namespace, not just sandboxes -- the tenant's
+  # own control-plane pod, if you run it here, is in scope too.
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    # Same-namespace traffic only. No namespaceSelector entry means no other
+    # namespace can reach in, including another tenant's.
+    - from:
+        - podSelector: {}
+
+  egress:
+    - to:
+        - podSelector: {}
+    # DNS. Without this, in-namespace name resolution fails and the failure
+    # looks like a hung connection rather than a policy denial.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Add explicit egress for anything this tenant genuinely needs to reach
+    # (an object-store endpoint, a private registry, the control-plane's
+    # database). Deliberately not included here: an example allow rule is
+    # the kind of thing that gets applied unmodified and quietly widens the
+    # boundary this file exists to draw.
