@@ -26,6 +26,10 @@ not install `control-plane/`, `sdk-python/`, `sdk-js/`, `sdk-go/`,
 
 ## Before you start
 
+[ROADMAP.md](ROADMAP.md) is the fastest way to check whether what you're about
+to build is already proposed, already in review, or something we've decided
+not to commit to — worth thirty seconds before a larger change.
+
 For anything beyond a small fix (a new tool, a change to pod security
 context, a new storage backend), please open an issue first to discuss the
 approach — or drop into the [Discord](https://discord.gg/JntfAx7cg5), which is
