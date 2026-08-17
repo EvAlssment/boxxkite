@@ -75,4 +75,4 @@ permissive with an explicit patent grant, no restriction on self-hosting or comp
 [Full README](https://github.com/EvAlssment/boxxkite#readme) ·
 [Docs](https://github.com/EvAlssment/boxxkite/tree/main/docs) ·
 [Issues](https://github.com/EvAlssment/boxxkite/issues) ·
-[Discord](https://boxxkite.com/discord)
+[Discord](https://discord.gg/JntfAx7cg5)

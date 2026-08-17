@@ -366,6 +366,23 @@ class UsageSummary(BaseModel):
     )
 
 
+class UsageDetail(UsageSummary):
+    """GET /v1/usage's own response -- UsageSummary plus rate-limit
+    headroom (GitHub issue #75), which the inline usage on sandbox
+    creation/restore responses doesn't include, since peeking it isn't
+    free and every create/restore already computes UsageSummary today."""
+
+    sandbox_ops_rate_limit_remaining: int = Field(
+        description="Remaining exec/file-op calls allowed against this account in the "
+        "current 60-second window, from the same 'sandbox_ops' rate-limit bucket "
+        "POST/GET .../exec and .../files enforce. A read-only peek -- checking this "
+        "never itself counts as a hit."
+    )
+    sandbox_ops_rate_limit: int = Field(
+        description="The 'sandbox_ops' bucket's configured limit (BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE)."
+    )
+
+
 class UsageRollupGroup(BaseModel):
     """One row in GET /v1/usage/rollup's breakdown. What `key` holds
     depends on the request's `group_by`: a session id, an ISO calendar day
@@ -804,6 +821,48 @@ class SandboxLogResponse(BaseModel):
     limit: int
     offset: int
     total: int = Field(description="Total matching rows for this session, independent of limit/offset.")
+
+
+class SandboxDiagnosticsContainer(BaseModel):
+    name: str | None = None
+    ready: bool = False
+    restart_count: int = 0
+    state: str | None = None
+    reason: str | None = None
+    message: str | None = None
+    exit_code: int | None = None
+    signal: int | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class SandboxDiagnosticsLog(BaseModel):
+    container: str
+    output: str = ""
+    error: str | None = None
+
+
+class SandboxDiagnosticsEvent(BaseModel):
+    type: str | None = None
+    reason: str | None = None
+    message: str | None = None
+    count: int | None = None
+    first_timestamp: datetime | None = None
+    last_timestamp: datetime | None = None
+    source: str | None = None
+
+
+class SandboxDiagnosticsResponse(BaseModel):
+    session_id: str
+    status: Literal["active", "destroyed"]
+    why: str
+    runtime: str
+    pod: dict | None = None
+    containers: list[SandboxDiagnosticsContainer] = Field(default_factory=list)
+    logs: list[SandboxDiagnosticsLog] = Field(default_factory=list)
+    events: list[SandboxDiagnosticsEvent] = Field(default_factory=list)
+    audit_entries: list[ExecLogEntryOut] = Field(default_factory=list)
+    unavailable: str | None = None
 
 
 # ── Admin audit-log aggregation (docs/ADMIN-ROLE-DESIGN.md, closing

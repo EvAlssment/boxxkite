@@ -28,7 +28,7 @@ not install `control-plane/`, `sdk-python/`, `sdk-js/`, `sdk-go/`,
 
 For anything beyond a small fix (a new tool, a change to pod security
 context, a new storage backend), please open an issue first to discuss the
-approach — or drop into the [Discord](https://boxxkite.com/discord), which is
+approach — or drop into the [Discord](https://discord.gg/JntfAx7cg5), which is
 usually faster for a quick back-and-forth before you write code. This project
 touches code-execution isolation; changes to `deploy/pod-template.yaml`,
 `deploy/network-policy.yaml`, `sidecar/main.py`'s path/permission handling, or
@@ -146,21 +146,24 @@ Unit tests mock the control-plane the same way `sdk-python/tests/` does.
 exercises a real running control-plane — don't run it as part of a normal
 test pass.
 
-### bastion/ and handoff-cli/ (separate packages, separate setup)
+### bastion/ (separate package, separate setup)
 
 ```bash
-cd bastion        # or: cd handoff-cli
+cd bastion
 pip install -e ".[dev]"
 pytest tests/
 ```
 
-Both mock their dependencies — `bastion/` doesn't need a real SSH client or a
-running control-plane, and `handoff-cli/` doesn't need a real Claude Code or
-Codex session on disk.
+`bastion/` mocks its dependencies — it doesn't need a real SSH client or a
+running control-plane. **It has no CI job**, so this local run (58 tests) is
+the only coverage it ever gets. If you touch it, run its tests yourself —
+nothing else will.
 
-**Neither has a CI job**, so these local runs are the only coverage their
-suites (58 and 102 tests) ever get. If you touch either package, run its tests
-yourself — nothing else will.
+Session-handoff (`src/boxxkite/handoff/`) used to be the separate
+`handoff-cli/` package described here; it's now part of the root package, so
+its tests run with everything else in [Development setup](#development-setup)
+above (`pytest tests/` at the repo root) and are covered by `ci.yml`'s
+`test-root` job whenever CI is enabled.
 
 ## Fork, branch, PR
 

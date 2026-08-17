@@ -9,7 +9,10 @@ the design doc's security section.
 from __future__ import annotations
 
 import httpx
+from sqlalchemy import select
 
+from control_plane import db as db_module
+from control_plane.models_orm import SandboxSession
 from conftest import FakeSandboxManager, FakeSnapshotStorageClient, signup_and_get_api_key
 from test_usage_limits import _assert_no_pricing_language
 
@@ -195,6 +198,109 @@ async def test_restore_snapshot_creates_new_session_seeded_from_snapshot(
     # normal create -- no special-cased pod-spec/capability path.
     assert new_session_id in fake_manager.created
     assert fake_manager.created[new_session_id]["restore_from_snapshot_id"] == snapshot_id
+
+
+async def test_restore_failure_cleans_up_seeded_storage(
+    client: httpx.AsyncClient,
+    fake_manager: FakeSandboxManager,
+    fake_snapshot_storage: FakeSnapshotStorageClient,
+):
+    """A restore that fails after the seed copy but before the new
+    session's SandboxSession row exists must not leave that copy behind --
+    nothing would ever reference it again, since the session_id it was
+    seeded under was never actually created."""
+    key = await signup_and_get_api_key(client, "snap-restore-fail@example.com")
+    session_id = await _create_session_with_file(client, key)
+
+    create_resp = await client.post(
+        f"/v1/sandboxes/{session_id}/snapshots", json={}, headers={"Authorization": f"Bearer {key}"}
+    )
+    snapshot_id = create_resp.json()["id"]
+    storage_key_prefix = create_resp.json()["storage_key_prefix"]
+
+    fake_manager.fail_next_create = True
+    # httpx's ASGITransport re-raises an unhandled app exception rather than
+    # returning a response for it (see test_chaos_reservation_row_cleanup.py) --
+    # this mirrors what a real deployment's ASGI server would turn into a 500
+    # for the caller, one layer up from what this test can observe directly.
+    exc_info = None
+    try:
+        await client.post(
+            f"/v1/snapshots/{snapshot_id}/restore",
+            json={"label": "restored-session"},
+            headers={"Authorization": f"Bearer {key}"},
+        )
+    except RuntimeError as exc:
+        exc_info = exc
+    assert exc_info is not None, "expected the simulated SandboxManager failure to propagate"
+
+    # The seed copy happened (it runs before SandboxManager.create_session) --
+    # filter to the restore's own copy, not the earlier snapshot-creation copy.
+    seed_calls = [c for c in fake_snapshot_storage.copy_calls if c["source_prefix"] == storage_key_prefix]
+    assert len(seed_calls) == 1
+    seeded_prefix = seed_calls[0]["dest_prefix"]
+    # ...but must have been cleaned up once create_session failed.
+    assert fake_snapshot_storage.delete_calls == [seeded_prefix]
+    assert seeded_prefix not in fake_snapshot_storage._objects
+async def test_restore_carries_over_source_session_config(
+    client: httpx.AsyncClient, fake_manager: FakeSandboxManager
+):
+    """GitHub issue #26: a restore must recreate the source session's own
+    config (size, secrets, ...), not silently fall back to defaults."""
+    from control_plane.config import settings
+
+    original_url = settings.SECRETS_CONTROL_PLANE_URL
+    settings.SECRETS_CONTROL_PLANE_URL = "https://control-plane.internal.example"
+    try:
+        key = await signup_and_get_api_key(client, "snap-restore-config@example.com")
+        await client.post(
+            "/v1/secrets",
+            json={"name": "granted", "value": "the-real-value", "allowed_hosts": ["api.example.com"]},
+            headers={"Authorization": f"Bearer {key}"},
+        )
+        create_resp = await client.post(
+            "/v1/sandboxes",
+            json={"size": "medium", "storage_gb": 5, "secret_names": ["granted"]},
+            headers={"Authorization": f"Bearer {key}"},
+        )
+        assert create_resp.status_code == 201, create_resp.text
+        session_id = create_resp.json()["id"]
+        await client.post(
+            f"/v1/sandboxes/{session_id}/files",
+            json={"path": "hello.txt", "content": "hello snapshot"},
+            headers={"Authorization": f"Bearer {key}"},
+        )
+
+        snapshot_resp = await client.post(
+            f"/v1/sandboxes/{session_id}/snapshots", json={}, headers={"Authorization": f"Bearer {key}"}
+        )
+        snapshot_id = snapshot_resp.json()["id"]
+
+        restore_resp = await client.post(
+            f"/v1/snapshots/{snapshot_id}/restore", json={}, headers={"Authorization": f"Bearer {key}"}
+        )
+        assert restore_resp.status_code == 201, restore_resp.text
+        new_session_id = restore_resp.json()["id"]
+
+        # SandboxManager actually received the restored config, same as a
+        # fresh create with these values would -- not just a row that
+        # quietly stores it and never uses it.
+        created = fake_manager.created[new_session_id]
+        assert created["size"] == "medium"
+        assert created["storage_gb"] == 5
+        assert created["secret_grants"] == [{"name": "granted", "allowed_hosts": ["api.example.com"]}]
+
+        # And it's durably persisted on the new session's own row too, so a
+        # snapshot taken *from* this restored session carries the same
+        # config forward again.
+        async with db_module.get_session_factory()() as db:
+            result = await db.execute(select(SandboxSession).where(SandboxSession.id == new_session_id))
+            new_row = result.scalar_one()
+        assert new_row.size == "medium"
+        assert new_row.storage_gb == 5
+        assert new_row.secret_names == ["granted"]
+    finally:
+        settings.SECRETS_CONTROL_PLANE_URL = original_url
 
 
 async def test_restore_unknown_snapshot_returns_404(client: httpx.AsyncClient):

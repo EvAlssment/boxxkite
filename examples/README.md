@@ -16,6 +16,7 @@ router contracts) -- not illustrative pseudocode.
 | Wire boxxkite directly into the OpenAI SDK's native function-calling, no agent framework at all | [`openai_function_calling/`](openai_function_calling/) |
 | Use boxxkite from a LlamaIndex `ReActAgent` | [`llamaindex_agent/`](llamaindex_agent/) |
 | Use boxxkite tools from the OpenAI Agents SDK's `Agent`/`Runner` | [`openai_agents_sdk/`](openai_agents_sdk/) |
+| Use boxxkite tools from a Google ADK agent | [`google-adk/`](google-adk/) |
 | Run Claude Code itself, headlessly, inside a sandbox | [`claude_code_sandbox/`](claude_code_sandbox/) |
 | Build a Claude-Code-capable image via the declarative builder API instead of a hand-maintained Dockerfile | [`claude_code_declarative_builder/`](claude_code_declarative_builder/) |
 | Build a quant-research image (vectorbt, backtrader, TA-Lib, QuantLib, quantstats) via the declarative builder | [`quant_research_declarative_builder/`](quant_research_declarative_builder/) |
@@ -67,6 +68,10 @@ examples/
 │   ├── requirements.txt
 │   └── README.md
 ├── openai_agents_sdk/         # OpenAI Agents SDK Agent/Runner via to_openai_agents_tools
+│   ├── agent.py
+│   ├── requirements.txt
+│   └── README.md
+├── google-adk/                # Google ADK agent via to_google_adk_tools
 │   ├── agent.py
 │   ├── requirements.txt
 │   └── README.md

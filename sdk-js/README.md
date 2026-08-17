@@ -107,4 +107,4 @@ See the [root README](https://github.com/EvAlssment/boxxkite#readme) for
 what boxxkite is and the full self-hosting story.
 
 Questions, bug reports, or need a usage-limit bump? Join the
-[Discord](https://boxxkite.com/discord).
+[Discord](https://discord.gg/JntfAx7cg5).

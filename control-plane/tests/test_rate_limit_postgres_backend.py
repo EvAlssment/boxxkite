@@ -120,3 +120,24 @@ async def test_enforce_rate_limit_uses_postgres_backend_when_configured(monkeypa
         )
     assert exc_info.value.status_code == 429
     assert exc_info.value.headers["X-RateLimit-Remaining"] == "0"
+
+
+async def test_peek_remaining_reads_through_the_same_injected_factory(monkeypatch, session_factory):
+    """peek_remaining must agree with hit_and_count on which database it's
+    reading from -- both go through _postgres_limiter's own factory, not
+    get_session_factory() directly, or an injected factory (as this test,
+    and any real multi-replica-simulating test, uses) would silently be
+    invisible to peek_remaining while hit_and_count sees it fine."""
+    from control_plane import rate_limit as rate_limit_module
+    from control_plane.config import settings
+
+    monkeypatch.setattr(settings, "BOXXKITE_RATE_LIMIT_BACKEND", "postgres")
+    injected_limiter = PostgresRateLimiter(session_factory)
+    monkeypatch.setattr(rate_limit_module, "_postgres_limiter", injected_limiter)
+
+    assert await rate_limit_module.peek_remaining(bucket="peek_bucket", subject="acct-1", limit=5) == 5
+
+    await injected_limiter.hit_and_count("peek_bucket:acct-1")
+    await injected_limiter.hit_and_count("peek_bucket:acct-1")
+
+    assert await rate_limit_module.peek_remaining(bucket="peek_bucket", subject="acct-1", limit=5) == 3

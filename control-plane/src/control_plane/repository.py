@@ -362,9 +362,33 @@ class SandboxSessionRepository:
         self.db = db
 
     async def create(
-        self, *, session_id: str, account_id: str, pod_name: str | None, label: str | None = None
+        self,
+        *,
+        session_id: str,
+        account_id: str,
+        pod_name: str | None,
+        label: str | None = None,
+        size: str | None = None,
+        storage_gb: float | None = None,
+        image_id: str | None = None,
+        secret_names: list[str] | None = None,
+        volume_mounts: dict[str, str] | None = None,
+        mcp_connection_names: list[str] | None = None,
+        gpu_count: int | None = None,
     ) -> SandboxSession:
-        row = SandboxSession(id=session_id, account_id=account_id, pod_name=pod_name, label=label)
+        row = SandboxSession(
+            id=session_id,
+            account_id=account_id,
+            pod_name=pod_name,
+            label=label,
+            size=size,
+            storage_gb=storage_gb,
+            image_id=image_id,
+            secret_names=secret_names,
+            volume_mounts=volume_mounts,
+            mcp_connection_names=mcp_connection_names,
+            gpu_count=gpu_count,
+        )
         self.db.add(row)
         await self.db.commit()
         await self.db.refresh(row)
@@ -1069,6 +1093,13 @@ class SnapshotRepository:
         label: str | None,
         storage_key_prefix: str,
         status: str = "pending",
+        size: str | None = None,
+        storage_gb: float | None = None,
+        image_id: str | None = None,
+        secret_names: list[str] | None = None,
+        volume_mounts: dict[str, str] | None = None,
+        mcp_connection_names: list[str] | None = None,
+        gpu_count: int | None = None,
     ) -> Snapshot:
         row = Snapshot(
             id=snapshot_id,
@@ -1077,6 +1108,13 @@ class SnapshotRepository:
             label=label,
             storage_key_prefix=storage_key_prefix,
             status=status,
+            size=size,
+            storage_gb=storage_gb,
+            image_id=image_id,
+            secret_names=secret_names,
+            volume_mounts=volume_mounts,
+            mcp_connection_names=mcp_connection_names,
+            gpu_count=gpu_count,
         )
         self.db.add(row)
         await self.db.commit()

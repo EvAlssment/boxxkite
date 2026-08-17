@@ -17,8 +17,9 @@ from ..db import get_db
 from ..deps import get_current_account_via_api_key, get_usage_policy
 from ..errors import ApiError
 from ..models_orm import Account
+from ..rate_limit import peek_remaining
 from ..repository import ExecLogEntryRepository, SandboxSessionRepository
-from ..schemas import UsageRollupGroup, UsageRollupResponse, UsageSummary
+from ..schemas import UsageDetail, UsageRollupGroup, UsageRollupResponse
 from ..usage_policy import UsagePolicy
 
 router = APIRouter(prefix="/v1/usage", tags=["usage"])
@@ -26,30 +27,41 @@ router = APIRouter(prefix="/v1/usage", tags=["usage"])
 
 @router.get(
     "",
-    response_model=UsageSummary,
+    response_model=UsageDetail,
     summary="Check current usage against fair-use limits",
     description=(
         "Returns the authenticated account's current concurrent-sandbox "
-        "count and monthly sandbox-hours consumed, against the configured "
-        "fair-use limits -- the same numbers already included inline on "
-        "`POST /v1/sandboxes`, available here without creating a sandbox."
+        "count, monthly sandbox-hours consumed, and sandbox_ops rate-limit "
+        "headroom, against the configured fair-use limits -- the "
+        "concurrent-sandbox/monthly-hours numbers are the same ones "
+        "already included inline on `POST /v1/sandboxes`, available here "
+        "without creating a sandbox; rate-limit headroom is a read-only "
+        "peek at the same bucket `.../exec` and `.../files` enforce, so an "
+        "agent can check before it's about to be rate-limited rather than "
+        "only finding out via a 429."
     ),
 )
 async def get_usage(
     account: Account = Depends(get_current_account_via_api_key),
     policy: UsagePolicy = Depends(get_usage_policy),
     db: AsyncSession = Depends(get_db),
-) -> UsageSummary:
+) -> UsageDetail:
     sessions_repo = SandboxSessionRepository(db)
     active_count = await sessions_repo.count_active_for_account(account.id)
     total_count = await sessions_repo.count_total_for_account(account.id)
     hours_used = await policy.monthly_hours_used(account.id)
-    return UsageSummary(
+    sandbox_ops_limit = settings.BOXXKITE_SANDBOX_RATE_LIMIT_PER_MINUTE
+    sandbox_ops_remaining = await peek_remaining(
+        bucket="sandbox_ops", subject=account.id, limit=sandbox_ops_limit
+    )
+    return UsageDetail(
         monthly_sandbox_hours_used=round(hours_used, 4),
         monthly_sandbox_hours_limit=settings.BOXXKITE_FREE_MONTHLY_SANDBOX_HOURS,
         concurrent_sandboxes=active_count,
         concurrent_sandboxes_limit=settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES,
         total_sandboxes_created=total_count,
+        sandbox_ops_rate_limit_remaining=sandbox_ops_remaining,
+        sandbox_ops_rate_limit=sandbox_ops_limit,
     )
 
 

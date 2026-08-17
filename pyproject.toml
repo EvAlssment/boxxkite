@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 # as before. Same split as `beautifulsoup4` (dist name) vs `bs4` (import
 # name) — pip installs "boxxkite-sandbox", code imports "boxxkite".
 name = "boxxkite-sandbox"
-version = "0.4.0"
+version = "0.5.0"
 description = "A self-hostable, Kubernetes-native sandbox for agent code execution — pod-per-session isolation plus a complete bash/python/file tool surface."
 # PYPI_README.md is a short, PyPI-page-specific readme -- deliberately
 # distinct from README.md (the repo's GitHub front door, which stays full
@@ -86,12 +86,17 @@ llamaindex = [
 openai-agents = [
     "openai-agents>=0.18,<1",
 ]
+# Install this extra only if you want boxxkite.tools.adapters.to_google_adk_tools
+# to hand back Google ADK FunctionTool/Tool objects for Gemini agents.
+google-adk = [
+    "google-adk>=0.1.0,<1",
+]
 # Test suite exercises the framework-agnostic core and the LangChain,
-# LlamaIndex, and OpenAI Agents SDK adapters (tests/test_bash_tool.py,
+# LlamaIndex, OpenAI Agents SDK, and Google ADK adapters (tests/test_bash_tool.py,
 # tests/test_tool_factory.py, tests/test_search_tools.py,
-# tests/test_tools_adapters.py), so dev pulls in all three extras.
+# tests/test_tools_adapters.py), so dev pulls in all four extras.
 dev = [
-    "boxxkite-sandbox[langchain,llamaindex,openai-agents]",
+    "boxxkite-sandbox[langchain,llamaindex,openai-agents,google-adk]",
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "pytest-cov>=5.0",

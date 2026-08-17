@@ -49,7 +49,13 @@ from ..schemas import (
 )
 from ..storage_client import SnapshotStorageClient
 from ..usage_policy import UsagePolicy
-from .sandboxes import _get_active_session_or_404, _to_out
+from .sandboxes import (
+    _get_active_session_or_404,
+    _resolve_image_ref_or_404,
+    _resolve_volume_mounts_or_404,
+    _to_out,
+    _validate_gpu_count_or_422,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +134,7 @@ async def create_snapshot(
     snapshot_storage: SnapshotStorageClient = Depends(get_snapshot_storage),
 ) -> SnapshotCreatedResponse:
     await _enforce_snapshot_rate_limit(request, response, account)
-    await _get_active_session_or_404(session_id=session_id, account=account, db=db)
+    source_session = await _get_active_session_or_404(session_id=session_id, account=account, db=db)
 
     snapshots = SnapshotRepository(db)
     active_count = await snapshots.count_active_for_account(account.id)
@@ -152,6 +158,17 @@ async def create_snapshot(
         label=body.label,
         storage_key_prefix=dest_prefix,
         status="pending",
+        # Mirrored from the source session so a later restore (GitHub issue
+        # #26) can recreate an equivalent session -- see SandboxSession's
+        # own matching fields for why this can't just be read live off that
+        # row at restore time instead.
+        size=source_session.size,
+        storage_gb=source_session.storage_gb,
+        image_id=source_session.image_id,
+        secret_names=source_session.secret_names,
+        volume_mounts=source_session.volume_mounts,
+        mcp_connection_names=source_session.mcp_connection_names,
+        gpu_count=source_session.gpu_count,
     )
 
     try:
@@ -272,6 +289,19 @@ async def restore_snapshot(
     if snapshot is None or snapshot.deleted_at is not None or snapshot.status != "completed":
         raise ApiError(404, "not_found", "Snapshot not found")
 
+    # Re-resolve the source session's config through the same ownership/
+    # status checks a fresh create already does (GitHub issue #26) --
+    # rather than replaying a possibly-stale resolved reference, this 404s
+    # the same way a fresh create would if the referenced image/volume has
+    # since been deleted or is no longer ready. Done before the storage
+    # seed copy below so a config-driven 404/422 fails fast, before that
+    # potentially large copy ever runs.
+    image_ref = await _resolve_image_ref_or_404(image_id=snapshot.image_id, account=account, db=db)
+    resolved_volume_mounts = await _resolve_volume_mounts_or_404(
+        volume_mounts=snapshot.volume_mounts, account=account, db=db
+    )
+    _validate_gpu_count_or_422(snapshot.gpu_count)
+
     # Predetermine the new session's id so its live storage_prefix can be
     # seeded from the snapshot's immutable copy BEFORE
     # SandboxManager.create_session's /configure call runs its prefetch --
@@ -291,12 +321,40 @@ async def restore_snapshot(
             "Failed to seed the new sandbox session from this snapshot.",
         ) from exc
 
-    row, _manager_result = await policy.create_session(
-        account,
-        label=body.label,
-        session_id=new_session_id,
-        restore_from_snapshot_id=snapshot.id,
-    )
+    try:
+        row, _manager_result = await policy.create_session(
+            account,
+            label=body.label,
+            size=snapshot.size or "small",
+            storage_gb=snapshot.storage_gb,
+            secret_names=snapshot.secret_names,
+            image_ref=image_ref,
+            image_id=snapshot.image_id,
+            volume_mounts=resolved_volume_mounts,
+            raw_volume_mounts=snapshot.volume_mounts,
+            mcp_connection_names=snapshot.mcp_connection_names,
+            gpu_count=snapshot.gpu_count,
+            session_id=new_session_id,
+            restore_from_snapshot_id=snapshot.id,
+        )
+    except Exception:
+        # The seed copy above already landed real objects at dest_prefix --
+        # without this, a failure here (concurrency/usage limit, a
+        # SandboxManager error) leaves that copy behind forever with
+        # nothing referencing it, since no SandboxSession row for
+        # new_session_id was ever created. Best-effort: a cleanup failure
+        # is logged, not raised, so it never masks the original error the
+        # caller needs to see.
+        try:
+            await snapshot_storage.delete_prefix(prefix=dest_prefix)
+        except Exception as cleanup_exc:
+            logger.warning(
+                "[snapshots] failed to clean up orphaned restore seed at %s for snapshot %s: %s",
+                dest_prefix,
+                snapshot_id,
+                cleanup_exc,
+            )
+        raise
 
     active_count = await SandboxSessionRepository(db).count_active_for_account(account.id)
     hours_used = await policy.monthly_hours_used(account.id)

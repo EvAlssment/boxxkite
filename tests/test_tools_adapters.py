@@ -80,7 +80,7 @@ def test_tool_modules_have_no_top_level_langchain_import(module):
         for line in source.splitlines()
         if line.startswith("import ") or line.startswith("from ")
     ]
-    assert not any("langchain" in line or "langgraph" in line for line in top_level_import_lines)
+    assert not any("langchain" in line or "langgraph" in line or "google.adk" in line for line in top_level_import_lines)
 
 
 def test_create_bash_tool_spec_returns_a_framework_agnostic_tool_spec():
@@ -555,3 +555,63 @@ async def test_to_openai_agents_tools_node_interpreter_round_trips_through_on_in
     result = await tool.on_invoke_tool(None, json.dumps({"code": "40 + 2"}))
 
     assert result == "42"
+
+
+# ---------------------------------------------------------------------------
+# Google ADK adapter tests -- skipped when google-adk is not installed.
+# Install the extra to run these: pip install boxxkite-sandbox[google-adk]
+# ---------------------------------------------------------------------------
+
+
+def test_to_google_adk_tools_converts_every_spec():
+    pytest.importorskip("google.adk", reason="google-adk not installed")
+    from google.adk.tools import FunctionTool
+
+    from boxxkite.tools.adapters import to_google_adk_tools
+
+    specs = _create_every_tool_spec()
+    tools = to_google_adk_tools(specs)
+
+    assert len(tools) == len(specs)
+    assert all(isinstance(t, FunctionTool) for t in tools)
+    tool_names = {t.name for t in tools}
+    assert tool_names == {s.name for s in specs}
+
+
+@pytest.mark.asyncio
+async def test_to_google_adk_tools_node_interpreter_handler_is_callable():
+    """The FunctionTool's underlying func must be the live handler, not dead code."""
+    pytest.importorskip("google.adk", reason="google-adk not installed")
+    from google.adk.tools import FunctionTool
+
+    from boxxkite.tools.adapters import to_google_adk_tools
+
+    manager = _FakeNodeInterpreterSandboxManager()
+    spec = create_node_interpreter_tool_spec(session_id="s1", sandbox_manager=manager)
+    tools = to_google_adk_tools([spec])
+    tool = tools[0]
+
+    assert isinstance(tool, FunctionTool)
+    # Call the wrapped function directly to verify handler dispatch works.
+    result = await tool.func(code="40 + 2")
+    assert result == {"result": "42"}
+
+
+def test_to_google_adk_tools_preserves_parameter_signature():
+    """FunctionTool's func must preserve the handler's inspect.signature so parameters like 'code' or 'command' are exposed."""
+    import inspect
+
+    pytest.importorskip("google.adk", reason="google-adk not installed")
+    from google.adk.tools import FunctionTool
+
+    from boxxkite.tools.adapters import to_google_adk_tools
+
+    manager = _FakeNodeInterpreterSandboxManager()
+    spec = create_node_interpreter_tool_spec(session_id="s1", sandbox_manager=manager)
+    tools = to_google_adk_tools([spec])
+    tool = tools[0]
+
+    assert isinstance(tool, FunctionTool)
+    sig = inspect.signature(tool.func)
+    assert "code" in sig.parameters
+

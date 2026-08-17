@@ -21,6 +21,9 @@ session management tools with a cleaner interface:
   git_push/git_pull/git_branch/git_checkout
 - (opt-in, see enable_run_tests) run_tests: run a test command and parse
   its output into a structured schema instead of raw stdout
+- (opt-in, see hosted_api_key) budget_status: remaining hosted-account
+  sandbox-hours, concurrency, and rate-limit headroom (the only tool here
+  that doesn't go through SandboxManager -- see budget_status_tool.py)
 
 All tools use preset packages only (no pip/npm install).
 Files persist per work_item across sessions.
@@ -100,6 +103,8 @@ from .search_tools import (
     create_grep_tool,
     create_grep_tool_spec,
 )
+from .budget_status_tool import create_budget_status_tool_spec
+from .adapters import to_google_adk_tools
 from .factory import (
     create_sandbox_tools,
     create_sandbox_tools_with_manager,
@@ -109,6 +114,7 @@ from .factory import (
 __all__ = [
     "ToolSpec",
     "ToolImageResult",
+    "to_google_adk_tools",
     "create_bash_tool",
     "create_bash_tool_spec",
     "create_file_create_tool",
@@ -159,6 +165,7 @@ __all__ = [
     "create_glob_tool_spec",
     "create_grep_tool",
     "create_grep_tool_spec",
+    "create_budget_status_tool_spec",
     "create_sandbox_tools",
     "create_sandbox_tools_with_manager",
     "create_sandbox_tool_specs",

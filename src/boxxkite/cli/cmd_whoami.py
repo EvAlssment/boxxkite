@@ -32,3 +32,11 @@ def whoami() -> None:
     typer.echo(
         f"concurrent sandboxes: {usage['concurrent_sandboxes']}/{usage['concurrent_sandboxes_limit']}"
     )
+    # .get(), not usage[...]: this CLI ships on PyPI independently of the
+    # hosted deploy, so someone who upgrades before api.boxxkite.com does
+    # would otherwise hit a raw KeyError on these two fields (added after
+    # the rest of this response shape) instead of just not seeing the line.
+    remaining = usage.get("sandbox_ops_rate_limit_remaining")
+    rate_limit = usage.get("sandbox_ops_rate_limit")
+    if remaining is not None and rate_limit is not None:
+        typer.echo(f"exec/file-op rate limit: {remaining}/{rate_limit} remaining this minute")
