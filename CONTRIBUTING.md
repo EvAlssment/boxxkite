@@ -77,6 +77,14 @@ pip install -r sidecar/requirements.txt
 pytest tests/
 ```
 
+You also need **`tmux` on your PATH** (`brew install tmux`, `apt install tmux`).
+It backs the sidecar's `/pty` takeover session, which the `/configure` route
+tears down when recycling a pod for the next tenant — so a number of sidecar
+tests reach it. Tests that need it are marked `requires_tmux` (defined in
+`tests/conftest.py`) and skip cleanly when it's missing, but you'll be running
+13 fewer tests than CI does. It's already installed in
+`deploy/sidecar.Dockerfile` and on GitHub's runners.
+
 For the sidecar and sandbox containers, see the top-level README's
 quickstart (`deploy/docker-compose.yml`) or `deploy/local-kind/` for a real
 Kubernetes dev loop.
@@ -137,6 +145,25 @@ Unit tests mock the control-plane the same way `sdk-python/tests/` does.
 `mcp-server/tests/live_smoke.py` is a separate, non-CI manual script that
 exercises a real running control-plane — don't run it as part of a normal
 test pass.
+
+### bastion/ (separate package, separate setup)
+
+```bash
+cd bastion
+pip install -e ".[dev]"
+pytest tests/
+```
+
+`bastion/` mocks its dependencies — it doesn't need a real SSH client or a
+running control-plane. **It has no CI job**, so this local run (58 tests) is
+the only coverage it ever gets. If you touch it, run its tests yourself —
+nothing else will.
+
+Session-handoff (`src/boxxkite/handoff/`) used to be the separate
+`handoff-cli/` package described here; it's now part of the root package, so
+its tests run with everything else in [Development setup](#development-setup)
+above (`pytest tests/` at the repo root) and are covered by `ci.yml`'s
+`test-root` job whenever CI is enabled.
 
 ## Fork, branch, PR
 

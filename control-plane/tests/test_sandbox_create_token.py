@@ -17,7 +17,7 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from conftest import FakeSandboxManager, create_api_key, signup, signup_and_get_api_key
+from conftest import FakeSandboxManager, signup, signup_and_get_api_key
 from control_plane import db as db_module
 from control_plane.models_orm import Account
 

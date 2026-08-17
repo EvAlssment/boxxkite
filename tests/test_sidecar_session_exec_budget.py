@@ -43,6 +43,7 @@ import sys
 
 import main as sidecar_main
 import sidecar_lsp
+from conftest import requires_tmux
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from test_sidecar_lsp import _write_fake_driver
@@ -304,6 +305,7 @@ def test_zero_disables_both_checks(monkeypatch):
     assert sidecar_main._session_budget_exceeded is None
 
 
+@requires_tmux
 def test_configure_resets_session_exec_budget(monkeypatch, tmp_path):
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", AUTH_TOKEN)
     monkeypatch.setattr(sidecar_main, "WORKSPACE_DIR", str(tmp_path / "workspace"))

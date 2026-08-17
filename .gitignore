@@ -48,5 +48,12 @@ node_modules/
 target/
 
 # Claude Code session/agent state (worktrees, skills, scheduled tasks,
-# mailbox, etc.) — local to each checkout, never committed.
+# mailbox, etc.) — local to each checkout, never committed. The agent config
+# and notes (CLAUDE.md) are per-developer too; keep them out of the repo.
 .claude/
+CLAUDE.md
+
+# Written by `boxxkite mcp init claude-code` (src/boxxkite/cli/cmd_mcp.py) —
+# the generated entry embeds a live BOXXKITE_API_KEY inline, which is why the
+# CLI chmods it 0600. Never commit it.
+.mcp.json

@@ -30,6 +30,7 @@ import asyncio
 import main as sidecar_main
 import pytest
 import sidecar_desktop
+from conftest import requires_tmux
 from fastapi.testclient import TestClient
 from starlette.testclient import WebSocketDisconnect
 
@@ -208,6 +209,7 @@ def test_kill_desktop_session_swallows_per_process_errors():
     assert sidecar_desktop._desktop_procs == {}
 
 
+@requires_tmux
 def test_configure_kills_desktop_session_before_wiping_session(monkeypatch, tmp_path):
     """Regression test for the cross-tenant leak this feature would
     otherwise introduce into pod recycling: /configure must kill the

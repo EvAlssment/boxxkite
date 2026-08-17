@@ -522,7 +522,7 @@ def build_hosted_mcp() -> FastMCP:
                 account_id=account.id, cache_key=cache_key, not_before=cache_window_start()
             )
             image_id = str(uuid4())
-            row = await images.create(
+            await images.create(
                 image_id=image_id,
                 account_id=account.id,
                 label=body.label,

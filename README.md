@@ -95,6 +95,13 @@ boxxkite up                # builds + starts sandbox, sidecar, and local MinIO
 boxxkite exec "python3 -c 'print(1 + 1)'"
 ```
 
+> Running the test suite needs two extra things the quickstart above doesn't:
+> `pip install -r sidecar/requirements.txt` (several tests import
+> `sidecar/main.py` directly, and its dependencies are tracked separately from
+> `pyproject.toml`) and `tmux` on your PATH (it backs the sidecar's PTY
+> takeover session; tmux-dependent tests skip cleanly without it). See
+> [CONTRIBUTING.md](CONTRIBUTING.md#development-setup).
+
 > The PyPI name is `boxxkite-sandbox`, not `boxxkite` (already taken). Install
 > it with `pip install -e ".[dev]"` from the repo root; the import path
 > (`import boxxkite`) and the `boxxkite` CLI command are unaffected.

@@ -150,6 +150,7 @@ select = ["F"]
 # F401 ("imported but unused") is expected here specifically, not a real
 # unused-import bug.
 "src/boxxkite/_manager_config.py" = ["F401", "F403", "F405"]
+"src/boxxkite/_manager_checkpoint.py" = ["F403", "F405"]
 "src/boxxkite/_manager_create.py" = ["F403", "F405"]
 "src/boxxkite/_manager_files_skills.py" = ["F403", "F405"]
 "src/boxxkite/_manager_http_client.py" = ["F403", "F405"]

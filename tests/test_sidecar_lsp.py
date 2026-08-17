@@ -39,6 +39,7 @@ import textwrap
 import main as sidecar_main
 import pytest
 import sidecar_lsp
+from conftest import requires_tmux
 from fastapi.testclient import TestClient
 
 AUTH_TOKEN = "the-real-secret"
@@ -419,6 +420,7 @@ async def test_lsp_idle_reaper_kills_process_past_timeout(monkeypatch, tmp_path)
     assert handle.proc.returncode is not None
 
 
+@requires_tmux
 def test_configure_kills_live_lsp_server_before_wiping_session(monkeypatch, tmp_path):
     """Regression test mirroring
     test_configure_kills_live_node_interpreter_before_wiping_session for LSP
