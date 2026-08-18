@@ -1,0 +1,89 @@
+# Single-VM production overlay.
+#
+# Use with the local compose stack:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.prod.yaml up -d
+#
+# This is for a small, single-VM installation. It adds TLS, bounded resources,
+# Docker log rotation, and an opt-in backup job; it does not provide the pod,
+# tenant, or network isolation guarantees of the Kubernetes deployment.
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    container_name: boxxkite-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      BOXXKITE_DOMAIN: "${BOXXKITE_DOMAIN:?Set BOXXKITE_DOMAIN to the public hostname}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      sidecar:
+        condition: service_healthy
+    networks:
+      - default
+    mem_limit: 256m
+    cpus: 0.50
+    logging: &prod-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  sidecar:
+    restart: unless-stopped
+    # Replace the base compose publication so the sidecar is only reachable
+    # locally; public traffic must enter through Caddy for automatic TLS.
+    ports: !override
+      - "127.0.0.1:8080:8080"
+    mem_limit: 2g
+    cpus: 1.50
+    logging: *prod-logging
+
+  sandbox:
+    restart: unless-stopped
+    mem_limit: 4g
+    cpus: 2.00
+    logging: *prod-logging
+
+  minio:
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: 1.00
+    logging: *prod-logging
+
+  minio-setup:
+    logging: *prod-logging
+
+  backup:
+    image: postgres:16-alpine
+    container_name: boxxkite-backup
+    profiles: ["backup"]
+    environment:
+      DATABASE_URL: "${DATABASE_URL:-}"
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-14}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - uploads:/source/uploads:ro
+      - outputs:/source/outputs:ro
+      - skills:/source/skills:ro
+      - workspace:/source/workspace:ro
+      - tmp:/source/tmp:ro
+      - minio-data:/source/minio-data:ro
+      - backups:/backups
+      - ./backup.sh:/usr/local/bin/boxxkite-backup:ro
+    entrypoint: ["/usr/local/bin/boxxkite-backup"]
+    restart: "no"
+    mem_limit: 512m
+    cpus: 1.00
+    logging: *prod-logging
+
+volumes:
+  caddy-data:
+  caddy-config:
+  backups:
