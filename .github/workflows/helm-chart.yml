@@ -1,0 +1,31 @@
+name: Helm chart
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - deploy/helm/boxxkite/**
+      - .github/workflows/helm-chart.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - deploy/helm/boxxkite/**
+      - .github/workflows/helm-chart.yml
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-template:
+    name: Lint and template Helm chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      # Pin to setup-helm v4.2.0's immutable release commit.
+      - uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
+        with:
+          version: v3.17.0
+      - name: Lint chart values and templates
+        run: helm lint deploy/helm/boxxkite
+      - name: Render chart with schema validation
+        run: helm template boxxkite deploy/helm/boxxkite --set namespace=boxxkite

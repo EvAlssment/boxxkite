@@ -50,6 +50,13 @@ helm lint ./deploy/helm/boxxkite
 helm template boxxkite ./deploy/helm/boxxkite --set namespace=boxxkite
 ```
 
+Both commands enforce `values.schema.json`: it rejects unknown values, wrong
+types, unsupported egress modes, and plainly malformed IPv4/IPv6 CIDR strings
+before rendering. The chart-only CI workflow runs these same checks whenever
+the chart changes. Schema checks intentionally do not contact a Kubernetes API
+server and do not validate Kubernetes resource-quantity semantics; use the
+manual kind smoke test below to check a real cluster.
+
 ## Smoke test against a local kind cluster
 
 ```bash
@@ -63,7 +70,7 @@ kind delete cluster --name boxxkite-helm-smoke
 ```
 
 `tests/test_helm_smoke.py` in the root test suite automates a lighter
-version of this (`helm lint` + `helm template --dry-run`), gated on `helm`
+version of this (`helm lint` + `helm template`), gated on `helm`
 being present on `PATH`, and skips outright otherwise.
 
 ## Uninstall

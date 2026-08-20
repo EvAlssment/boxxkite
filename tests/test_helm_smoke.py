@@ -88,3 +88,49 @@ def test_helm_template_fqdn_mode_requires_explicit_cni_acknowledgement():
     )
     assert result.returncode != 0
     assert "fqdnEgressSupported" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "cidr",
+    [
+        "203.0.113.0/24",
+        "2001:db8::/32",
+        "::ffff:192.0.2.1/128",
+        "0:0:0:0:0:ffff:192.0.2.1/128",
+    ],
+)
+def test_helm_template_accepts_valid_storage_ip_block_cidrs(cidr: str):
+    result = _run_helm(
+        "template",
+        "boxxkite",
+        str(CHART_PATH),
+        "--set",
+        "networkPolicy.storageEgress.mode=ipBlock",
+        "--set-string",
+        f"networkPolicy.storageEgress.ipBlock.cidr={cidr}",
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "cidr", ["999.0.0.1/24", "2001:db8:::1/64", "::ffff:999.0.2.1/128"]
+)
+def test_helm_template_rejects_malformed_storage_ip_block_cidrs(cidr: str):
+    result = _run_helm(
+        "template",
+        "boxxkite",
+        str(CHART_PATH),
+        "--set",
+        "networkPolicy.storageEgress.mode=ipBlock",
+        "--set-string",
+        f"networkPolicy.storageEgress.ipBlock.cidr={cidr}",
+    )
+    assert result.returncode != 0
+
+
+@pytest.mark.parametrize(
+    "value", ["networkPolicy.enabled=not-a-boolean", "unexpectedValue=true"]
+)
+def test_helm_template_rejects_structurally_invalid_values(value: str):
+    result = _run_helm("template", "boxxkite", str(CHART_PATH), "--set", value)
+    assert result.returncode != 0
