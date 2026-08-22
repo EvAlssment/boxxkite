@@ -12,7 +12,7 @@
  * README "Never put a real apiKey in code that ships to a browser" section.
  */
 
-import { BoxxkiteApiError, BoxxkiteConnectionError } from "./errors.js";
+import { apiErrorType, BoxxkiteApiError, BoxxkiteConnectionError } from "./errors.js";
 import {
   computeBackoffMs,
   isIdempotentMethod,
@@ -322,20 +322,26 @@ export type AllowedCommandRule =
   | string
   | { command: string; args_allow?: string[]; args_deny?: string[] };
 
-async function parseErrorBody(resp: Response): Promise<{ code: string; message: string }> {
+async function parseErrorBody(resp: Response): Promise<{ code: string; message: string; retryable: boolean; remediation?: string; details?: unknown }> {
   let code = "error";
   let message = `HTTP ${resp.status}`;
+  let retryable = resp.status >= 500;
+  let remediation: string | undefined;
+  let details: unknown;
   try {
     const payload = await resp.json();
     if (payload && typeof payload === "object" && "error" in payload) {
-      const err = (payload as { error?: { code?: string; message?: string } }).error;
+      const err = (payload as { error?: { code?: string; message?: string; retryable?: boolean; remediation?: string; details?: unknown } }).error;
       if (err?.message) message = err.message;
       if (err?.code) code = err.code;
+      if (typeof err?.retryable === "boolean") retryable = err.retryable;
+      remediation = err?.remediation;
+      details = err?.details;
     }
   } catch {
     // no JSON body -- fall back to the generic HTTP status message
   }
-  return { code, message };
+  return { code, message, retryable, remediation, details };
 }
 
 export class BoxxkiteClient {
@@ -400,8 +406,9 @@ export class BoxxkiteClient {
           attempt++;
           continue;
         }
-        const { code, message } = await parseErrorBody(resp);
-        throw new BoxxkiteApiError(resp.status, code, message);
+        const { code, message, retryable, remediation, details } = await parseErrorBody(resp);
+        const ErrorType = apiErrorType(code, resp.status);
+        throw new ErrorType(resp.status, code, message, retryable, remediation, details);
       }
 
       const text = await resp.text();
@@ -765,8 +772,9 @@ export class BoxxkiteClient {
       throw new BoxxkiteConnectionError(err instanceof Error ? err.message : String(err));
     }
     if (!resp.ok) {
-      const { code, message } = await parseErrorBody(resp);
-      throw new BoxxkiteApiError(resp.status, code, message);
+      const { code, message, retryable, remediation, details } = await parseErrorBody(resp);
+      const ErrorType = apiErrorType(code, resp.status);
+      throw new ErrorType(resp.status, code, message, retryable, remediation, details);
     }
     if (!resp.body) {
       throw new BoxxkiteConnectionError("stream response had no body to stream");
@@ -810,8 +818,9 @@ export class BoxxkiteClient {
     }
 
     if (!resp.ok) {
-      const { code, message } = await parseErrorBody(resp);
-      throw new BoxxkiteApiError(resp.status, code, message);
+      const { code, message, retryable, remediation, details } = await parseErrorBody(resp);
+      const ErrorType = apiErrorType(code, resp.status);
+      throw new ErrorType(resp.status, code, message, retryable, remediation, details);
     }
     if (!resp.body) {
       throw new BoxxkiteConnectionError("watch response had no body to stream");

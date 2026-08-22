@@ -59,4 +59,10 @@ export type {
   Secret,
   AllowedCommandsResponse,
 } from "./types.js";
-export { BoxxkiteError, BoxxkiteApiError, BoxxkiteConnectionError } from "./errors.js";
+export {
+  BoxxkiteError, BoxxkiteApiError, BoxxkiteConnectionError,
+  BoxxkiteCapabilityDeniedError, BoxxkiteEgressDeniedError,
+  BoxxkiteQuotaExceededError, BoxxkiteReadonlyFilesystemError,
+  BoxxkiteSandboxCrashedError, BoxxkiteSandboxNotReadyError,
+  BoxxkiteServiceUnavailableError,
+} from "./errors.js";
