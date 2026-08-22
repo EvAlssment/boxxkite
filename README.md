@@ -20,6 +20,7 @@
   <a href="https://boxxkite.com/developers">Docs</a> ·
   <a href="#self-hosting">Self-hosting</a> ·
   <a href="#security">Security</a> ·
+  <a href="ROADMAP.md">Roadmap</a> ·
   <a href="examples/">Examples</a> ·
   <a href="https://discord.gg/JntfAx7cg5">Discord</a>
 </p>
