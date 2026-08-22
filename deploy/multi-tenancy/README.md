@@ -15,7 +15,8 @@ namespace-scoped controls work.
 
 | File | What it does |
 | --- | --- |
-| `namespace.yaml` | The tenant's namespace, labelled for Pod Security Admission `restricted` |
+| `namespace.yaml` | The tenant's namespace. Deliberately carries no Pod Security Admission label, see the comment in the file |
+| `pod-hardening-policy.yaml` | ValidatingAdmissionPolicy blocking hostNetwork/hostPID/hostIPC/hostPath/privileged in the tenant namespace |
 | `resource-quota.yaml` | Aggregate CPU/memory/pod/storage ceiling for the tenant |
 | `limit-range.yaml` | Per-pod floor and ceiling inside that namespace |
 | `network-policy-tenant.yaml` | Denies traffic to/from other namespaces (tenants) |
@@ -38,6 +39,11 @@ done
 kubectl apply --dry-run=server -f /tmp/boxxkite-tenant/
 kubectl apply -f /tmp/boxxkite-tenant/
 ```
+
+`pod-hardening-policy.yaml` needs Kubernetes 1.30 or newer, where
+ValidatingAdmissionPolicy is GA. On an older cluster that file is the one that
+will fail the dry run; express the same five rules through Kyverno, Gatekeeper,
+or a webhook instead, and apply the rest.
 
 Then point that tenant's control-plane at the namespace:
 

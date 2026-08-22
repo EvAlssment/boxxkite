@@ -139,7 +139,10 @@ separates resource usage and network reachability, not the node itself.
 ## Checklist before you offer this to another team
 
 - [ ] Each tenant has its own namespace, with
-      `pod-security.kubernetes.io/enforce=restricted`.
+      `deploy/multi-tenancy/pod-hardening-policy.yaml` bound to it. Do **not**
+      label these namespaces `pod-security.kubernetes.io/enforce=restricted`
+      or `=baseline`; both reject the sidecar's documented root + SYS_ADMIN /
+      SYS_PTRACE grant, so every sandbox pod would fail admission.
 - [ ] `ResourceQuota` and `LimitRange` applied per tenant namespace.
 - [ ] A namespaced NetworkPolicy denying traffic from other tenant namespaces,
       **and** you have verified your CNI actually enforces NetworkPolicy —

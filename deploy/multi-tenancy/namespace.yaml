@@ -14,11 +14,17 @@ metadata:
   name: boxxkite-TENANT
   labels:
     boxxkite.dev/tenant: TENANT
-    # Pod Security Admission. boxxkite's pod specs are written for
-    # `restricted`; a weaker level admits more than the isolation model
-    # assumes. GA from Kubernetes 1.25 -- below that these labels are
-    # ignored, which `boxxkite doctor` reports.
-    pod-security.kubernetes.io/enforce: restricted
-    pod-security.kubernetes.io/enforce-version: latest
-    pod-security.kubernetes.io/audit: restricted
-    pod-security.kubernetes.io/warn: restricted
+# DELIBERATELY NO Pod Security Admission labels here. Neither `restricted`
+# nor `baseline` can be used on a namespace that runs sandbox pods: the
+# sidecar container runs as UID 0 and adds SYS_ADMIN and SYS_PTRACE (see
+# deploy/pod-template.yaml, and SECURITY.md on why that is inherent to the
+# current design rather than a misconfiguration). `restricted` rejects it on
+# runAsNonRoot, and `baseline` rejects it too because its capability
+# allowlist excludes SYS_ADMIN and SYS_PTRACE. Labelling the namespace
+# either way does not harden anything, it just stops every sandbox pod from
+# being admitted.
+#
+# Use pod-hardening-policy.yaml in this directory instead. It blocks the
+# node-compromise vectors that actually matter (hostNetwork, hostPID,
+# hostIPC, hostPath, privileged) without touching the capability grant the
+# sidecar needs.
