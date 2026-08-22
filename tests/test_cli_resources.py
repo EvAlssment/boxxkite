@@ -455,3 +455,129 @@ def test_webhooks_deliveries_lists_attempts(monkeypatch):
     assert result.exit_code == 0
     assert "del-1" in result.output
     assert "delivered" in result.output
+
+
+# ── snapshots ────────────────────────────────────────────────────────────
+def test_snapshots_create_posts_label(monkeypatch):
+    _hosted()
+    captured = {}
+
+    def fake_request(method, url, **kwargs):
+        captured["method"] = method
+        captured["url"] = url
+        captured["json"] = kwargs.get("json")
+        return FakeResponse(201, json_data={"id": "snap-1", "status": "creating"})
+
+    monkeypatch.setattr(client_module.httpx, "request", fake_request)
+
+    result = runner.invoke(app, ["snapshots", "create", "sess-1", "--label", "before-migration"])
+
+    assert result.exit_code == 0
+    assert "snap-1" in result.output
+    assert captured["method"] == "POST"
+    assert captured["url"] == "https://cp.example.com/v1/sandboxes/sess-1/snapshots"
+    assert captured["json"] == {"label": "before-migration"}
+
+
+def test_snapshots_ls_lists_snapshots(monkeypatch):
+    _hosted()
+    monkeypatch.setattr(
+        client_module.httpx,
+        "request",
+        lambda *a, **k: FakeResponse(
+            200,
+            json_data=[
+                {"id": "snap-1", "status": "ready", "label": "before-migration", "created_at": "2026-01-01T00:00:00Z"}
+            ],
+        ),
+    )
+
+    result = runner.invoke(app, ["snapshots", "ls", "sess-1"])
+
+    assert result.exit_code == 0
+    assert "snap-1" in result.output
+    assert "before-migration" in result.output
+
+
+def test_snapshots_ls_reports_none_for_empty_list(monkeypatch):
+    _hosted()
+    monkeypatch.setattr(client_module.httpx, "request", lambda *a, **k: FakeResponse(200, json_data=[]))
+
+    result = runner.invoke(app, ["snapshots", "ls", "sess-1"])
+
+    assert result.exit_code == 0
+    assert "No snapshots" in result.output
+
+
+def test_snapshots_get_shows_storage_details(monkeypatch):
+    _hosted()
+    monkeypatch.setattr(
+        client_module.httpx,
+        "request",
+        lambda *a, **k: FakeResponse(
+            200,
+            json_data={
+                "id": "snap-1",
+                "status": "ready",
+                "label": "before-migration",
+                "session_id": "sess-1",
+                "storage_key_prefix": "snapshots/snap-1/",
+                "size_bytes": 4096,
+                "deleted_at": None,
+            },
+        ),
+    )
+
+    result = runner.invoke(app, ["snapshots", "get", "snap-1"])
+
+    assert result.exit_code == 0
+    assert "snapshots/snap-1/" in result.output
+    assert "4096" in result.output
+
+
+def test_snapshots_restore_posts_label_and_reports_new_session(monkeypatch):
+    _hosted()
+    captured = {}
+
+    def fake_request(method, url, **kwargs):
+        captured["method"] = method
+        captured["url"] = url
+        captured["json"] = kwargs.get("json")
+        return FakeResponse(201, json_data={"id": "sess-2", "status": "active"})
+
+    monkeypatch.setattr(client_module.httpx, "request", fake_request)
+
+    result = runner.invoke(app, ["snapshots", "restore", "snap-1", "--label", "restored"])
+
+    assert result.exit_code == 0
+    assert "sess-2" in result.output
+    assert captured["method"] == "POST"
+    assert captured["url"] == "https://cp.example.com/v1/snapshots/snap-1/restore"
+    assert captured["json"] == {"label": "restored"}
+
+
+def test_snapshots_rm_deletes_by_id(monkeypatch):
+    _hosted()
+    captured = {}
+
+    def fake_request(method, url, **kwargs):
+        captured["method"] = method
+        captured["url"] = url
+        return FakeResponse(204, has_content=False)
+
+    monkeypatch.setattr(client_module.httpx, "request", fake_request)
+
+    result = runner.invoke(app, ["snapshots", "rm", "snap-1"])
+
+    assert result.exit_code == 0
+    assert captured["method"] == "DELETE"
+    assert captured["url"] == "https://cp.example.com/v1/snapshots/snap-1"
+
+
+def test_snapshots_requires_hosted_mode():
+    config_store.write_local_env(token="tok123", sidecar_url="http://localhost:8080")
+
+    result = runner.invoke(app, ["snapshots", "ls", "sess-1"])
+
+    assert result.exit_code == 1
+    assert "hosted control-plane" in result.output

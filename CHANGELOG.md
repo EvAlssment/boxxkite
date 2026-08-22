@@ -5,6 +5,13 @@ All notable changes to boxxkite are documented here. Format loosely follows
 
 ## Unreleased
 
+### Added
+- Filesystem snapshot create/list/get/restore/delete are now exposed through
+  the Python SDK (`create_snapshot`/`list_snapshots`/`get_snapshot`/
+  `restore_snapshot`/`delete_snapshot` on both the sync and async clients)
+  and the `boxxkite snapshots` CLI subcommand -- previously only reachable
+  via the raw HTTP API.
+
 ### Changed
 - **Project renamed from "boxkite" to "boxxkite"** (new domain: boxxkite.com).
   Package names, the Python import path (`boxkite` → `boxxkite`), the Go

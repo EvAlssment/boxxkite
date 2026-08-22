@@ -999,6 +999,33 @@ class BoxxkiteClient:
             "POST", f"/v1/sandboxes/{session_id}/preview/{port}/revoke", json={"token_id": token_id}
         )
 
+    def create_snapshot(self, session_id: str, *, label: str | None = None) -> dict:
+        """POST /v1/sandboxes/{session_id}/snapshots -- create a filesystem snapshot."""
+        body: dict[str, Any] = {}
+        if label is not None:
+            body["label"] = label
+        return self._request("POST", f"/v1/sandboxes/{session_id}/snapshots", json=body)
+
+    def list_snapshots(self, session_id: str) -> list[dict]:
+        """GET /v1/sandboxes/{session_id}/snapshots -- list snapshots from one session."""
+        result = self._request("GET", f"/v1/sandboxes/{session_id}/snapshots")
+        return result or []
+
+    def get_snapshot(self, snapshot_id: str) -> dict:
+        """GET /v1/snapshots/{snapshot_id} -- fetch one filesystem snapshot."""
+        return self._request("GET", f"/v1/snapshots/{snapshot_id}")
+
+    def restore_snapshot(self, snapshot_id: str, *, label: str | None = None) -> dict:
+        """POST /v1/snapshots/{snapshot_id}/restore -- create a new sandbox session from a snapshot."""
+        body: dict[str, Any] = {}
+        if label is not None:
+            body["label"] = label
+        return self._request("POST", f"/v1/snapshots/{snapshot_id}/restore", json=body)
+
+    def delete_snapshot(self, snapshot_id: str) -> None:
+        """DELETE /v1/snapshots/{snapshot_id} -- delete a filesystem snapshot."""
+        self._request("DELETE", f"/v1/snapshots/{snapshot_id}")
+
     def sandbox(
         self,
         *,
@@ -1135,6 +1162,14 @@ class SandboxSession:
     def revoke_preview_url(self, port: int, token_id: str) -> dict:
         assert self.id is not None, "SandboxSession must be used as a context manager"
         return self._client.revoke_preview_url(self.id, port, token_id)
+
+    def create_snapshot(self, **kwargs: Any) -> dict:
+        assert self.id is not None, "SandboxSession must be used as a context manager"
+        return self._client.create_snapshot(self.id, **kwargs)
+
+    def list_snapshots(self) -> list[dict]:
+        assert self.id is not None, "SandboxSession must be used as a context manager"
+        return self._client.list_snapshots(self.id)
 
 
 class AsyncBoxxkiteClient:
@@ -1754,6 +1789,28 @@ class AsyncBoxxkiteClient:
             "POST", f"/v1/sandboxes/{session_id}/preview/{port}/revoke", json={"token_id": token_id}
         )
 
+    async def create_snapshot(self, session_id: str, *, label: str | None = None) -> dict:
+        body: dict[str, Any] = {}
+        if label is not None:
+            body["label"] = label
+        return await self._request("POST", f"/v1/sandboxes/{session_id}/snapshots", json=body)
+
+    async def list_snapshots(self, session_id: str) -> list[dict]:
+        result = await self._request("GET", f"/v1/sandboxes/{session_id}/snapshots")
+        return result or []
+
+    async def get_snapshot(self, snapshot_id: str) -> dict:
+        return await self._request("GET", f"/v1/snapshots/{snapshot_id}")
+
+    async def restore_snapshot(self, snapshot_id: str, *, label: str | None = None) -> dict:
+        body: dict[str, Any] = {}
+        if label is not None:
+            body["label"] = label
+        return await self._request("POST", f"/v1/snapshots/{snapshot_id}/restore", json=body)
+
+    async def delete_snapshot(self, snapshot_id: str) -> None:
+        await self._request("DELETE", f"/v1/snapshots/{snapshot_id}")
+
     def sandbox(
         self,
         *,
@@ -1888,3 +1945,11 @@ class AsyncSandboxSession:
     async def revoke_preview_url(self, port: int, token_id: str) -> dict:
         assert self.id is not None, "AsyncSandboxSession must be used as a context manager"
         return await self._client.revoke_preview_url(self.id, port, token_id)
+
+    async def create_snapshot(self, **kwargs: Any) -> dict:
+        assert self.id is not None, "AsyncSandboxSession must be used as a context manager"
+        return await self._client.create_snapshot(self.id, **kwargs)
+
+    async def list_snapshots(self) -> list[dict]:
+        assert self.id is not None, "AsyncSandboxSession must be used as a context manager"
+        return await self._client.list_snapshots(self.id)
