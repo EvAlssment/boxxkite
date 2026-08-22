@@ -133,14 +133,24 @@ a plan.
 
 Real gaps. Listed so you don't have to open an issue to find out we know.
 
-- **VM-level isolation (gVisor, Kata Containers, Firecracker).** boxxkite's
-  boundary today is a Kubernetes pod: non-root, all capabilities dropped,
-  read-only root filesystem, seccomp `RuntimeDefault`, network egress denied by
-  default. That is a container boundary sharing the node's kernel, not a
-  hypervisor one. A VM-isolated runtime tier is a reasonable thing to want and
-  we're not committing to it — if a shared kernel is unacceptable for your
-  threat model, boxxkite is the wrong layer today. See
+- **VM-level isolation: gVisor and Firecracker.** boxxkite's boundary today is
+  a Kubernetes pod: non-root, all capabilities dropped, read-only root
+  filesystem, seccomp `RuntimeDefault`, network egress denied by default. That
+  is a container boundary sharing the node's kernel, not a hypervisor one.
+  Neither gVisor nor Firecracker is planned. If a shared kernel is
+  unacceptable for your threat model, boxxkite is the wrong layer today. See
   [SECURITY.md](SECURITY.md) for what is and isn't in scope for a report.
+
+  **Kata Containers is the partial exception, and it is experimental.** It
+  ships today behind `BOXXKITE_KATA_RUNTIME_CLASS_ENABLED` (off by default),
+  but it is implemented against the Kubernetes `runtimeClassName` API shape and
+  has never been exercised against a live Kata-enabled cluster. One concrete
+  risk is still unverified: Kata's documented block-backed `emptyDir` modes do
+  not honor `emptyDir.sizeLimit`, so if the default backend behaves the same
+  way, the per-sandbox storage caps silently stop applying the moment the flag
+  is on. Enabling it is an opt-in onto an experimental configuration, not a
+  supported one. See the comment on the flag in
+  [`src/boxxkite/resource_config.py`](src/boxxkite/resource_config.py).
 - **Multi-region scheduling.** A single control-plane can address multiple
   clusters, but there's no region-aware placement, no cross-region failover,
   and no data-residency routing.
