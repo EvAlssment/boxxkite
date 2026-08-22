@@ -125,7 +125,7 @@ app.add_typer(secrets_app, name="secrets")
 snapshots_app = typer.Typer(
     help=(
         "Manage filesystem snapshots for hosted sandbox sessions. Hosted mode only -- "
-        "local docker-compose mode (`boxkite up`) has no snapshot API of its own."
+        "local docker-compose mode (`boxxkite up`) has no snapshot API of its own."
     ),
     no_args_is_help=True,
 )

@@ -1,6 +1,6 @@
-"""`boxkite snapshots ...` -- hosted-mode filesystem snapshot management.
+"""`boxxkite snapshots ...` -- hosted-mode filesystem snapshot management.
 
-Hosted-only, like `boxkite session` and `boxkite images`: the local
+Hosted-only, like `boxxkite session` and `boxxkite images`: the local
 docker-compose stack has no multi-session control-plane, so snapshots are a
 hosted feature only.
 """
@@ -17,9 +17,9 @@ from .errors import CliError
 def _require_hosted(ctx: Context, command: str) -> None:
     if ctx.mode != "hosted":
         raise CliError(
-            f"`boxkite {command}` needs a hosted control-plane. Local docker-compose "
-            "mode (`boxkite up`) has no snapshot API of its own -- run `boxkite signup` "
-            "or `boxkite config set-url`/`set-key` to target a hosted control-plane."
+            f"`boxxkite {command}` needs a hosted control-plane. Local docker-compose "
+            "mode (`boxxkite up`) has no snapshot API of its own -- run `boxxkite signup` "
+            "or `boxxkite config set-url`/`set-key` to target a hosted control-plane."
         )
 
 
