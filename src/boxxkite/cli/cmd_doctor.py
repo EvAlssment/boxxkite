@@ -24,6 +24,7 @@ docs/../blog "Verifying network-dark isolation against your own CNI").
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from dataclasses import dataclass
 from typing import Any, Optional
@@ -50,14 +51,36 @@ PASS = "pass"
 WARN = "warn"
 FAIL = "fail"
 
-# Verbs the sandbox manager actually needs on sandbox pods -- see
-# deploy/rbac.yaml. Kept in the same shape a SelfSubjectAccessReview wants.
+# Verbs the sandbox manager actually needs -- checked against
+# deploy/rbac.yaml's Role, not guessed. Kept in the shape a
+# SelfSubjectAccessReview wants: (resource, verb, resource_name or None).
+#
+# Deliberately NOT here: pods/exec. deploy/rbac.yaml never grants it and
+# nothing in src/boxxkite performs a Kubernetes exec -- the manager reaches a
+# sandbox over the sidecar's HTTP API. Requiring it made `doctor` fail on a
+# cluster installed exactly per this project's own manifests.
 REQUIRED_PERMISSIONS = (
-    ("pods", "create"),
-    ("pods", "get"),
-    ("pods", "list"),
-    ("pods", "delete"),
-    ("pods/exec", "create"),
+    ("pods", "create", None),
+    ("pods", "get", None),
+    ("pods", "list", None),
+    ("pods", "delete", None),
+    # The sidecar auth token lives in a per-pod Secret. Without these the
+    # sidecar fails closed, so a preflight that skipped them would PASS and
+    # then every sandbox would 503 -- the worst shape of miss for this tool.
+    ("secrets", "get", None),
+    ("secrets", "create", None),
+    ("secrets", "delete", None),
+)
+
+# Needed only by features that are themselves opt-in, so a missing grant here
+# is a WARN rather than a FAIL: NetworkPolicy objects back per-session secrets
+# egress, and serviceaccounts/token backs control-plane token rotation (which
+# deployments can and do run with disabled). The token grant in
+# deploy/rbac.yaml is scoped with resourceNames, so the review has to name the
+# ServiceAccount or RBAC will not match the rule and report a false denial.
+OPTIONAL_PERMISSIONS = (
+    ("networkpolicies", "create", None),
+    ("serviceaccounts/token", "create", "boxxkite-control-plane"),
 )
 
 
@@ -113,7 +136,19 @@ async def check_seccomp_support(version_api: Any) -> CheckResult:
     except Exception as exc:
         return CheckResult("seccomp-runtimedefault", WARN, f"version unavailable: {exc}")
 
-    if minor is None or minor < MIN_SECCOMP_MINOR:
+    # An unparseable minor version is not evidence of an old cluster, so it
+    # WARNs here exactly as it does in check_server_version. Asserting
+    # "needs v1.19+" on no evidence previously made the same input produce a
+    # WARN for kubernetes-version and a FAIL for this check, and that FAIL
+    # alone was enough to exit non-zero.
+    if minor is None:
+        return CheckResult(
+            "seccomp-runtimedefault",
+            WARN,
+            "could not determine the server version, so support is unverified",
+            "Verify the version manually with `kubectl version`.",
+        )
+    if minor < MIN_SECCOMP_MINOR:
         return CheckResult(
             "seccomp-runtimedefault",
             FAIL,
@@ -206,22 +241,42 @@ async def check_pod_security_admission(core_api: Any, namespace: str) -> CheckRe
 
 
 async def check_rbac(authz_api: Any, namespace: str, review_factory: Any) -> CheckResult:
-    missing = []
-    for resource, verb in REQUIRED_PERMISSIONS:
+    """Required verbs FAIL when denied; opt-in-feature verbs only WARN.
+
+    Every entry is probed independently -- an error on one no longer abandons
+    the rest, which previously reported a WARN naming verbs that were never
+    actually tested.
+    """
+
+    async def _allowed(resource: str, verb: str, resource_name: str | None) -> bool | None:
+        """True/False, or None when the review itself could not be run."""
         try:
             review = await authz_api.create_self_subject_access_review(
-                review_factory(namespace=namespace, resource=resource, verb=verb)
+                review_factory(
+                    namespace=namespace,
+                    resource=resource,
+                    verb=verb,
+                    resource_name=resource_name,
+                )
             )
-            allowed = bool(getattr(getattr(review, "status", None), "allowed", False))
-        except Exception as exc:
-            return CheckResult(
-                "rbac",
-                WARN,
-                f"could not run a SelfSubjectAccessReview: {exc}",
-                "Check the permissions in deploy/rbac.yaml by hand instead.",
-            )
-        if not allowed:
+            return bool(getattr(getattr(review, "status", None), "allowed", False))
+        except Exception:
+            return None
+
+    missing: list[str] = []
+    untested: list[str] = []
+    optional_missing: list[str] = []
+
+    for resource, verb, resource_name in REQUIRED_PERMISSIONS:
+        allowed = await _allowed(resource, verb, resource_name)
+        if allowed is None:
+            untested.append(f"{verb} {resource}")
+        elif not allowed:
             missing.append(f"{verb} {resource}")
+
+    for resource, verb, resource_name in OPTIONAL_PERMISSIONS:
+        if await _allowed(resource, verb, resource_name) is False:
+            optional_missing.append(f"{verb} {resource}")
 
     if missing:
         return CheckResult(
@@ -229,6 +284,21 @@ async def check_rbac(authz_api: Any, namespace: str, review_factory: Any) -> Che
             FAIL,
             f"missing: {', '.join(missing)}",
             f"Apply deploy/rbac.yaml (or grant the equivalent) in namespace {namespace!r}.",
+        )
+    if untested:
+        return CheckResult(
+            "rbac",
+            WARN,
+            f"could not run a SelfSubjectAccessReview for: {', '.join(untested)}",
+            "Check those permissions in deploy/rbac.yaml by hand instead.",
+        )
+    if optional_missing:
+        return CheckResult(
+            "rbac",
+            WARN,
+            f"required verbs allowed; optional not granted: {', '.join(optional_missing)}",
+            "Only needed for per-session secrets egress and control-plane token "
+            "rotation. Fine to ignore if you do not use those.",
         )
     return CheckResult("rbac", PASS, f"all {len(REQUIRED_PERMISSIONS)} required verbs allowed")
 
@@ -254,7 +324,7 @@ async def check_cert_manager(apiext_api: Any) -> CheckResult:
     )
 
 
-def _review_body(*, namespace: str, resource: str, verb: str):
+def _review_body(*, namespace: str, resource: str, verb: str, resource_name: str | None = None):
     """Built lazily so importing this module doesn't require kubernetes_asyncio
     -- the CLI imports every cmd_* module at startup, and `boxxkite doctor` is
     the only command that needs a cluster client at all."""
@@ -263,7 +333,7 @@ def _review_body(*, namespace: str, resource: str, verb: str):
     return client.V1SelfSubjectAccessReview(
         spec=client.V1SelfSubjectAccessReviewSpec(
             resource_attributes=client.V1ResourceAttributes(
-                namespace=namespace, resource=resource, verb=verb
+                namespace=namespace, resource=resource, verb=verb, name=resource_name
             )
         )
     )
@@ -330,6 +400,36 @@ def doctor(
     asyncio.run(_run(namespace=namespace, strict=strict))
 
 
+@contextlib.contextmanager
+def _quiet_client_logs():
+    """Silence the API client's own logging for the duration of the checks.
+
+    `build_kubernetes_api_client` starts the rotating-token machinery, which
+    logs a full aiohttp traceback (`logger.exception`) when it cannot reach the
+    API server. Against a kubeconfig whose cluster is unreachable -- the single
+    most common reason to run this command -- that buried the report under
+    dozens of lines of traceback before the table rendered, which is exactly
+    the confusing Kubernetes output this command exists to replace.
+
+    Nothing is lost: an unreachable API server still surfaces as the
+    cluster-reachable FAIL row, with the underlying error in its detail column.
+    """
+    noisy = ("boxxkite.k8s_auth", "kubernetes_asyncio", "aiohttp")
+    previous = {}
+    for name in noisy:
+        lg = logging.getLogger(name)
+        previous[name] = (lg.level, lg.propagate)
+        lg.setLevel(logging.CRITICAL)
+        lg.propagate = False
+    try:
+        yield
+    finally:
+        for name, (level, propagate) in previous.items():
+            lg = logging.getLogger(name)
+            lg.setLevel(level)
+            lg.propagate = propagate
+
+
 async def _run(*, namespace: str, strict: bool) -> None:
     from kubernetes_asyncio import client
 
@@ -346,19 +446,20 @@ async def _run(*, namespace: str, strict: bool) -> None:
 
     typer.echo(f"Checking cluster from {source}, namespace {namespace!r}\n")
 
-    api = build_kubernetes_api_client()
-    try:
-        results = await run_cluster_checks(
-            version_api=client.VersionApi(api),
-            core_api=client.CoreV1Api(api),
-            networking_api=client.NetworkingV1Api(api),
-            apps_api=client.AppsV1Api(api),
-            apiext_api=client.ApiextensionsV1Api(api),
-            authz_api=client.AuthorizationV1Api(api),
-            namespace=namespace,
-        )
-    finally:
-        await api.close()
+    with _quiet_client_logs():
+        api = build_kubernetes_api_client()
+        try:
+            results = await run_cluster_checks(
+                version_api=client.VersionApi(api),
+                core_api=client.CoreV1Api(api),
+                networking_api=client.NetworkingV1Api(api),
+                apps_api=client.AppsV1Api(api),
+                apiext_api=client.ApiextensionsV1Api(api),
+                authz_api=client.AuthorizationV1Api(api),
+                namespace=namespace,
+            )
+        finally:
+            await api.close()
 
     render_results(results)
 
