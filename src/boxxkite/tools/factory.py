@@ -517,6 +517,10 @@ def create_sandbox_tool_specs(
                 sandbox_manager=sandbox_manager,
                 session_id=effective_session_id,
                 lazy_runtime=lazy_runtime,
+                audit_sink=audit_sink,
+                organization_id=organization_id,
+                work_item_id=work_item_id,
+                agent_name=agent_name,
             )
         )
 

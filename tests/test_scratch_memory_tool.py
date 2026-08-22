@@ -123,3 +123,86 @@ def test_tool_is_off_by_default_and_opt_in_via_the_factory():
     )
     assert "scratch_memory" in {t.name for t in enabled}
     assert len(enabled) == len(default_names) + 1
+
+
+# ── audit_sink wiring (review follow-up) ─────────────────────────────────
+# The tool's own description tells the model to keep notes here instead of in
+# a scratch file, so mutations have to reach AuditSink the way file_create's
+# do -- otherwise the tool quietly moves agent writes off the audit trail.
+
+
+def _sink() -> MagicMock:
+    sink = MagicMock()
+    sink.record_scratch_write = AsyncMock(return_value=None)
+    return sink
+
+
+async def test_set_is_mirrored_to_the_audit_sink():
+    manager, sink = _manager(), _sink()
+    spec = create_scratch_memory_tool_spec(
+        sandbox_manager=manager, session_id="sess-1", audit_sink=sink, agent_name="agent-a"
+    )
+
+    await spec.handler(operation="set", key="todo", value="read manager.py")
+
+    sink.record_scratch_write.assert_awaited_once()
+    kwargs = sink.record_scratch_write.await_args.kwargs
+    assert kwargs["operation"] == "set"
+    assert kwargs["key"] == "todo"
+    assert kwargs["size_bytes"] == 12
+    assert kwargs["session_id"] == "sess-1"
+    assert kwargs["agent_name"] == "agent-a"
+
+
+async def test_delete_is_mirrored_to_the_audit_sink():
+    manager, sink = _manager(), _sink()
+    spec = create_scratch_memory_tool_spec(
+        sandbox_manager=manager, session_id="sess-1", audit_sink=sink
+    )
+
+    await spec.handler(operation="delete", key="todo")
+
+    kwargs = sink.record_scratch_write.await_args.kwargs
+    assert kwargs["operation"] == "delete"
+    assert kwargs["size_bytes"] == 0
+
+
+async def test_a_delete_that_removed_nothing_is_not_recorded():
+    manager, sink = _manager(), _sink()
+    manager.scratch_delete = AsyncMock(return_value={"key": "nope", "deleted": False, "keys": 0})
+    spec = create_scratch_memory_tool_spec(
+        sandbox_manager=manager, session_id="sess-1", audit_sink=sink
+    )
+
+    await spec.handler(operation="delete", key="nope")
+
+    sink.record_scratch_write.assert_not_awaited()
+
+
+async def test_reads_are_not_recorded():
+    manager, sink = _manager(), _sink()
+    spec = create_scratch_memory_tool_spec(
+        sandbox_manager=manager, session_id="sess-1", audit_sink=sink
+    )
+
+    await spec.handler(operation="get", key="todo")
+    await spec.handler(operation="list")
+
+    sink.record_scratch_write.assert_not_awaited()
+
+
+async def test_a_sink_without_the_hook_is_a_no_op_not_a_crash():
+    # safe_call treats a missing method as a no-op, so a partial sink written
+    # before this hook existed must keep working.
+    class PartialSink:
+        async def record_file_write(self, **_kwargs):
+            return None
+
+    manager = _manager()
+    spec = create_scratch_memory_tool_spec(
+        sandbox_manager=manager, session_id="sess-1", audit_sink=PartialSink()
+    )
+
+    result = await spec.handler(operation="set", key="todo", value="x")
+
+    assert "Stored 'todo'" in result

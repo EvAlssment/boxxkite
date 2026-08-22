@@ -25,7 +25,9 @@ no agent-framework import anywhere in this file.
 
 import logging
 from typing import Optional, TYPE_CHECKING
+from uuid import UUID
 
+from ..audit import AuditSink, safe_call
 from ..lazy_runtime import resolve_sandbox_operation_context
 from .types import ToolSpec
 
@@ -52,8 +54,9 @@ operation:
   "list"   - list your keys and their sizes (not their contents)
 
 Values are plain strings -- store JSON as a string if you need structure.
-This memory lasts for this sandbox session only and is discarded when the
-session ends; it is not a place to persist anything a user needs later.
+This memory lasts for this sandbox session only and is wiped when the pod is
+reconfigured for its next session; it is not a place to persist anything a
+user needs later.
 Write those to the workspace with file_create instead.
 """
 
@@ -82,6 +85,10 @@ def create_scratch_memory_tool_spec(
     sandbox_manager: Optional["SandboxManager"] = None,
     session_id: Optional[str] = None,
     lazy_runtime: Optional["LazySandboxRuntime"] = None,
+    audit_sink: Optional[AuditSink] = None,
+    organization_id: Optional[UUID] = None,
+    work_item_id: Optional[UUID] = None,
+    agent_name: Optional[str] = None,
 ) -> ToolSpec:
     """Build the framework-agnostic ToolSpec for scratch_memory.
 
@@ -89,6 +96,13 @@ def create_scratch_memory_tool_spec(
         sandbox_manager: SandboxManager instance (required, or lazy_runtime)
         session_id: Session ID for tracking
         lazy_runtime: Lazy sandbox runtime (required, or sandbox_manager)
+        audit_sink: Optional AuditSink. Mutations (set/delete) are mirrored to
+            it, the same way file_create/str_replace are -- without this, a
+            tool whose whole purpose is holding notes outside the workspace
+            would also hold them outside the audit trail.
+        organization_id: Organization ID, for the audit record
+        work_item_id: Work item ID, for the audit record
+        agent_name: Agent name, for the audit record
 
     Returns:
         ToolSpec with a plain async handler(operation, key, value) -> str
@@ -123,6 +137,17 @@ def create_scratch_memory_tool_spec(
         try:
             if operation == "set":
                 result = await manager.scratch_set(effective_session_id, key, value)
+                await safe_call(
+                    audit_sink,
+                    "record_scratch_write",
+                    organization_id=organization_id,
+                    work_item_id=work_item_id,
+                    session_id=effective_session_id,
+                    agent_name=agent_name,
+                    operation="set",
+                    key=key,
+                    size_bytes=result.get("bytes_stored", 0),
+                )
                 return f"Stored '{key}' ({result['bytes_stored']} bytes). Keys in memory: {result['keys']}"
 
             if operation == "get":
@@ -135,6 +160,17 @@ def create_scratch_memory_tool_spec(
                 result = await manager.scratch_delete(effective_session_id, key)
                 if not result.get("deleted"):
                     return f"No value stored for '{key}'; nothing to delete."
+                await safe_call(
+                    audit_sink,
+                    "record_scratch_write",
+                    organization_id=organization_id,
+                    work_item_id=work_item_id,
+                    session_id=effective_session_id,
+                    agent_name=agent_name,
+                    operation="delete",
+                    key=key,
+                    size_bytes=0,
+                )
                 return f"Deleted '{key}'. Keys in memory: {result['keys']}"
 
             result = await manager.scratch_list(effective_session_id)

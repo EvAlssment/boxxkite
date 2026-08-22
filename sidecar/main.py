@@ -531,6 +531,11 @@ async def _teardown_session_for_budget_breach() -> None:
     await _reset_node_interpreter()
     await _reset_browser()
     await _kill_all_lsp_servers()
+    # Scratch memory too, so this really is the same cleanup /configure does
+    # (sidecar_sync.py calls clear_scratch_memory there). Without this a
+    # budget-exhausted session keeps its 1MB of scratch readable and writable
+    # even though every other live resource it owned has been torn down.
+    clear_scratch_memory()
 
 
 # Coverage note (security review on GitHub issue #122's first pass): the
