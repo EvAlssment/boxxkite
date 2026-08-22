@@ -128,6 +128,29 @@ class AuditSink(Protocol):
         """Called after `present_files` confirms a file is synced to storage."""
         ...
 
+    async def record_scratch_write(
+        self,
+        *,
+        organization_id: Optional[UUID],
+        work_item_id: Optional[UUID],
+        session_id: Optional[str],
+        agent_name: Optional[str],
+        operation: str,
+        key: str,
+        size_bytes: int,
+    ) -> None:
+        """Called after `scratch_memory` mutates the session-scoped store.
+
+        `operation` is "set" or "delete"; reads are not recorded, matching
+        `view` not being recorded while `file_create` is. `size_bytes` is the
+        stored value's length for a set, and 0 for a delete.
+
+        Optional, like every method on this Protocol: `safe_call` treats a
+        sink that doesn't implement it as a no-op, so existing partial sinks
+        keep working unchanged.
+        """
+        ...
+
     async def record_exec(
         self,
         *,
@@ -166,6 +189,9 @@ class NoOpAuditSink:
         return None
 
     async def record_file_registered(self, **_kwargs: Any) -> None:
+        return None
+
+    async def record_scratch_write(self, **_kwargs: Any) -> None:
         return None
 
     async def record_exec(self, **_kwargs: Any) -> None:

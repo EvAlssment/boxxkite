@@ -73,6 +73,10 @@ def test_route_inventory_matches_known_sidecar_routes():
     known_paths = {
         "/health",
         "/metrics",
+        "/scratch/set",
+        "/scratch/get",
+        "/scratch/delete",
+        "/scratch/list",
         "/exec",
         "/http-request",
         "/interpreter/exec",

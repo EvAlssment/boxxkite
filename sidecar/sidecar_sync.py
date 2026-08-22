@@ -294,6 +294,13 @@ async def configure(req: main.ConfigureRequest):
     # BOXXKITE_LSP_ENABLED is set, same reasoning as the Node interpreter/
     # browser resets above.
     await main._kill_all_lsp_servers()
+    # Same requirement for agent scratch memory (GitHub issue #74) -- it
+    # holds whatever the previous tenant's agent put there, so a recycled
+    # pod must not hand those keys to the next tenant. Cheap and
+    # unconditional, same as the resets above.
+    dropped_scratch_keys = main.clear_scratch_memory()
+    if dropped_scratch_keys:
+        logger.info(f"[configure] Cleared {dropped_scratch_keys} scratch-memory key(s) from previous session")
 
     # Serialize configure against active flushes to avoid session-transition races.
     async with _get_flush_lock():

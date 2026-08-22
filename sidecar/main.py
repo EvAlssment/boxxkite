@@ -531,6 +531,11 @@ async def _teardown_session_for_budget_breach() -> None:
     await _reset_node_interpreter()
     await _reset_browser()
     await _kill_all_lsp_servers()
+    # Scratch memory too, so this really is the same cleanup /configure does
+    # (sidecar_sync.py calls clear_scratch_memory there). Without this a
+    # budget-exhausted session keeps its 1MB of scratch readable and writable
+    # even though every other live resource it owned has been torn down.
+    clear_scratch_memory()
 
 
 # Coverage note (security review on GitHub issue #122's first pass): the
@@ -1352,6 +1357,48 @@ class ProcessKillAllResponse(BaseModel):
     killed: int
 
 
+# Agent scratch memory (GitHub issue #74) -- see sidecar_scratch.py for the
+# store itself and why it deliberately isn't the workspace filesystem.
+class ScratchSetRequest(BaseModel):
+    key: str
+    value: str
+
+
+class ScratchSetResponse(BaseModel):
+    key: str
+    bytes_stored: int
+    keys: int
+
+
+class ScratchGetResponse(BaseModel):
+    key: str
+    value: Optional[str] = None
+    found: bool
+
+
+class ScratchDeleteRequest(BaseModel):
+    key: str
+
+
+class ScratchDeleteResponse(BaseModel):
+    key: str
+    deleted: bool
+    keys: int
+
+
+class ScratchEntry(BaseModel):
+    key: str
+    bytes: int
+
+
+class ScratchListResponse(BaseModel):
+    entries: list[ScratchEntry]
+    keys: int
+    total_bytes: int
+    max_keys: int
+    max_total_bytes: int
+
+
 class FileCreateRequest(BaseModel):
     path: str
     content: str = Field(max_length=FILE_CONTENT_MAX_LENGTH)
@@ -1829,6 +1876,7 @@ import sidecar_lsp  # noqa: E402
 import sidecar_secrets  # noqa: E402
 import sidecar_files  # noqa: E402
 import sidecar_sync  # noqa: E402
+import sidecar_scratch  # noqa: E402
 
 from sidecar_paths import (  # noqa: E402,F401
     _is_under_root, _normalize_input_path, _typed_allowed_roots, _ls_allowed_roots,
@@ -1887,6 +1935,9 @@ from sidecar_files import (  # noqa: E402,F401
     _compute_skills_rev, _materialize_skills, _grep_search_sync,
     _parse_inotify_events, _watch_directory_once,
 )
+from sidecar_scratch import (  # noqa: E402,F401
+    clear_scratch_memory,
+)
 from sidecar_sync import (  # noqa: E402,F401
     _get_flush_lock, _scrub_disallowed_pending_sync, _is_ignored_sync_dir_name,
     _trim_synced_signature_cache, _file_signature, _scan_sync_file_signatures,
@@ -1909,6 +1960,7 @@ app.include_router(sidecar_lsp.router)
 app.include_router(sidecar_secrets.router)
 app.include_router(sidecar_files.router)
 app.include_router(sidecar_sync.router)
+app.include_router(sidecar_scratch.router)
 
 if __name__ == "__main__":
     import uvicorn

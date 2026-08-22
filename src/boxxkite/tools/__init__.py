@@ -21,6 +21,9 @@ session management tools with a cleaner interface:
   git_push/git_pull/git_branch/git_checkout
 - (opt-in, see enable_run_tests) run_tests: run a test command and parse
   its output into a structured schema instead of raw stdout
+- (opt-in, see enable_scratch_memory) scratch_memory: session-scoped
+  key/value bookkeeping for the agent's own working state, deliberately
+  not the workspace filesystem (see scratch_memory_tool.py)
 - (opt-in, see hosted_api_key) budget_status: remaining hosted-account
   sandbox-hours, concurrency, and rate-limit headroom (the only tool here
   that doesn't go through SandboxManager -- see budget_status_tool.py)
@@ -105,6 +108,7 @@ from .search_tools import (
 )
 from .budget_status_tool import create_budget_status_tool_spec
 from .adapters import to_google_adk_tools
+from .scratch_memory_tool import create_scratch_memory_tool_spec
 from .factory import (
     create_sandbox_tools,
     create_sandbox_tools_with_manager,
@@ -166,6 +170,7 @@ __all__ = [
     "create_grep_tool",
     "create_grep_tool_spec",
     "create_budget_status_tool_spec",
+    "create_scratch_memory_tool_spec",
     "create_sandbox_tools",
     "create_sandbox_tools_with_manager",
     "create_sandbox_tool_specs",
