@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - deploy/helm/boxxkite/**
+      - tests/test_helm_smoke.py
       - .github/workflows/helm-chart.yml
   pull_request:
     branches: [main]
     paths:
       - deploy/helm/boxxkite/**
+      - tests/test_helm_smoke.py
       - .github/workflows/helm-chart.yml
 
 permissions:
@@ -29,3 +31,16 @@ jobs:
         run: helm lint deploy/helm/boxxkite
       - name: Render chart with schema validation
         run: helm template boxxkite deploy/helm/boxxkite --set namespace=boxxkite
+      # ci.yml never installs helm, so tests/test_helm_smoke.py skips its whole
+      # module there (module-level skipif on `helm` being absent from PATH).
+      # This job is the only place those cases can actually execute, and they
+      # are what verifies the schema REJECTS bad values -- the point of having
+      # a schema at all. Needs no package install: the test shells out to helm
+      # and imports nothing from boxxkite.
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Run Helm schema tests
+        run: |
+          pip install --quiet pytest pyyaml
+          pytest tests/test_helm_smoke.py -q
