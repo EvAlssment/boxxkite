@@ -1,0 +1,30 @@
+# Caps one tenant's total consumption so a single tenant cannot exhaust the
+# cluster for the others (docs/SELF-HOSTED-MULTI-TENANCY.md).
+#
+# This is the only place a real per-tenant ceiling can be enforced today:
+# BOXXKITE_MAX_CONCURRENT_SANDBOXES is a process-wide control-plane setting
+# applied identically to every account, so it cannot express "tenant A gets
+# more than tenant B". A namespace quota can.
+#
+# The numbers below are a starting point sized for roughly 10 concurrent
+# `small` sandboxes -- check src/boxxkite/resource_config.py's
+# SANDBOX_SIZE_PRESETS for the actual per-pod requests/limits your sizes use
+# and adjust. A quota that's too tight surfaces as pods stuck Pending, not as
+# a clear error, so size it deliberately.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: boxxkite-tenant-quota
+  namespace: boxxkite-TENANT
+spec:
+  hard:
+    requests.cpu: "5"
+    requests.memory: 10Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    # Each session is one pod. Keep this at or above the tenant's expected
+    # concurrency plus the warm pool, or warm-pod creation starts failing.
+    count/pods: "30"
+    requests.ephemeral-storage: 50Gi
+    # Only relevant if this tenant uses independent storage volumes.
+    persistentvolumeclaims: "20"

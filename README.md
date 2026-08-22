@@ -152,6 +152,11 @@ API — is something you deploy yourself:
   Then deploy the `control-plane/` API separately (see the Render button
   below or the [developer docs](https://boxxkite.com/developers)).
   A local `kind` cluster works too: `./deploy/local-kind/setup.sh`.
+- **Serving more than one internal team?** See
+  [docs/SELF-HOSTED-MULTI-TENANCY.md](docs/SELF-HOSTED-MULTI-TENANCY.md) for
+  what separates one tenant from another (and what doesn't), plus reference
+  `ResourceQuota`/`LimitRange`/`NetworkPolicy` manifests in
+  [deploy/multi-tenancy/](deploy/multi-tenancy/).
 - **One-click Render deploy** for the control-plane API —
   [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/EvAlssment/boxxkite)
   (still needs a real Kubernetes cluster for actual sandbox execution).

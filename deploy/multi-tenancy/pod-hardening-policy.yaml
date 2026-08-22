@@ -1,0 +1,64 @@
+# Pod hardening for one tenant's namespace, without Pod Security Admission
+# (docs/SELF-HOSTED-MULTI-TENANCY.md).
+#
+# WHY NOT PSA: neither the `restricted` nor the `baseline` PSA level can be
+# applied to a namespace that runs sandbox pods. The sidecar container runs as
+# UID 0 and adds SYS_ADMIN and SYS_PTRACE (deploy/pod-template.yaml explains
+# why: nsenter needs them to enter the sandbox container's mount and PID
+# namespaces). `restricted` rejects that on runAsNonRoot, and `baseline`
+# rejects it too, because baseline's capability allowlist covers CHOWN,
+# SETUID, SETGID and SYS_CHROOT but not SYS_ADMIN or SYS_PTRACE. A PSA label
+# here would not harden the namespace, it would simply stop every sandbox pod
+# from being admitted.
+#
+# WHAT THIS DOES INSTEAD: blocks the node-compromise vectors boxxkite's own
+# pod spec never uses, so denying them costs nothing functionally. The threat
+# it closes is a leaked control-plane credential: the RBAC grant alone
+# (create/delete/patch on pods) would otherwise let an attacker submit an
+# arbitrary pod spec, mounting the node root filesystem via hostPath, reading
+# the node's other workloads via hostNetwork/hostPID, or setting
+# privileged: true for a straightforward container escape.
+#
+# REQUIRES Kubernetes 1.30+ (ValidatingAdmissionPolicy went GA in 1.30). On
+# older clusters use a webhook admission controller, Kyverno, or Gatekeeper to
+# express the same five rules.
+#
+# Replace TENANT to match namespace.yaml.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: boxxkite-tenant-pod-hardening
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  validations:
+    - expression: "!has(object.spec.hostNetwork) || object.spec.hostNetwork == false"
+      message: "hostNetwork is not permitted for pods in this namespace"
+    - expression: "!has(object.spec.hostPID) || object.spec.hostPID == false"
+      message: "hostPID is not permitted for pods in this namespace"
+    - expression: "!has(object.spec.hostIPC) || object.spec.hostIPC == false"
+      message: "hostIPC is not permitted for pods in this namespace"
+    - expression: "!has(object.spec.volumes) || !object.spec.volumes.exists(v, has(v.hostPath))"
+      message: "hostPath volumes are not permitted for pods in this namespace"
+    - expression: >
+        object.spec.containers.all(c,
+          !has(c.securityContext) || !has(c.securityContext.privileged) || c.securityContext.privileged == false
+        )
+      message: "privileged containers are not permitted in this namespace"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: boxxkite-tenant-pod-hardening-binding
+spec:
+  policyName: boxxkite-tenant-pod-hardening
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: boxxkite-TENANT
