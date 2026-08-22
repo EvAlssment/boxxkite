@@ -12,6 +12,7 @@ from . import (
     cmd_audit,
     cmd_config,
     cmd_diagnostics,
+    cmd_doctor,
     cmd_exec,
     cmd_files,
     cmd_handoff,
@@ -183,6 +184,7 @@ audit_app = typer.Typer(
 audit_app.command("verify")(cli_error_boundary(cmd_audit.verify))
 app.add_typer(audit_app, name="audit")
 
+app.command("doctor")(cli_error_boundary(cmd_doctor.doctor))
 app.command("up")(cli_error_boundary(cmd_up.up))
 app.command("exec")(cli_error_boundary(cmd_exec.exec_cmd))
 app.command("signup")(cli_error_boundary(cmd_signup.signup))
