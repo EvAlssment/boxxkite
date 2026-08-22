@@ -191,10 +191,17 @@ open the PR from your fork's branch against `EvAlssment/boxxkite:main`.)
 Every PR needs at least one approving review before it can merge — branch
 protection enforces this, it isn't just a norm. This repo's CI workflows
 (`ci.yml`, `publish-images.yml`, `publish-pypi.yml`,
-`benchmark-warm-pool.yml`) are currently disabled, so nothing runs
-automatically against your PR — run the checks below yourself before
-requesting review, since a reviewer is the only gate that's actually active
-right now.
+`benchmark-warm-pool.yml`, `helm-chart.yml`) are currently disabled, so
+nothing runs automatically against your PR — run the checks below yourself
+before requesting review, since a reviewer and the DCO check are the only
+gates that are actually active right now.
+
+Those workflows are disabled at the repository level, not removed from the
+tree: the switch lives in GitHub's own settings for this repo, so the files
+still ship with the code. A fork, or anyone self-hosting boxxkite from this
+source, gets them working normally once Actions is enabled on their own
+repository — they're off here to avoid spending Actions minutes on a project
+this size, not because they're broken.
 
 ## Pull requests
 

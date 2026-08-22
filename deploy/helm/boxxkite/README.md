@@ -52,8 +52,11 @@ helm template boxxkite ./deploy/helm/boxxkite --set namespace=boxxkite
 
 Both commands enforce `values.schema.json`: it rejects unknown values, wrong
 types, unsupported egress modes, and plainly malformed IPv4/IPv6 CIDR strings
-before rendering. The chart-only CI workflow runs these same checks whenever
-the chart changes. Schema checks intentionally do not contact a Kubernetes API
+before rendering. `.github/workflows/helm-chart.yml` runs these same checks
+plus `tests/test_helm_smoke.py` whenever the chart changes. It ships enabled,
+so a fork or a downstream copy of this repo gets it automatically; it is
+switched off in this repo specifically (see CONTRIBUTING.md), same as the
+other workflows here. Schema checks intentionally do not contact a Kubernetes API
 server and do not validate Kubernetes resource-quantity semantics; use the
 manual kind smoke test below to check a real cluster.
 
