@@ -1,0 +1,5 @@
+# Medium self-hosted footprint: about 50 concurrent sandboxes with burst
+# capacity. Use with `helm install -f values-medium.yaml`.
+sandboxConfig:
+  warmPoolSize: 6
+

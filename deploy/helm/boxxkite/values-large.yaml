@@ -1,0 +1,5 @@
+# Large self-hosted footprint: about 200 concurrent sandboxes with a deeper
+# warm pool for burst traffic. Use with `helm install -f values-large.yaml`.
+sandboxConfig:
+  warmPoolSize: 20
+

@@ -1,0 +1,5 @@
+# Small self-hosted footprint: about 10 concurrent sandboxes with a light
+# warm pool. Use with `helm install -f values-small.yaml`.
+sandboxConfig:
+  warmPoolSize: 2
+
