@@ -1,10 +1,10 @@
 # LangGraph agent with boxxkite's 5 sandbox tools
 
 The headline example: `boxxkite.tools.create_sandbox_tools(...)` returns
-plain LangChain `@tool`-decorated functions, handed directly to LangGraph's
-prebuilt `create_react_agent`. No adapter layer, no boxxkite-specific graph
-nodes -- this is exactly the "hand these tools to any LangChain/LangGraph
-agent" pitch from the main README, made concrete.
+plain LangChain tools through `to_langgraph_tools`, then handed directly to
+LangGraph's prebuilt `create_react_agent`. The explicit adapter keeps the
+LangGraph boundary discoverable while preserving the same framework-agnostic
+ToolSpecs used by every other integration.
 
 ## What it does
 

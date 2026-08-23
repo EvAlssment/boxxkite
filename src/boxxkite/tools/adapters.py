@@ -12,6 +12,9 @@ that's:
   lazily inside this function so importing `boxxkite.tools` — or calling
   `create_sandbox_tool_specs()` — never requires langchain-core to be
   installed.
+- `to_langgraph_tools` and `create_langgraph_tool_node`: the same tools in
+  LangGraph's `ToolNode`-compatible shape. Requires the `langgraph` extra;
+  imported lazily so the framework-agnostic surface stays dependency-free.
 - `to_openai_functions`: the `{"type": "function", "function": {...}}`
   schema list OpenAI-style function-calling APIs expect. Pure stdlib —
   it only describes the shape, it never calls the `openai` package.
@@ -81,6 +84,27 @@ def to_langchain_tools(specs: list[ToolSpec]) -> list:
     requires it to be installed.
     """
     return [_to_langchain_tool(spec) for spec in specs]
+
+
+def to_langgraph_tools(specs: list[ToolSpec]) -> list:
+    """Convert ToolSpecs into tools accepted by LangGraph's ToolNode.
+
+    LangGraph executes the same LangChain `BaseTool` objects used by
+    LangChain agents. This named adapter makes that contract explicit for
+    graph applications without adding LangGraph to the default install.
+    """
+    return to_langchain_tools(specs)
+
+
+def create_langgraph_tool_node(specs: list[ToolSpec]):
+    """Build a LangGraph `ToolNode` from framework-agnostic ToolSpecs.
+
+    Session lifetime remains owned by the caller's `SandboxManager`; a graph
+    checkpoint can therefore re-enter this node with the same session id.
+    """
+    from langgraph.prebuilt import ToolNode
+
+    return ToolNode(to_langgraph_tools(specs))
 
 
 def _to_langchain_tool(spec: ToolSpec):
