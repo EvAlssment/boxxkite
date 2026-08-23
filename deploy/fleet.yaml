@@ -1,0 +1,31 @@
+apiVersion: boxxkite.dev/v1alpha1
+kind: FleetCapacity
+clusters:
+  - name: us-east
+    region: us-east-1
+    warmPool:
+      maxSize: 12
+      targets:
+        small: 10
+        medium: 0
+        large: 2
+    images:
+      sandbox: boxxkite-sandbox:latest
+      sidecar: boxxkite-sidecar:latest
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations: []
+  - name: eu-west
+    region: eu-west-1
+    warmPool:
+      maxSize: 8
+      targets:
+        small: 5
+        medium: 0
+        large: 0
+    images:
+      sandbox: boxxkite-sandbox:latest
+      sidecar: boxxkite-sidecar:latest
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations: []

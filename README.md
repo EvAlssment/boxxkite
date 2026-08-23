@@ -152,6 +152,9 @@ API — is something you deploy yourself:
   Then deploy the `control-plane/` API separately (see the Render button
   below or the [developer docs](https://boxxkite.com/developers)).
   A local `kind` cluster works too: `./deploy/local-kind/setup.sh`.
+- **Per-cluster warm-pool sizing** — use the optional declarative file in
+  [`docs/FLEET-CAPACITY.md`](docs/FLEET-CAPACITY.md) when each process needs
+  a reviewed cluster-specific capacity target.
 - **Serving more than one internal team?** See
   [docs/SELF-HOSTED-MULTI-TENANCY.md](docs/SELF-HOSTED-MULTI-TENANCY.md) for
   what separates one tenant from another (and what doesn't), plus reference
