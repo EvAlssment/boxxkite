@@ -70,7 +70,7 @@ def adaptive_warm_pool_coverage_seconds() -> int:
 
 
 class ClaimRateTracker:
-    """Per-size-class rolling window of warm-pod claim timestamps.
+    """Per-size-class rolling windows of warm-pool demand timestamps.
 
     Deliberately simple per issue #156's ask: a deque of monotonic
     timestamps per size class, pruned to the configured window on every
@@ -88,11 +88,16 @@ class ClaimRateTracker:
         # that want a deterministic window without touching env vars.
         self._fixed_window_seconds = window_seconds
         self._claims: dict[str, deque] = {}
+        self._cold_fallthroughs: dict[str, deque] = {}
 
     def _window_seconds(self) -> int:
         if self._fixed_window_seconds is not None:
             return self._fixed_window_seconds
         return adaptive_warm_pool_window_seconds()
+
+    def window_seconds(self) -> int:
+        """Return the rolling window used by the demand counters."""
+        return self._window_seconds()
 
     def record_claim(self, size: str, now: Optional[float] = None) -> None:
         """Record a single warm-pod claim event for `size` at `now`
@@ -106,9 +111,7 @@ class ClaimRateTracker:
         bucket = self._claims.get(size)
         if not bucket:
             return
-        cutoff = now - self._window_seconds()
-        while bucket and bucket[0] < cutoff:
-            bucket.popleft()
+        self._prune_bucket(bucket, now)
 
     def claim_rate_per_second(self, size: str, now: Optional[float] = None) -> float:
         """Claims/second for `size`, averaged over the trailing window.
@@ -133,6 +136,36 @@ class ClaimRateTracker:
         if window <= 0:
             return 0.0
         return len(bucket) / window
+
+    def record_cold_fallthrough(self, size: str, now: Optional[float] = None) -> None:
+        """Record a requested size that missed the warm pool and went cold."""
+        now = time.monotonic() if now is None else now
+        bucket = self._cold_fallthroughs.setdefault(size, deque())
+        bucket.append(now)
+        self._prune_bucket(bucket, now)
+
+    def cold_fallthrough_count(self, size: str, now: Optional[float] = None) -> int:
+        """Return cold fall-throughs for ``size`` in the rolling window."""
+        now = time.monotonic() if now is None else now
+        bucket = self._cold_fallthroughs.get(size)
+        if not bucket:
+            return 0
+        self._prune_bucket(bucket, now)
+        return len(bucket)
+
+    def claim_count(self, size: str, now: Optional[float] = None) -> int:
+        """Return warm claims served for ``size`` in the rolling window."""
+        now = time.monotonic() if now is None else now
+        bucket = self._claims.get(size)
+        if not bucket:
+            return 0
+        self._prune_bucket(bucket, now)
+        return len(bucket)
+
+    def _prune_bucket(self, bucket: deque, now: float) -> None:
+        cutoff = now - self._window_seconds()
+        while bucket and bucket[0] < cutoff:
+            bucket.popleft()
 
 
 def compute_adaptive_target(rate_per_second: float, floor: int, ceiling: int, coverage_seconds: int) -> int:

@@ -11,6 +11,9 @@ reads across every account at once; every other router scopes by
 
 from __future__ import annotations
 
+import logging
+
+from boxxkite import get_warm_pool
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,10 +42,13 @@ from ..schemas import (
     AdminAuditLogEntryOut,
     AdminAuditLogResponse,
     AdminClusterMetrics,
+    AdminWarmPoolSizeUtilization,
+    AdminWarmPoolUtilization,
 )
 from ..usage_policy import UsagePolicy
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
+logger = logging.getLogger(__name__)
 
 
 async def _compute_admin_cluster_metrics(
@@ -174,6 +180,47 @@ async def get_admin_cluster_metrics(
     db: AsyncSession = Depends(get_db),
 ) -> AdminClusterMetrics:
     return await _compute_admin_cluster_metrics(db=db, limit=limit, offset=offset)
+
+
+async def _get_admin_warm_pool_utilization() -> AdminWarmPoolUtilization:
+    """Read warm-pool status without inventing values when no pool exists."""
+    try:
+        warm_pool = await get_warm_pool()
+        if warm_pool is None:
+            return AdminWarmPoolUtilization(available=False, unavailable_reason="not_configured")
+        status = await warm_pool.get_status()
+    except Exception:
+        logger.warning("Warm-pool utilization is unavailable", exc_info=True)
+        return AdminWarmPoolUtilization(available=False, unavailable_reason="unavailable")
+
+    sizes = [
+        AdminWarmPoolSizeUtilization(size=size, **signals)
+        for size, signals in status.get("utilization_by_size", {}).items()
+    ]
+    return AdminWarmPoolUtilization(
+        available=True,
+        window_seconds=status.get("utilization_window_seconds"),
+        sizes=sizes,
+    )
+
+
+@router.get(
+    "/warm-pool",
+    response_model=AdminWarmPoolUtilization,
+    summary="Warm-pool utilization by sandbox size (admin only)",
+    description=(
+        "Reports the current claim-ready warm count against each size class's "
+        "target, plus rolling claims served and cold fall-throughs. The live "
+        "warm count comes from Kubernetes pod labels; demand counters are "
+        "process-local and reset when a control-plane process restarts. A "
+        "request that is forced cold by per-session options is not counted as "
+        "a warm-pool fall-through."
+    ),
+)
+async def get_admin_warm_pool_utilization(
+    _admin: Account = Depends(get_current_admin_account),
+) -> AdminWarmPoolUtilization:
+    return await _get_admin_warm_pool_utilization()
 
 
 @router.get(

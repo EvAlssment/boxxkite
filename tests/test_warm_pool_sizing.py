@@ -113,6 +113,29 @@ def test_claim_rate_tracker_zero_window_never_divides_by_zero():
     assert tracker.claim_rate_per_second("small", now=0.0) == 0.0
 
 
+def test_claim_rate_tracker_reports_claims_and_cold_fallthroughs_in_same_window():
+    tracker = ClaimRateTracker(window_seconds=10)
+    tracker.record_claim("small", now=1.0)
+    tracker.record_claim("small", now=9.0)
+    tracker.record_cold_fallthrough("small", now=9.0)
+    tracker.record_cold_fallthrough("medium", now=1.0)
+
+    assert tracker.window_seconds() == 10
+    assert tracker.claim_count("small", now=10.0) == 2
+    assert tracker.cold_fallthrough_count("small", now=10.0) == 1
+    assert tracker.cold_fallthrough_count("medium", now=12.0) == 0
+
+
+def test_claim_rate_tracker_prunes_claim_and_fallthrough_buckets_independently():
+    tracker = ClaimRateTracker(window_seconds=10)
+    tracker.record_claim("small", now=0.0)
+    tracker.record_cold_fallthrough("small", now=5.0)
+
+    assert tracker.claim_count("small", now=10.0) == 1
+    assert tracker.claim_count("small", now=11.0) == 0
+    assert tracker.cold_fallthrough_count("small", now=14.0) == 1
+
+
 # ── compute_adaptive_target: floor/ceiling clamping ─────────────────────
 
 
