@@ -62,7 +62,7 @@ async def test_create_mcp_connection_is_rate_limited(client: httpx.AsyncClient, 
         headers={"Authorization": f"Bearer {api_key}"},
     )
     assert blocked.status_code == 429
-    assert blocked.json()["detail"]["error"]["code"] == "rate_limited"
+    assert blocked.json()["error"]["code"] == "rate_limited"
 
 
 async def test_create_mcp_connection_rejects_unknown_catalog_id(client: httpx.AsyncClient):

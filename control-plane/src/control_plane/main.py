@@ -17,7 +17,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -27,7 +27,7 @@ from boxxkite import close_sandbox_manager, close_warm_pool, get_sandbox_manager
 
 from .config import settings
 from .db import dispose_engine, get_engine, init_schema
-from .errors import ApiError, api_error_handler
+from .errors import ApiError, api_error_handler, http_exception_handler
 from .idempotency import IdempotencyMiddleware
 from .observability import RequestMetricsMiddleware, configure_logging, render_metrics
 from .hosted_mcp import build_hosted_mcp_asgi_app
@@ -191,6 +191,10 @@ app = FastAPI(
 )
 
 app.add_exception_handler(ApiError, api_error_handler)
+# Keeps HTTPException (today: the rate limiter's 429s) in the same
+# {"error": {...}} envelope every SDK parses, instead of FastAPI's
+# default {"detail": ...} nesting. See errors.http_exception_handler.
+app.add_exception_handler(HTTPException, http_exception_handler)
 
 # Bearer-token auth (dashboard JWT or API key), never cookies, so this
 # carries no CSRF risk regardless of allowed origins -- there's no ambient
@@ -252,7 +256,15 @@ async def validation_error_handler(_request, exc: RequestValidationError) -> JSO
     ]
     return JSONResponse(
         status_code=422,
-        content={"error": {"code": "validation_error", "message": "Invalid request", "details": safe_details}},
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Invalid request",
+                "retryable": False,
+                "remediation": "Correct the fields listed in details and submit the request again.",
+                "details": safe_details,
+            }
+        },
     )
 
 

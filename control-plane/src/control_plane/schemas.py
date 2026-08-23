@@ -856,6 +856,9 @@ class SandboxDiagnosticsResponse(BaseModel):
     session_id: str
     status: Literal["active", "destroyed"]
     why: str
+    error_code: str | None = None
+    retryable: bool = False
+    remediation: str | None = None
     runtime: str
     pod: dict | None = None
     containers: list[SandboxDiagnosticsContainer] = Field(default_factory=list)

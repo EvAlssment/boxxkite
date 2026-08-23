@@ -7,14 +7,68 @@ import "fmt"
 // synthesized code/message from the bare HTTP status). Mirrors
 // sdk-python's BoxxkiteApiError / sdk-js's BoxxkiteApiError.
 type APIError struct {
-	StatusCode int
-	Code       string
-	Message    string
+	StatusCode  int
+	Code        string
+	Message     string
+	Retryable   bool
+	Remediation string
+	Details     any
+	Taxonomy    string
 }
 
 func (e *APIError) Error() string {
 	return fmt.Sprintf("%s [%s] (HTTP %d)", e.Message, e.Code, e.StatusCode)
 }
+
+// As exposes the typed taxonomy without changing the historical concrete
+// return type of compatibility paths.
+func (e *APIError) As(target any) bool {
+	switch target := target.(type) {
+	case **CapabilityDeniedError:
+		if e.Taxonomy == "capability_denied" {
+			*target = &CapabilityDeniedError{APIError: *e}
+			return true
+		}
+	case **ServiceUnavailableError:
+		if e.Taxonomy == "service_unavailable" {
+			*target = &ServiceUnavailableError{APIError: *e}
+			return true
+		}
+	}
+	return false
+}
+
+// Named errors allow callers to use errors.As for the most actionable
+// sandbox failures while APIError remains the common compatibility shape.
+type QuotaExceededError struct{ APIError }
+type EgressDeniedError struct{ APIError }
+type SandboxNotReadyError struct{ APIError }
+type CapabilityDeniedError struct{ APIError }
+type ReadonlyFilesystemError struct{ APIError }
+type SandboxCrashedError struct{ APIError }
+type ServiceUnavailableError struct{ APIError }
+
+// Unwrap lets errors.As(err, &apiErr) reach the embedded APIError, which is
+// what sdk-go's README promises ("Every non-2xx response returns a
+// *boxxkite.APIError"). Without it the typed errors embed APIError by value
+// with no link in the chain, so errors.As failed for exactly the codes callers
+// branch on -- quota, egress, not-ready -- and they lost access to StatusCode
+// and Code.
+func (e *QuotaExceededError) Unwrap() error      { return &e.APIError }
+func (e *EgressDeniedError) Unwrap() error       { return &e.APIError }
+func (e *SandboxNotReadyError) Unwrap() error    { return &e.APIError }
+func (e *CapabilityDeniedError) Unwrap() error   { return &e.APIError }
+func (e *ReadonlyFilesystemError) Unwrap() error { return &e.APIError }
+func (e *SandboxCrashedError) Unwrap() error     { return &e.APIError }
+func (e *ServiceUnavailableError) Unwrap() error { return &e.APIError }
+
+func (e *QuotaExceededError) Error() string      { return e.APIError.Error() }
+func (e *EgressDeniedError) Error() string       { return e.APIError.Error() }
+func (e *SandboxNotReadyError) Error() string    { return e.APIError.Error() }
+func (e *CapabilityDeniedError) Error() string   { return e.APIError.Error() }
+func (e *ReadonlyFilesystemError) Error() string { return e.APIError.Error() }
+func (e *SandboxCrashedError) Error() string     { return e.APIError.Error() }
+func (e *ServiceUnavailableError) Error() string { return e.APIError.Error() }
 
 // ConnectionError wraps a failure to reach the control-plane at all (DNS,
 // TLS, timeout, connection refused) -- as opposed to a reachable server

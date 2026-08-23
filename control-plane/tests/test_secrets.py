@@ -98,7 +98,7 @@ async def test_create_secret_is_rate_limited(client: httpx.AsyncClient, monkeypa
         headers={"Authorization": f"Bearer {api_key}"},
     )
     assert blocked.status_code == 429
-    assert blocked.json()["detail"]["error"]["code"] == "rate_limited"
+    assert blocked.json()["error"]["code"] == "rate_limited"
 
 
 async def test_cannot_delete_another_accounts_secret(client: httpx.AsyncClient):

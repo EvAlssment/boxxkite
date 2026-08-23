@@ -178,6 +178,8 @@ async def enforce_rate_limit(
                     "error": {
                         "code": "rate_limited",
                         "message": "Too many requests. Please wait a moment and try again.",
+                        "retryable": True,
+                        "remediation": "Wait and retry after the server's Retry-After interval.",
                     }
                 },
                 headers={
@@ -201,6 +203,8 @@ async def enforce_rate_limit(
                 "error": {
                     "code": "rate_limited",
                     "message": "Too many requests. Please wait a moment and try again.",
+                    "retryable": True,
+                    "remediation": "Wait and retry after the server's Retry-After interval.",
                 }
             },
             headers={

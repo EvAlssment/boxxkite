@@ -174,8 +174,11 @@ func (c *Client) wsURL(path string) string {
 // error response shape (docs/API.md's "Error codes" section).
 type errorEnvelope struct {
 	Error struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
+		Code        string `json:"code"`
+		Message     string `json:"message"`
+		Retryable   bool   `json:"retryable"`
+		Remediation string `json:"remediation"`
+		Details     any    `json:"details"`
 	} `json:"error"`
 }
 
@@ -278,7 +281,35 @@ func apiErrorFromResponse(statusCode int, body []byte) error {
 		code = envelope.Error.Code
 		message = envelope.Error.Message
 	}
-	return &APIError{StatusCode: statusCode, Code: code, Message: message}
+	base := APIError{StatusCode: statusCode, Code: code, Message: message, Retryable: envelope.Error.Retryable, Remediation: envelope.Error.Remediation, Details: envelope.Error.Details}
+	if code == "" { base.Code = "error" }
+	if statusCode >= 500 && !envelope.Error.Retryable { base.Retryable = true }
+	switch {
+	case strings.HasSuffix(code, "_limit_reached"), strings.HasSuffix(code, "_capacity_reached"):
+		return &QuotaExceededError{APIError: base}
+	case code == "egress_denied":
+		base.Taxonomy = "egress_denied"
+		return &EgressDeniedError{APIError: base}
+	case code == "sandbox_not_ready":
+		base.Taxonomy = "sandbox_not_ready"
+		return &SandboxNotReadyError{APIError: base}
+	case code == "capability_denied":
+		base.Taxonomy = "capability_denied"
+		return &CapabilityDeniedError{APIError: base}
+	case code == "command_not_allowed":
+		base.Taxonomy = "capability_denied"
+		return &base
+	case code == "readonly_filesystem":
+		base.Taxonomy = "readonly_filesystem"
+		return &ReadonlyFilesystemError{APIError: base}
+	case code == "sandbox_crashed":
+		base.Taxonomy = "sandbox_crashed"
+		return &SandboxCrashedError{APIError: base}
+	case statusCode >= 500:
+		base.Taxonomy = "service_unavailable"
+		return &base
+	default: return &base
+	}
 }
 
 const (

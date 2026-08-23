@@ -336,4 +336,4 @@ async def test_start_process_is_rate_limited_per_account(
     )
 
     assert resp.status_code == 429
-    assert resp.json()["detail"]["error"]["code"] == "rate_limited"
+    assert resp.json()["error"]["code"] == "rate_limited"
