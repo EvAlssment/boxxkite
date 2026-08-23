@@ -43,6 +43,7 @@ from .pty_tools import create_pty_exec_tool_spec
 from .process_tools import (
     create_get_process_output_tool_spec,
     create_list_processes_tool_spec,
+    create_process_tree_tool_spec,
     create_send_process_input_tool_spec,
     create_start_process_tool_spec,
     create_stop_process_tool_spec,
@@ -412,7 +413,14 @@ def create_sandbox_tool_specs(
             lazy_runtime=lazy_runtime,
         ),
 
-        # 15. Long-poll for a filesystem change (read-only, docs/FILE-WATCHER-DESIGN.md)
+        # 15. Group tracked processes by originating execution context
+        create_process_tree_tool_spec(
+            sandbox_manager=sandbox_manager,
+            session_id=effective_session_id,
+            lazy_runtime=lazy_runtime,
+        ),
+
+        # 16. Long-poll for a filesystem change (read-only, docs/FILE-WATCHER-DESIGN.md)
         create_watch_directory_tool_spec(
             sandbox_manager=sandbox_manager,
             session_id=effective_session_id,

@@ -12,6 +12,7 @@ import pytest
 from boxxkite.tools.process_tools import (
     create_get_process_output_tool,
     create_list_processes_tool,
+    create_process_tree_tool,
     create_send_process_input_tool,
     create_start_process_tool,
     create_stop_process_tool,
@@ -27,6 +28,7 @@ class _FakeSandboxManager:
         self.send_process_input_calls = []
         self.stop_process_calls = []
         self.list_processes_calls = []
+        self.process_tree_calls = []
 
         self.start_process_result = {
             "process_id": "proc_abc",
@@ -43,9 +45,12 @@ class _FakeSandboxManager:
         self.send_process_input_result = {"bytes_written": 0}
         self.stop_process_result = {"status": "stopped", "exit_code": 143}
         self.list_processes_result = []
+        self.process_tree_result = []
         self.raise_error = None
 
-    async def start_process(self, session_id, command, description=None, max_runtime_seconds=3600):
+    async def start_process(
+        self, session_id, command, description=None, max_runtime_seconds=3600, context_id=None
+    ):
         if self.raise_error:
             raise self.raise_error
         self.start_process_calls.append(
@@ -54,6 +59,7 @@ class _FakeSandboxManager:
                 "command": command,
                 "description": description,
                 "max_runtime_seconds": max_runtime_seconds,
+                "context_id": context_id,
             }
         )
         return self.start_process_result
@@ -86,6 +92,12 @@ class _FakeSandboxManager:
         self.list_processes_calls.append({"session_id": session_id})
         return self.list_processes_result
 
+    async def process_tree(self, session_id, context_id=None):
+        if self.raise_error:
+            raise self.raise_error
+        self.process_tree_calls.append({"session_id": session_id, "context_id": context_id})
+        return self.process_tree_result
+
 
 def test_create_start_process_tool_requires_a_manager_or_lazy_runtime():
     with pytest.raises(ValueError, match="sandbox_manager must be provided"):
@@ -112,6 +124,31 @@ def test_create_list_processes_tool_requires_a_manager_or_lazy_runtime():
         create_list_processes_tool()
 
 
+def test_create_process_tree_tool_requires_a_manager_or_lazy_runtime():
+    with pytest.raises(ValueError, match="sandbox_manager must be provided"):
+        create_process_tree_tool()
+
+
+@pytest.mark.asyncio
+async def test_process_tree_tool_groups_processes_by_context():
+    manager = _FakeSandboxManager()
+    manager.process_tree_result = [
+        {
+            "context_id": "ctx-1",
+            "processes": [
+                {"process_id": "proc-1", "status": "running", "command": "python server.py"}
+            ],
+        }
+    ]
+    tool = create_process_tree_tool(sandbox_manager=manager, session_id="session-1")
+
+    result = await tool.ainvoke({})
+
+    assert "context: ctx-1" in result
+    assert "proc-1" in result
+    assert manager.process_tree_calls == [{"session_id": "session-1", "context_id": None}]
+
+
 @pytest.mark.asyncio
 async def test_start_process_tool_calls_manager_with_expected_args():
     manager = _FakeSandboxManager()
@@ -127,6 +164,7 @@ async def test_start_process_tool_calls_manager_with_expected_args():
             "command": "npm run dev",
             "description": "dev server",
             "max_runtime_seconds": 1800,
+            "context_id": None,
         }
     ]
     assert "proc_abc" in result

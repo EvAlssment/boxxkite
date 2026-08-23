@@ -79,6 +79,7 @@ output and feeding input, not for exposing a service.
 Args:
     command: Shell command to run in the background
     description: Optional human-readable label for this process
+    context_id: Optional identifier for the code-execution context that owns it
     max_runtime_seconds: Hard ceiling on how long the process may
         run before it is force-killed (default 3600)
 
@@ -97,6 +98,10 @@ START_PROCESS_PARAMETERS = {
         "description": {
             "type": "string",
             "description": "Optional human-readable label for this process",
+        },
+        "context_id": {
+            "type": "string",
+            "description": "Optional code-execution context identifier for process_tree grouping",
         },
         "max_runtime_seconds": {
             "type": "integer",
@@ -136,6 +141,7 @@ def create_start_process_tool_spec(
     async def start_process(
         command: str,
         description: Optional[str] = None,
+        context_id: Optional[str] = None,
         max_runtime_seconds: int = DEFAULT_MAX_RUNTIME_SECONDS,
     ) -> str:
         if not command or not command.strip():
@@ -161,6 +167,7 @@ def create_start_process_tool_spec(
                 session_id=resolved_session_id,
                 command=command,
                 description=description,
+                context_id=context_id,
                 max_runtime_seconds=max_runtime_seconds,
             )
         except Exception as e:
@@ -522,3 +529,68 @@ def create_list_processes_tool(
         lazy_runtime=lazy_runtime,
     )
     return to_langchain_tools([spec])[0]
+
+
+PROCESS_TREE_DESCRIPTION = """
+List background processes grouped by the code-execution context that started
+them. Use this when a long-lived context has spawned more than one process
+and you need to see which branch is still running.
+"""
+
+PROCESS_TREE_PARAMETERS = {"type": "object", "properties": {}, "required": []}
+
+
+def create_process_tree_tool_spec(
+    sandbox_manager: Optional["SandboxManager"] = None,
+    session_id: Optional[str] = None,
+    lazy_runtime: Optional["LazySandboxRuntime"] = None,
+) -> ToolSpec:
+    """Build the framework-agnostic ToolSpec for process_tree."""
+    if sandbox_manager is None and lazy_runtime is None:
+        raise ValueError("sandbox_manager must be provided")
+
+    async def process_tree() -> str:
+        try:
+            resolved_manager, resolved_session_id = await resolve_sandbox_operation_context(
+                lazy_runtime=lazy_runtime,
+                sandbox_manager=sandbox_manager,
+                session_id=session_id,
+            )
+            contexts = await resolved_manager.process_tree(session_id=resolved_session_id)
+        except Exception as e:
+            logger.error(f"[process_tree] Error: {e}", exc_info=True)
+            return f"Error listing process tree: {str(e)}"
+
+        if not contexts:
+            return "(no background processes)"
+        lines = []
+        for context in contexts:
+            lines.append(f"context: {context.get('context_id', 'unscoped')}")
+            lines.append(_format_process_list(context.get("processes", [])))
+        return "\n".join(lines)
+
+    return ToolSpec(
+        name="process_tree",
+        description=PROCESS_TREE_DESCRIPTION,
+        parameters=PROCESS_TREE_PARAMETERS,
+        handler=process_tree,
+    )
+
+
+def create_process_tree_tool(
+    sandbox_manager: Optional["SandboxManager"] = None,
+    session_id: Optional[str] = None,
+    lazy_runtime: Optional["LazySandboxRuntime"] = None,
+):
+    """Create the process_tree tool as a LangChain tool."""
+    from .adapters import to_langchain_tools
+
+    return to_langchain_tools(
+        [
+            create_process_tree_tool_spec(
+                sandbox_manager=sandbox_manager,
+                session_id=session_id,
+                lazy_runtime=lazy_runtime,
+            )
+        ]
+    )[0]
