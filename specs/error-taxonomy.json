@@ -1,0 +1,37 @@
+{
+  "$comment": "Canonical cross-SDK error taxonomy (GitHub issues #94, #99). This file is the single source of truth: sdk-python, sdk-js, sdk-go and sdk-rust must all classify these codes identically, and tests/test_sdk_error_parity.py fails the build if any of them drifts. Adding a code here without teaching every SDK about it is a deliberate, visible failure rather than a silent one.",
+  "version": 1,
+  "classes": [
+    "quota_exceeded",
+    "egress_denied",
+    "capability_denied",
+    "readonly_filesystem",
+    "sandbox_not_ready",
+    "sandbox_crashed",
+    "service_unavailable"
+  ],
+  "suffix_rules": {
+    "$comment": "Checked before the exact-code table, so any future quota/capacity code classifies without an SDK release.",
+    "_limit_reached": "quota_exceeded",
+    "_capacity_reached": "quota_exceeded"
+  },
+  "codes": {
+    "egress_denied": "egress_denied",
+    "capability_denied": "capability_denied",
+    "command_not_allowed": "capability_denied",
+    "readonly_filesystem": "readonly_filesystem",
+    "sandbox_not_ready": "sandbox_not_ready",
+    "sandbox_crashed": "sandbox_crashed",
+    "service_unavailable": "service_unavailable"
+  },
+  "fallbacks": {
+    "$comment": "Applied when no suffix rule and no exact code matches.",
+    "status_5xx": "service_unavailable",
+    "otherwise": null
+  },
+  "retryable": {
+    "$comment": "A 5xx whose envelope omits `retryable` must be treated as retryable by every SDK. sdk-rust defaulted this to false until #140.",
+    "status_5xx_default": true,
+    "explicit_value_wins": true
+  }
+}
