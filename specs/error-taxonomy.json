@@ -1,5 +1,5 @@
 {
-  "$comment": "Canonical cross-SDK error taxonomy (GitHub issues #94, #99). This file is the single source of truth: sdk-python, sdk-js, sdk-go and sdk-rust must all classify these codes identically, and tests/test_sdk_error_parity.py fails the build if any of them drifts. Adding a code here without teaching every SDK about it is a deliberate, visible failure rather than a silent one.",
+  "$comment": "Canonical cross-SDK error taxonomy (GitHub issues #94, #99). This file is the machine-readable source of truth, and docs/ERROR-TAXONOMY.md is its prose counterpart -- change both together: sdk-python, sdk-js, sdk-go and sdk-rust must all classify these codes identically, and tests/test_sdk_error_parity.py fails the build if any of them drifts. Adding a code here without teaching every SDK about it is a deliberate, visible failure rather than a silent one.",
   "version": 1,
   "classes": [
     "quota_exceeded",
