@@ -88,7 +88,7 @@ async def test_sandbox_create_route_is_rate_limited_separately_from_exec(
 
     blocked = await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {api_key}"})
     assert blocked.status_code == 429
-    assert blocked.json()["detail"]["error"]["code"] == "rate_limited"
+    assert blocked.json()["error"]["code"] == "rate_limited"
 
 
 async def test_sandbox_delete_route_is_rate_limited(client: httpx.AsyncClient, monkeypatch):
@@ -120,3 +120,53 @@ async def test_sandbox_delete_route_is_rate_limited(client: httpx.AsyncClient, m
         f"/v1/sandboxes/{session_id}", headers={"Authorization": f"Bearer {api_key}"}
     )
     assert third_delete.status_code == 429
+
+
+# ── 429 envelope (GitHub issue #94 follow-up) ────────────────────────────
+# enforce_rate_limit raises HTTPException, which FastAPI's default handler
+# nests under `detail`. Every SDK parser reads a top-level `error` key, so
+# rate_limited -- the most retryable code in the taxonomy -- was arriving as
+# code "error" with retryable False. errors.http_exception_handler fixes the
+# shape; these pin it, including that the machine-readable headers survive.
+
+
+async def test_429_uses_the_same_error_envelope_as_every_other_error(
+    client: httpx.AsyncClient, monkeypatch
+):
+    from control_plane.config import settings
+
+    monkeypatch.setattr(settings, "BOXXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
+
+    api_key = await signup_and_get_api_key(client, "rl-envelope@example.com")
+    await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {api_key}"})
+    blocked = await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {api_key}"})
+
+    assert blocked.status_code == 429
+    body = blocked.json()
+    # Top level, not nested under "detail" -- this is what the SDKs read.
+    assert "detail" not in body
+    assert body["error"]["code"] == "rate_limited"
+    assert body["error"]["message"]
+    # The whole point of the taxonomy: a 429 is retryable.
+    assert body["error"]["retryable"] is True
+
+
+async def test_429_still_carries_its_retry_headers(client: httpx.AsyncClient, monkeypatch):
+    """Re-rendering the response must not drop Retry-After or the
+    X-RateLimit-* pair -- they are the machine-readable half of a 429."""
+    from control_plane.config import settings
+
+    monkeypatch.setattr(settings, "BOXXKITE_SANDBOX_LIFECYCLE_RATE_LIMIT_PER_MINUTE", 1)
+    monkeypatch.setattr(settings, "BOXXKITE_MAX_CONCURRENT_SANDBOXES", 100)
+    monkeypatch.setattr(settings, "BOXXKITE_GLOBAL_MAX_CONCURRENT_SANDBOXES", 100)
+
+    api_key = await signup_and_get_api_key(client, "rl-envelope-headers@example.com")
+    await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {api_key}"})
+    blocked = await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {api_key}"})
+
+    assert blocked.status_code == 429
+    assert blocked.headers["Retry-After"] == "60"
+    assert blocked.headers["X-RateLimit-Limit"] == "1"
+    assert blocked.headers["X-RateLimit-Remaining"] == "0"

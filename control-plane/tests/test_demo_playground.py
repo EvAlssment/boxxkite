@@ -93,7 +93,7 @@ async def test_rate_limit_returns_429_after_exceeding_limit(client: httpx.AsyncC
 
     third = await client.post("/v1/demo/sandboxes", json={})
     assert third.status_code == 429, third.text
-    assert third.json()["detail"]["error"]["code"] == "rate_limited"
+    assert third.json()["error"]["code"] == "rate_limited"
 
 
 async def test_capacity_returns_503_after_max_concurrent_reached(client: httpx.AsyncClient, monkeypatch):

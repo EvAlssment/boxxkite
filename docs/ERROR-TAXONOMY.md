@@ -1,6 +1,9 @@
 # Boxxkite error taxonomy
 
-Every handled control-plane error uses this envelope:
+Every error raised as `ApiError`, plus `HTTPException` (the rate limiter's
+429s), uses this envelope. Two paths do not yet: `idempotency.py` and
+`hosted_mcp.py` still emit the older two-field `{"code", "message"}` shape.
+Treat those as known gaps rather than as the contract.
 
 ```json
 {
@@ -24,3 +27,12 @@ capacity codes to this class), `egress_denied`, `capability_denied`,
 `readonly_filesystem`, `sandbox_not_ready`, `sandbox_crashed`, and
 `service_unavailable`. Existing endpoint-specific codes remain valid and are
 classified by their metadata.
+
+Not every class above is currently emitted by the control-plane. The SDKs
+define all of them so a code introduced later is classified without an SDK
+release, but today `capability_denied` and `service_unavailable` exist only as
+SDK-side classifications of other codes, and `sandbox_crashed` appears as a
+diagnostics field rather than an HTTP error code. Only a handful of the
+emitted codes have explicit `ERROR_TAXONOMY` entries; the rest fall back to
+the default metadata, which is why `retryable` is derived from the status code
+when an entry is absent.

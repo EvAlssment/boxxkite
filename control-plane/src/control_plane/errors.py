@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 
 
@@ -87,6 +87,38 @@ class LimitExceededError(ApiError):
 
     def __init__(self, code: str, message: str, details: Any = None):
         super().__init__(429, code, message, details)
+
+
+async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONResponse:
+    """Render HTTPException in the same `{"error": {...}}` envelope as ApiError.
+
+    Without this, FastAPI's default handler nests the body under `detail`, so a
+    429 from `enforce_rate_limit` arrived as {"detail": {"error": {...}}} while
+    every SDK parser looks for a top-level `error` key. The effect was that
+    `rate_limited` -- the single most retryable code in the taxonomy -- reached
+    clients as code "error" with retryable False, contradicting
+    ERROR_TAXONOMY's own entry for it.
+
+    Registered against fastapi.HTTPException specifically, not Starlette's, so
+    the framework's own 404/405 responses keep their existing shape.
+
+    `exc.headers` is passed through because the rate limiter's Retry-After and
+    X-RateLimit-* headers are the machine-readable half of a 429 and dropping
+    them would be worse than the nesting this fixes.
+    """
+    detail = exc.detail
+    if isinstance(detail, dict) and isinstance(detail.get("error"), dict):
+        content = detail
+    else:
+        content = {
+            "error": {
+                "code": "http_error",
+                "message": detail if isinstance(detail, str) else str(detail),
+                "retryable": exc.status_code >= 500,
+                "remediation": None,
+            }
+        }
+    return JSONResponse(status_code=exc.status_code, content=content, headers=exc.headers)
 
 
 async def api_error_handler(_request: Request, exc: ApiError) -> JSONResponse:

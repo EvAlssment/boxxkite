@@ -187,12 +187,17 @@ def _raise_for_error(resp: httpx.Response) -> None:
         payload = resp.json()
     except ValueError:
         payload = None
+    # `err` stays a dict no matter what came back. An ingress or proxy can
+    # return {"error": "gateway blew up"} or {"error": null}, and indexing
+    # those below would raise AttributeError -- the bare traceback this
+    # taxonomy exists to replace.
+    err: dict = {}
     if isinstance(payload, dict):
-        err = payload.get("error")
-        if isinstance(err, dict):
+        candidate = payload.get("error")
+        if isinstance(candidate, dict):
+            err = candidate
             code = err.get("code", code)
             message = err.get("message", message)
-    err = payload.get("error", {}) if isinstance(payload, dict) else {}
     error_cls = api_error_type(code, resp.status_code)
     raise error_cls(
         status_code=resp.status_code,

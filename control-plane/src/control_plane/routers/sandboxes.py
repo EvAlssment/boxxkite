@@ -378,7 +378,13 @@ def _sandbox_operation_error(operation: str, exc: Exception) -> ApiError:
     signal = str(exc).lower()
     if isinstance(exc, PermissionError) or "read-only file system" in signal:
         return ApiError(403, "readonly_filesystem", "The sandbox filesystem rejected this write.")
-    if any(term in signal for term in ("egress denied", "network is unreachable", "connection refused")):
+    # Deliberately does NOT match "connection refused" or "network is
+    # unreachable". Those are control-plane -> sidecar transport failures, not
+    # a sandbox being denied egress, and classifying them here turned a
+    # transient blip into a 403 that reads as a permanent policy violation and
+    # that no SDK will retry. They fall through to the retryable 502 below,
+    # which is what they are.
+    if "egress denied" in signal:
         return ApiError(403, "egress_denied", "The sandbox isolation policy denied this network operation.")
     if any(term in signal for term in ("not ready", "no running pod", "pod not found")):
         return ApiError(503, "sandbox_not_ready", "The sandbox is not ready to accept this operation.")
