@@ -474,7 +474,11 @@ impl Client {
     }
 
     /// `POST /v1/sandboxes/{id}/files/ls` -- list a directory's direct children.
-    pub async fn ls(&self, session_id: &str, options: LsOptions) -> Result<LsResult, BoxxkiteError> {
+    pub async fn ls(
+        &self,
+        session_id: &str,
+        options: LsOptions,
+    ) -> Result<LsResult, BoxxkiteError> {
         let body = LsBody {
             path: options.path.unwrap_or_else(|| "/".to_string()),
         };
