@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandbox-config
+data:
+  warm-pool-size: "1"
+  pod-timeout-seconds: "900"

@@ -1,0 +1,9 @@
+- op: replace
+  path: /metadata/name
+  value: boxxkite-prod-sandbox-pod-hardening-binding
+- op: replace
+  path: /spec/policyName
+  value: boxxkite-prod-sandbox-pod-hardening
+- op: replace
+  path: /spec/matchResources/namespaceSelector/matchLabels/kubernetes.io~1metadata.name
+  value: boxxkite-prod

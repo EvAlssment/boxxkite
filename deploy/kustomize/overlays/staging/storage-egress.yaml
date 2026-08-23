@@ -1,0 +1,9 @@
+- op: add
+  path: /spec/egress/-
+  value:
+    to:
+    - ipBlock:
+        cidr: 198.51.100.0/24
+    ports:
+    - protocol: TCP
+      port: 443

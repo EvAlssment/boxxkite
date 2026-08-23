@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- ../../base
+- namespace.yaml
+
+transformers:
+- namespace-transformer.yaml
+- cluster-scope-transformer.yaml
+- cluster-scope-binding-transformer.yaml
+
+labels:
+- pairs:
+    boxxkite.com/environment: dev
+
+patches:
+- path: configmap.yaml
+  target:
+    group: ""
+    version: v1
+    kind: ConfigMap
+    name: sandbox-config
+- path: rolebinding-subject.yaml
+  target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: RoleBinding
+    name: sandbox-manager-binding
+- path: admission-policy.yaml
+  target:
+    group: admissionregistration.k8s.io
+    version: v1
+    kind: ValidatingAdmissionPolicy
+    name: boxxkite-sandbox-pod-hardening
+- path: admission-policy-binding.yaml
+  target:
+    group: admissionregistration.k8s.io
+    version: v1
+    kind: ValidatingAdmissionPolicyBinding
+    name: boxxkite-sandbox-pod-hardening-binding

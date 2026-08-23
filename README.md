@@ -171,6 +171,9 @@ API — is something you deploy yourself:
   sandbox pods are created programmatically by the control-plane at runtime.
   Then deploy the `control-plane/` API separately (see the Render button
   below or the [developer docs](https://boxxkite.com/developers)).
+  For Argo CD, Flux, or another Kustomize-based GitOps flow, use the generated
+  Helm projection and environment overlays in
+  [`deploy/kustomize/README.md`](deploy/kustomize/README.md).
   A local `kind` cluster works too: `./deploy/local-kind/setup.sh`.
 - **Per-cluster warm-pool sizing** — use the optional declarative file in
   [`docs/FLEET-CAPACITY.md`](docs/FLEET-CAPACITY.md) when each process needs
