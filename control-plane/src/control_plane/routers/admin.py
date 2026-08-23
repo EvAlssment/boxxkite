@@ -14,12 +14,14 @@ from __future__ import annotations
 import logging
 
 from boxxkite import get_warm_pool
+import os
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_admin_account
+from ..deps import get_current_admin_account, get_warm_pool_status_source
 from ..errors import ApiError
 from ..models_orm import Account
 from ..repository import (
@@ -44,6 +46,11 @@ from ..schemas import (
     AdminClusterMetrics,
     AdminWarmPoolSizeUtilization,
     AdminWarmPoolUtilization,
+    AdminFleetClaimRate,
+    AdminFleetClusterStatus,
+    AdminFleetSignal,
+    AdminFleetStatusResponse,
+    AdminFleetWarmPool,
 )
 from ..usage_policy import UsagePolicy
 
@@ -204,6 +211,81 @@ async def _get_admin_warm_pool_utilization() -> AdminWarmPoolUtilization:
     )
 
 
+def _unsupported_fleet_signal(reason: str) -> AdminFleetSignal:
+    return AdminFleetSignal(supported=False, reason=reason)
+
+
+async def _compute_admin_fleet_status(
+    *, warm_pool, cluster_id: str
+) -> AdminFleetStatusResponse:
+    """Aggregate the existing runtime status snapshot without new counters."""
+    runtime = os.environ.get("RUNTIME_MODE") or "standalone"
+    unsupported_cold = _unsupported_fleet_signal(
+        "The runtime does not expose a recent warm-claim fall-through counter."
+    )
+    unsupported_pending = _unsupported_fleet_signal(
+        "The runtime status snapshot does not include pod phase counts."
+    )
+    unsupported_pressure = _unsupported_fleet_signal(
+        "Node conditions and scheduler pressure events are not exposed by "
+        "the current status source."
+    )
+    unsupported_placement = _unsupported_fleet_signal(
+        "The current pod metadata does not expose an operational placement class."
+    )
+
+    if warm_pool is None:
+        warm_pool_view = AdminFleetWarmPool(
+            supported=False,
+            reason="No Kubernetes warm-pool status source is configured for this runtime.",
+        )
+        claim_rate_view = AdminFleetClaimRate(
+            supported=False,
+            reason="No Kubernetes warm-pool status source is configured for this runtime.",
+        )
+    else:
+        try:
+            status = await warm_pool.get_status()
+        except Exception:
+            warm_pool_view = AdminFleetWarmPool(
+                supported=False,
+                reason="The warm-pool status source could not be read.",
+            )
+            claim_rate_view = AdminFleetClaimRate(
+                supported=False,
+                reason="The warm-pool status source could not be read.",
+            )
+        else:
+            warm_pool_view = AdminFleetWarmPool(
+                supported=True,
+                target_by_size=status.get("target_sizes") or {},
+                actual_by_size=status.get("warm_by_size") or {},
+                total_active=status.get("total_pods"),
+                max_size=status.get("max_size"),
+                adaptive_enabled=status.get("adaptive_warm_pool_enabled"),
+            )
+            claim_rate_view = AdminFleetClaimRate(
+                supported=True,
+                window_seconds=status.get("claim_rate_window_seconds"),
+                per_second_by_size=status.get("claim_rate_per_second_by_size") or {},
+            )
+
+    cluster = AdminFleetClusterStatus(
+        cluster_id=cluster_id,
+        runtime=runtime,
+        warm_pool=warm_pool_view,
+        recent_claim_rate=claim_rate_view,
+        cold_fallthroughs=unsupported_cold,
+        pending_pods=unsupported_pending,
+        node_pressure=unsupported_pressure,
+        placement=unsupported_placement,
+    )
+    return AdminFleetStatusResponse(
+        generated_at=datetime.now(timezone.utc),
+        clusters=[cluster],
+    )
+
+
 @router.get(
     "/warm-pool",
     response_model=AdminWarmPoolUtilization,
@@ -221,6 +303,30 @@ async def get_admin_warm_pool_utilization(
     _admin: Account = Depends(get_current_admin_account),
 ) -> AdminWarmPoolUtilization:
     return await _get_admin_warm_pool_utilization()
+
+
+@router.get(
+    "/fleet/status",
+    response_model=AdminFleetStatusResponse,
+    summary="Read current fleet operational status (admin only)",
+    description=(
+        "Admin-gated operational snapshot for the current configured runtime. "
+        "The warm-pool target, actual ready pods, and recent claim rate come "
+        "from the existing WarmPoolManager status source. Signals not exposed "
+        "by that source are returned with `supported: false` and a reason; "
+        "this endpoint does not infer them. The current architecture has no "
+        "multi-cluster registry, so `clusters` contains the current runtime "
+        "record only."
+    ),
+)
+async def get_admin_fleet_status(
+    _admin: Account = Depends(get_current_admin_account),
+    warm_pool=Depends(get_warm_pool_status_source),
+) -> AdminFleetStatusResponse:
+    return await _compute_admin_fleet_status(
+        warm_pool=warm_pool,
+        cluster_id=settings.BOXXKITE_CLUSTER_ID,
+    )
 
 
 @router.get(

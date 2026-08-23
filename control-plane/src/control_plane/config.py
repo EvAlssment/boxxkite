@@ -845,6 +845,9 @@ class Settings(BaseSettings):
     BOXXKITE_SESSION_REAPER_INTERVAL_SECONDS: int = 60
 
     # ── Admin role (docs/ADMIN-ROLE-DESIGN.md) ──────────────────────────
+    # Identifier used for the current runtime record in the admin fleet
+    # status snapshot. Multi-cluster registration is not implemented yet.
+    BOXXKITE_CLUSTER_ID: str = "default"
     # Hard cap on the per-account breakdown rows GET /v1/admin/metrics
     # returns, independent of how many accounts actually exist -- an
     # aggregation endpoint should never become an unbounded full-table

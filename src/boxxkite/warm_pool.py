@@ -71,6 +71,7 @@ from .tls import (
 from .warm_pool_sizing import (
     CLAIM_RATE_TRACKER,
     adaptive_warm_pool_enabled,
+    adaptive_warm_pool_window_seconds,
     resolve_warm_pool_size_targets,
 )
 
@@ -1391,6 +1392,7 @@ class WarmPoolManager:
             "adaptive_warm_pool_enabled": adaptive_warm_pool_enabled(),
             "utilization_window_seconds": CLAIM_RATE_TRACKER.window_seconds(),
             "utilization_by_size": self._build_utilization_report(warm_by_size, targets),
+            "claim_rate_window_seconds": adaptive_warm_pool_window_seconds(),
             "claim_rate_per_second_by_size": {
                 size: CLAIM_RATE_TRACKER.claim_rate_per_second(size)
                 for size in WARM_POOL_SIZE_TARGETS

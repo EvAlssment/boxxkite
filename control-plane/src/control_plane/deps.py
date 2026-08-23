@@ -14,13 +14,14 @@ minted from a dashboard JWT session — see
 
 from __future__ import annotations
 
+import os
 import time
 
 import jwt
 from fastapi import Depends, Header, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from boxxkite import get_sandbox_manager
+from boxxkite import get_sandbox_manager, get_warm_pool as get_boxxkite_warm_pool
 
 from .db import get_db
 from .email_sender import EmailSender, get_email_sender
@@ -293,6 +294,13 @@ async def get_current_account_via_api_key_or_sandbox_create_token(
 def get_manager():
     """Overridable in tests via `app.dependency_overrides[get_manager]`."""
     return get_sandbox_manager()
+
+
+async def get_warm_pool_status_source():
+    """Return the K8s-backed warm-pool status source when one is configured."""
+    if os.environ.get("RUNTIME_MODE") != "k8s":
+        return None
+    return await get_boxxkite_warm_pool()
 
 
 async def get_usage_policy(
