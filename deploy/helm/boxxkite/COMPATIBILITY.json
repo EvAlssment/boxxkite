@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "chart": "boxxkite",
+  "versions": [
+    {
+      "version": "0.1.0",
+      "app_version": "0.2.1",
+      "breaking": false,
+      "migration": "No chart migration is required for the initial chart release."
+    }
+  ]
+}

@@ -43,6 +43,19 @@ Review `values.yaml` first -- in particular:
   -- fill in your real package-registry/container-registry CIDRs before
   enabling it for real.
 
+Before moving between chart releases, inspect the machine-readable
+compatibility matrix:
+
+```bash
+TARGET_CHART_VERSION=0.1.1  # choose an entry present in COMPATIBILITY.json
+boxxkite upgrade check --from 0.1.0 --to "$TARGET_CHART_VERSION" \
+  --matrix ./deploy/helm/boxxkite/COMPATIBILITY.json
+```
+
+The command prints every intermediate migration entry and exits non-zero if
+one is marked breaking. Review its migration note before rerunning with
+`--allow-breaking`.
+
 ## Lint / dry-run
 
 ```bash
