@@ -76,7 +76,7 @@ If you are new to the repo, use this decision tree:
    `kubectl proxy` step.
 3. **I want the hosted API / multi-tenant control-plane**  
    Use the control-plane section below, then the
-   [`examples/hosted_control_plane/`](examples/hosted_control_plane/) guide.
+   [`examples/basic/hosted_control_plane/`](examples/basic/hosted_control_plane/) guide.
 
 For contributors, the important mental model is: the root package gives you
 the sandbox runtime, while `control-plane/`, the SDKs, and `mcp-server/` are

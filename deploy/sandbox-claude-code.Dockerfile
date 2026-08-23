@@ -4,7 +4,7 @@
 # Extends sandbox-minimal.Dockerfile with the Claude Code CLI
 # (@anthropic-ai/claude-code) preinstalled, for running Claude Code headless
 # against a boxxkite sandbox -- see docs/CLAUDE-CODE-SANDBOX-QUICKSTART.md and
-# examples/claude_code_sandbox/.
+# examples/browser-desktop/claude_code_sandbox/.
 #
 # WHY THIS IS A SEPARATE, OUT-OF-BAND DOCKERFILE AND NOT A DECLARATIVE-BUILDER
 # IMAGE (docs/DECLARATIVE-BUILDER-DESIGN.md): the declarative builder's

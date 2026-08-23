@@ -3,7 +3,7 @@
 control-plane deployment.
 
 Same live-deployment pattern as `mcp-server/tests/live_smoke.py` and
-`examples/hosted_control_plane/hosted_flow.py`: this is a manual, non-CI
+`examples/basic/hosted_control_plane/hosted_flow.py`: this is a manual, non-CI
 script that talks HTTP directly to a real control-plane instance (no mocks,
 no fakes). Run it with:
 
