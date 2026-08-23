@@ -699,6 +699,7 @@ COMMAND_HELP_PATHS = [
     ["webhooks", "deliveries"],
     ["mcp"],
     ["mcp", "init"],
+    ["new"],
 ]
 
 

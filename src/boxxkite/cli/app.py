@@ -21,6 +21,7 @@ from . import (
     cmd_log,
     cmd_login,
     cmd_mcp,
+    cmd_new,
     cmd_secrets,
     cmd_snapshots,
     cmd_session,
@@ -212,6 +213,7 @@ app.command("up")(cli_error_boundary(cmd_up.up))
 app.command("exec")(cli_error_boundary(cmd_exec.exec_cmd))
 app.command("signup")(cli_error_boundary(cmd_signup.signup))
 app.command("login")(cli_error_boundary(cmd_login.login))
+app.command("new")(cli_error_boundary(cmd_new.new))
 app.command("whoami")(cli_error_boundary(cmd_whoami.whoami))
 app.command("log")(cli_error_boundary(cmd_log.log))
 app.command("watch")(cli_error_boundary(cmd_log.watch))
