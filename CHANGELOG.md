@@ -20,6 +20,53 @@ All notable changes to boxxkite are documented here. Format loosely follows
   rename and describe the project as "boxkite" at the time they were written
   — left as-is for historical accuracy.
 
+## v0.6.0 — 2026-08-24
+
+### Added
+- **MemoryBase**: durable, account-scoped agent memory, owned end-to-end by
+  the control plane — no third-party memory API, no proxy, no dependency on
+  a hosted memory vendor. New endpoints: `POST /v1/memory` (remember),
+  `POST /v1/memory/ingest` (extract atomic memories from a document or
+  session), `GET /v1/memory/search` (hybrid recall), `GET /v1/memory`,
+  `GET /v1/memory/{id}`, `GET /v1/memory/{id}/relations`,
+  `GET /v1/memory/profile`, `GET /v1/memory/export`,
+  `POST /v1/memory/import`, `GET /v1/memory/metrics`,
+  `DELETE /v1/memory/{id}`. Memory is account-scoped (never accepted from a
+  caller-supplied ID); `scope` partitions within an account but is not an
+  authorization boundary; expired records are invisible everywhere.
+- Retrieval works out of the box with **zero external dependencies**:
+  `BOXXKITE_MEMORY_EMBEDDINGS_ENABLED` defaults to `false`, so a fresh
+  self-hosted install gets full-text lexical search immediately, no API
+  key or model server required. Turning embeddings on defaults to
+  **`microsoft/harrier-oss-v1-0.6b`**, an open-source model served by the
+  new `memory-model-server` (also in this repo, runs locally on
+  CPU/CUDA/Apple MPS) — not a paid API. A managed provider
+  (`BOXXKITE_MEMORY_EMBEDDING_PROVIDER=gemini`, Gemini Embedding 2) is
+  available as an explicit opt-in for anyone who wants it, never the
+  default.
+- Production semantic retrieval on PostgreSQL + pgvector: versioned
+  embeddings (model id and dimension recorded per vector, so a model
+  migration can't silently mix incompatible vectors), a partial HNSW
+  cosine index, reciprocal-rank fusion between full-text and vector
+  candidates, temporal relevance, bounded relation expansion, importance,
+  and MMR diversity. SQLite has a bounded fallback for local dev/tests
+  only.
+- An opt-in, framework-agnostic SDK tool set (`remember`, `ingest_memory`,
+  `recall`, `memory_profile`, `forget_memory`) via a small async client —
+  never registered by default, requires an explicit control-plane API key,
+  and tool arguments never carry an account id.
+- Account-scoped export/import, retention/compaction, relation-rebuild, and
+  missing-embedding-backfill maintenance primitives, plus per-memory access
+  metrics.
+
+### Fixed
+- Retrieval ranking: rare, meaningful query terms could be outranked by
+  common ones sharing a couple of incidental words (missing idf weighting
+  in anchor scoring), and simple word-form differences ("goals" vs "goal")
+  went unmatched (missing stemming/near-token tolerance in the same path).
+- Query-side temporal scoring didn't understand relative-date phrasing
+  ("last Friday", "3 days ago") — only ingest-side extraction did.
+
 ## v0.3.0 — 2026-08-08
 
 ### Added

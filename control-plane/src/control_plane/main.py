@@ -42,6 +42,7 @@ from .routers import (
     images,
     internal_secrets,
     mcp_connections,
+    memory,
     oauth,
     organizations,
     sandboxes,
@@ -278,6 +279,7 @@ app.include_router(account.router)
 app.include_router(secrets.router)
 app.include_router(internal_secrets.router)
 app.include_router(mcp_connections.router)
+app.include_router(memory.router)
 app.include_router(images.router)
 app.include_router(volumes.router)
 app.include_router(admin.router)

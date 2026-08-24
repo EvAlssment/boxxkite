@@ -1,0 +1,7 @@
+fastapi==0.139.0
+pydantic==2.13.4
+pydantic-settings==2.14.2
+torch==2.10.0
+transformers==4.57.3
+safetensors==0.7.0
+uvicorn[standard]==0.50.2

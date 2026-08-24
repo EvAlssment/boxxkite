@@ -107,6 +107,7 @@ from .search_tools import (
     create_grep_tool_spec,
 )
 from .budget_status_tool import create_budget_status_tool_spec
+from .memory_tools import create_memory_tool_specs
 from .adapters import to_google_adk_tools
 from .scratch_memory_tool import create_scratch_memory_tool_spec
 from .factory import (
@@ -170,6 +171,7 @@ __all__ = [
     "create_grep_tool",
     "create_grep_tool_spec",
     "create_budget_status_tool_spec",
+    "create_memory_tool_specs",
     "create_scratch_memory_tool_spec",
     "create_sandbox_tools",
     "create_sandbox_tools_with_manager",

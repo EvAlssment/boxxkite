@@ -337,6 +337,112 @@ class Settings(BaseSettings):
     # approach) -- any multi-replica deployment on real Postgres MUST set
     # this to "postgres"; it is not auto-detected.
     BOXXKITE_USAGE_LOCK_BACKEND: str = "memory"
+    # Account-scoped MemoryBase operations have their own bucket because an
+    # ingest can fan one request into several durable records and relation
+    # edges. This is deliberately separate from sandbox execution limits.
+    BOXXKITE_MEMORY_RATE_LIMIT_PER_MINUTE: int = 120
+    BOXXKITE_MEMORY_EMBEDDINGS_ENABLED: bool = False
+    BOXXKITE_MEMORY_EMBEDDING_PROVIDER: str = "harrier"
+    BOXXKITE_MEMORY_EMBEDDING_BASE_URL: str = "http://127.0.0.1:8000/v1"
+    BOXXKITE_MEMORY_EMBEDDING_API_KEY: str | None = None
+    BOXXKITE_MEMORY_EMBEDDING_MODEL: str = "microsoft/harrier-oss-v1-0.6b"
+    BOXXKITE_MEMORY_EMBEDDING_MODEL_ID: str = "harrier-oss-v1-0.6b-1024-v1"
+    BOXXKITE_MEMORY_EMBEDDING_DIMENSIONS: int = 1_024
+    BOXXKITE_MEMORY_EMBEDDING_QUERY_INSTRUCTION: str = (
+        "Given a web search query, retrieve relevant passages that answer the query"
+    )
+    BOXXKITE_MEMORY_EMBEDDING_TIMEOUT_SECONDS: float = 10.0
+    BOXXKITE_MEMORY_RERANKING_ENABLED: bool = False
+    BOXXKITE_MEMORY_RERANKER_BASE_URL: str = "http://127.0.0.1:8000/v1"
+    BOXXKITE_MEMORY_RERANKER_API_KEY: str | None = None
+    BOXXKITE_MEMORY_RERANKER_MODEL: str = "Qwen/Qwen3-Reranker-0.6B"
+    BOXXKITE_MEMORY_RERANKER_TIMEOUT_SECONDS: float = 10.0
+    BOXXKITE_MEMORY_RERANKER_CANDIDATES: int = 50
+    BOXXKITE_MEMORY_HNSW_EF_SEARCH: int = 200
+    BOXXKITE_MEMORY_HNSW_MAX_SCAN_TUPLES: int = 20_000
+
+    @field_validator("BOXXKITE_MEMORY_EMBEDDING_DIMENSIONS")
+    @classmethod
+    def _validate_memory_embedding_dimensions(cls, value: int) -> int:
+        if not 1 <= value <= 4_096:
+            raise ValueError("memory embedding dimensions must be between 1 and 4096")
+        return value
+
+    @field_validator("BOXXKITE_MEMORY_EMBEDDING_MODEL", "BOXXKITE_MEMORY_EMBEDDING_MODEL_ID")
+    @classmethod
+    def _validate_memory_embedding_model(cls, value: str) -> str:
+        value = value.strip()
+        if not value or len(value) > 191:
+            raise ValueError("memory embedding model values must contain 1 to 191 characters")
+        return value
+
+    @field_validator("BOXXKITE_MEMORY_EMBEDDING_PROVIDER")
+    @classmethod
+    def _validate_memory_embedding_provider(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in {"harrier", "gemini", "openai-compatible"}:
+            raise ValueError(
+                "memory embedding provider must be harrier, gemini, or openai-compatible"
+            )
+        return value
+
+    @field_validator("BOXXKITE_MEMORY_EMBEDDING_QUERY_INSTRUCTION")
+    @classmethod
+    def _validate_memory_embedding_query_instruction(cls, value: str) -> str:
+        value = value.strip()
+        if not value or len(value) > 1_000:
+            raise ValueError("memory embedding query instruction must contain 1 to 1000 characters")
+        return value
+
+    @field_validator("BOXXKITE_MEMORY_EMBEDDING_TIMEOUT_SECONDS")
+    @classmethod
+    def _validate_memory_embedding_timeout(cls, value: float) -> float:
+        if not 0.1 <= value <= 120:
+            raise ValueError("memory embedding timeout must be between 0.1 and 120 seconds")
+        return value
+
+    @field_validator("BOXXKITE_MEMORY_RERANKER_BASE_URL")
+    @classmethod
+    def _validate_memory_reranker_base_url(cls, value: str) -> str:
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("memory reranker base URL must use HTTP(S)")
+        return value.rstrip("/")
+
+    @field_validator("BOXXKITE_MEMORY_RERANKER_MODEL")
+    @classmethod
+    def _validate_memory_reranker_model(cls, value: str) -> str:
+        value = value.strip()
+        if not value or len(value) > 191:
+            raise ValueError("memory reranker model must contain 1 to 191 characters")
+        return value
+
+    @field_validator("BOXXKITE_MEMORY_RERANKER_TIMEOUT_SECONDS")
+    @classmethod
+    def _validate_memory_reranker_timeout(cls, value: float) -> float:
+        if not 0.1 <= value <= 120:
+            raise ValueError("memory reranker timeout must be between 0.1 and 120 seconds")
+        return value
+
+    @field_validator("BOXXKITE_MEMORY_RERANKER_CANDIDATES")
+    @classmethod
+    def _validate_memory_reranker_candidates(cls, value: int) -> int:
+        if not 1 <= value <= 100:
+            raise ValueError("memory reranker candidates must be between 1 and 100")
+        return value
+
+    @field_validator("BOXXKITE_MEMORY_HNSW_EF_SEARCH")
+    @classmethod
+    def _validate_memory_hnsw_ef_search(cls, value: int) -> int:
+        if not 1 <= value <= 1_000:
+            raise ValueError("memory HNSW ef_search must be between 1 and 1000")
+        return value
+
+    @field_validator("BOXXKITE_MEMORY_HNSW_MAX_SCAN_TUPLES")
+    @classmethod
+    def _validate_memory_hnsw_max_scan_tuples(cls, value: int) -> int:
+        if not 1_000 <= value <= 1_000_000:
+            raise ValueError("memory HNSW max_scan_tuples must be between 1000 and 1000000")
+        return value
     # In-memory, per-process sliding-window cap on sandbox exec/file-op
     # requests (/exec, /files, /files/view, /files/str-replace), keyed per
     # account rather than per-IP since these routes are already

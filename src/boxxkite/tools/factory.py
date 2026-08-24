@@ -37,6 +37,7 @@ from .file_tools import (
 from .git_tools import create_git_tool_specs
 from .http_request_tool import create_http_request_tool_spec
 from .lsp_tools import create_lsp_tool_specs
+from .memory_tools import create_memory_tool_specs
 from .node_interpreter_tool import create_node_interpreter_tool_spec
 from .present_files import create_present_files_tool_spec
 from .pty_tools import create_pty_exec_tool_spec
@@ -80,6 +81,7 @@ def create_sandbox_tool_specs(
     enable_scratch_memory: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
+    enable_memory_tools: bool = False,
     hosted_api_key: Optional[str] = None,
     hosted_base_url: str = DEFAULT_HOSTED_BASE_URL,
 ) -> list[ToolSpec]:
@@ -230,6 +232,9 @@ def create_sandbox_tool_specs(
             full-document sync only (every call resends the whole current
             file, no incremental didChange deltas) -- see the scoping doc
             for the explicit list of what's deferred.
+        enable_memory_tools: Opt in to the Boxkite-owned MemoryBase tools.
+            Requires hosted_api_key so no unauthenticated memory endpoint is
+            registered by accident.
         hosted_api_key: Hosted control-plane API key for the opt-in
             budget_status tool (GitHub issue #75) to check usage against.
             budget_status is only added to the returned list when this is
@@ -437,6 +442,14 @@ def create_sandbox_tool_specs(
             )
         )
 
+    if enable_memory_tools:
+        specs.extend(
+            create_memory_tool_specs(
+                hosted_api_key=hosted_api_key,
+                hosted_base_url=hosted_base_url,
+            )
+        )
+
     if enable_http_request_tool:
         # Secrets-broker HTTP request tool (opt-in, see enable_http_request_tool's
         # docstring above). Mirrors to AuditSink when configured -- method/url/
@@ -602,6 +615,7 @@ def create_sandbox_tools(
     enable_scratch_memory: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
+    enable_memory_tools: bool = False,
     hosted_api_key: Optional[str] = None,
     hosted_base_url: str = DEFAULT_HOSTED_BASE_URL,
 ) -> list:
@@ -659,6 +673,7 @@ def create_sandbox_tools(
         enable_scratch_memory=enable_scratch_memory,
         enable_browser_tool=enable_browser_tool,
         enable_lsp_tools=enable_lsp_tools,
+        enable_memory_tools=enable_memory_tools,
         hosted_api_key=hosted_api_key,
         hosted_base_url=hosted_base_url,
     )

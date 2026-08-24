@@ -61,6 +61,7 @@ dependencies = [
     "httpx>=0.27,<1",
     # Prometheus client for the /metrics exposition (observability.py).
     "prometheus-client>=0.20,<1",
+    "pgvector>=0.5,<1",
 ]
 
 [project.optional-dependencies]

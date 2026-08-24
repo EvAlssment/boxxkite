@@ -11,16 +11,42 @@ and `list_sessions_for_account` below.
 
 from __future__ import annotations
 
+import hashlib
+import logging
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import case, delete, func, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from boxxkite.audit import GENESIS_HASH, compute_row_hash
 
 from .audit_chain import canonical_started_at
 from .audit_chain_lock import get_exec_log_chain_lock
+from .config import settings
+from .memory_embeddings import MemoryVectorStore
+from .memory_engine import (
+    ExtractedMemory,
+    dedupe_strings,
+    extract_memories,
+    jaccard_similarity,
+    named_entity_phrases,
+    relation_type,
+)
+from .memory_retrieval import (
+    EmbeddingProvider,
+    RerankerProvider,
+    merge_live_and_expanded_results,
+    graph_link_phrases,
+    meaningful_tokens,
+    query_requests_history,
+    query_requires_graph,
+    query_variants,
+    retrieve_memories,
+)
 from .models_orm import (
     Account,
     AdminAccessLog,
@@ -28,6 +54,9 @@ from .models_orm import (
     EmailVerificationToken,
     ExecLogEntry,
     McpConnection,
+    MemoryEmbedding,
+    MemoryRecord,
+    MemoryRelation,
     OAuthAuthorizationCode,
     OAuthClient,
     OAuthToken,
@@ -45,8 +74,15 @@ from .models_orm import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
 def _normalize_email(email: str) -> str:
@@ -1960,3 +1996,707 @@ class WebhookDeliveryRepository:
         else:
             row.next_attempt_at = next_attempt_at
         await self.db.commit()
+
+
+class MemoryRepository:
+    """Account-scoped persistence plus model-independent memory behavior."""
+
+    def __init__(
+        self,
+        db: AsyncSession,
+        embedding_provider: EmbeddingProvider | None = None,
+        *,
+        reranker_provider: RerankerProvider | None = None,
+        embedding_model_id: str | None = None,
+        embedding_dimensions: int | None = None,
+    ):
+        self.db = db
+        self.embedding_provider = embedding_provider
+        self.reranker_provider = reranker_provider
+        self.embedding_model_id = (
+            embedding_model_id or settings.BOXXKITE_MEMORY_EMBEDDING_MODEL_ID
+        )
+        self.vector_store = (
+            MemoryVectorStore(
+                db,
+                embedding_provider,
+                model_id=self.embedding_model_id,
+                dimensions=embedding_dimensions or settings.BOXXKITE_MEMORY_EMBEDDING_DIMENSIONS,
+            )
+            if embedding_provider is not None
+            else None
+        )
+
+    async def remember(
+        self,
+        *,
+        account_id: str,
+        scope: str,
+        kind: str,
+        content: str,
+        metadata: dict | None,
+        source_session_id: str | None,
+        expires_at: datetime | None,
+        source_content: str | None = None,
+        document_date: datetime | None = None,
+        event_dates: list[str] | None = None,
+        importance: float = 0.5,
+        _commit: bool = True,
+        _add_relations: bool = True,
+        _embed: bool = True,
+    ) -> MemoryRecord:
+        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        result = await self.db.execute(
+            select(MemoryRecord).where(
+                MemoryRecord.account_id == account_id,
+                MemoryRecord.scope == scope,
+                MemoryRecord.kind == kind,
+                MemoryRecord.content_hash == content_hash,
+            )
+        )
+        row = result.scalar_one_or_none()
+        now = _utcnow()
+        if row is None:
+            values = dict(
+                id=_new_uuid(),
+                account_id=account_id,
+                scope=scope,
+                kind=kind,
+                content=content,
+                metadata_json=metadata,
+                source_session_id=source_session_id,
+                content_hash=content_hash,
+                created_at=now,
+                updated_at=now,
+                expires_at=expires_at,
+                source_content=source_content,
+                document_date=document_date,
+                event_dates_json=dedupe_strings(event_dates or []),
+                importance=max(0.0, min(1.0, importance)),
+            )
+            dialect = self.db.bind.dialect.name if self.db.bind is not None else ""
+            conflict_columns = ["account_id", "scope", "kind", "content_hash"]
+            if dialect == "postgresql":
+                statement = postgresql_insert(MemoryRecord).values(**values).on_conflict_do_nothing(
+                    index_elements=conflict_columns
+                )
+                await self.db.execute(statement)
+            elif dialect == "sqlite":
+                statement = sqlite_insert(MemoryRecord).values(**values).on_conflict_do_nothing(
+                    index_elements=conflict_columns
+                )
+                await self.db.execute(statement)
+            else:
+                self.db.add(MemoryRecord(**values))
+                await self.db.flush()
+            result = await self.db.execute(
+                select(MemoryRecord).where(
+                    MemoryRecord.account_id == account_id,
+                    MemoryRecord.scope == scope,
+                    MemoryRecord.kind == kind,
+                    MemoryRecord.content_hash == content_hash,
+                )
+            )
+            row = result.scalar_one()
+
+        row.metadata_json = metadata
+        row.source_session_id = source_session_id
+        row.updated_at = now
+        row.expires_at = expires_at
+        row.source_content = source_content or row.source_content
+        row.document_date = document_date or row.document_date
+        row.event_dates_json = dedupe_strings((row.event_dates_json or []) + (event_dates or []))
+        row.importance = max(row.importance, max(0.0, min(1.0, importance)))
+
+        await self.db.flush()
+        if _add_relations:
+            await self._add_related_edges(account_id=account_id, row=row)
+        if _commit:
+            await self.db.commit()
+            await self.db.refresh(row)
+            if _embed:
+                row = (await self._persist_embeddings(account_id=account_id, rows=[row]))[0]
+        return row
+
+    async def ingest(
+        self,
+        *,
+        account_id: str,
+        scope: str,
+        content: str,
+        kind: str | None,
+        metadata: dict | None,
+        source_session_id: str | None,
+        expires_at: datetime | None,
+        document_date: datetime | None,
+    ) -> list[MemoryRecord]:
+        candidates = extract_memories(
+            content,
+            requested_kind=kind,
+            document_date=document_date,
+        )
+        if len(candidates) > 1 and len(content) <= 8 * 1024:
+            candidates.insert(
+                0,
+                ExtractedMemory(
+                    content=" ".join(content.split()),
+                    kind=kind or "fact",
+                    event_dates=dedupe_strings(
+                        date for candidate in candidates for date in candidate.event_dates
+                    ),
+                    importance=max(candidate.importance for candidate in candidates),
+                ),
+            )
+        rows: list[MemoryRecord] = []
+        for candidate in candidates:
+            rows.append(
+                await self.remember(
+                    account_id=account_id,
+                    scope=scope,
+                    kind=candidate.kind,
+                    content=candidate.content,
+                    metadata=metadata,
+                    source_session_id=source_session_id,
+                    expires_at=expires_at,
+                    source_content=candidate.content,
+                    document_date=document_date,
+                    event_dates=candidate.event_dates,
+                    importance=candidate.importance,
+                    _commit=False,
+                    _add_relations=False,
+                    _embed=False,
+                )
+            )
+        for row in {row.id: row for row in rows}.values():
+            await self._add_related_edges(account_id=account_id, row=row)
+        await self.db.commit()
+        return await self._persist_embeddings(account_id=account_id, rows=rows)
+
+    async def import_for_account(
+        self, *, account_id: str, memories: list[dict], relations: list[dict] | None = None
+    ) -> list[MemoryRecord]:
+        rows: list[MemoryRecord] = []
+        id_map: dict[str, str] = {}
+        for memory in memories:
+            row = await self.remember(
+                account_id=account_id,
+                scope=memory["scope"],
+                kind=memory["kind"],
+                content=memory["content"],
+                metadata=memory.get("metadata"),
+                source_session_id=memory.get("source_session_id"),
+                expires_at=memory.get("expires_at"),
+                source_content=memory.get("source_content"),
+                document_date=memory.get("document_date"),
+                event_dates=memory.get("event_dates"),
+                importance=memory.get("importance", 0.5),
+                _commit=False,
+                _add_relations=False,
+                _embed=False,
+            )
+            rows.append(row)
+            if memory.get("id"):
+                id_map[memory["id"]] = row.id
+        for relation in relations or []:
+            source_id = id_map.get(relation.get("source_memory_id"))
+            target_id = id_map.get(relation.get("target_memory_id"))
+            if not source_id or not target_id or source_id == target_id:
+                continue
+            existing = await self.db.execute(
+                select(MemoryRelation).where(
+                    MemoryRelation.account_id == account_id,
+                    MemoryRelation.source_memory_id == source_id,
+                    MemoryRelation.target_memory_id == target_id,
+                    MemoryRelation.relation_type == relation["relation_type"],
+                )
+            )
+            if existing.scalar_one_or_none() is None:
+                self.db.add(
+                    MemoryRelation(
+                        account_id=account_id,
+                        source_memory_id=source_id,
+                        target_memory_id=target_id,
+                        relation_type=relation["relation_type"],
+                        confidence=relation.get("confidence", 0.5),
+                    )
+                )
+        for row in {row.id: row for row in rows}.values():
+            await self._add_related_edges(account_id=account_id, row=row)
+        await self.db.commit()
+        return await self._persist_embeddings(account_id=account_id, rows=rows)
+
+    async def _persist_embeddings(
+        self, *, account_id: str, rows: list[MemoryRecord]
+    ) -> list[MemoryRecord]:
+        if self.vector_store is None or not rows:
+            return rows
+        unique_rows = list({row.id: row for row in rows}.values())
+        row_ids = [row.id for row in rows]
+        unique_row_ids = [row.id for row in unique_rows]
+        embedding_inputs = [(row.id, row.content) for row in unique_rows]
+        try:
+            await self.vector_store.upsert_many(
+                account_id=account_id,
+                memories=embedding_inputs,
+            )
+            await self.db.commit()
+            return rows
+        except Exception:
+            logger.warning(
+                "Memory embedding failed; durable memory remains available to lexical recall",
+                exc_info=True,
+            )
+            await self.db.rollback()
+            result = await self.db.execute(
+                select(MemoryRecord).where(
+                    MemoryRecord.account_id == account_id,
+                    MemoryRecord.id.in_(unique_row_ids),
+                )
+            )
+            persisted = {row.id: row for row in result.scalars().all()}
+            return [persisted[row_id] for row_id in row_ids]
+
+    async def metrics_for_account(self, *, account_id: str, scope: str | None) -> dict:
+        filters = [
+            MemoryRecord.account_id == account_id,
+            _memory_is_live(),
+            MemoryRecord.superseded_at.is_(None),
+        ]
+        if scope is not None:
+            filters.append(MemoryRecord.scope == scope)
+        result = await self.db.execute(
+            select(MemoryRecord.kind, func.count())
+            .where(*filters)
+            .group_by(MemoryRecord.kind)
+        )
+        by_kind = {kind: count for kind, count in result.all()}
+        embedded_result = await self.db.execute(
+            select(func.count())
+            .select_from(MemoryEmbedding)
+            .join(MemoryRecord, MemoryRecord.id == MemoryEmbedding.memory_id)
+            .where(
+                *filters,
+                MemoryEmbedding.account_id == account_id,
+                MemoryEmbedding.model_id == self.embedding_model_id,
+            )
+        )
+        total = sum(by_kind.values())
+        embedded = int(embedded_result.scalar_one())
+        return {
+            "total_memories": total,
+            "by_kind": by_kind,
+            "embedded_memories": embedded,
+            "embedding_coverage": round(embedded / total, 6) if total else 0.0,
+            "embedding_model_id": self.embedding_model_id,
+        }
+
+    async def _add_related_edges(self, *, account_id: str, row: MemoryRecord) -> None:
+        result = await self.db.execute(
+            select(MemoryRecord)
+            .where(
+                MemoryRecord.account_id == account_id,
+                MemoryRecord.scope == row.scope,
+                MemoryRecord.id != row.id,
+                _memory_is_live(),
+            )
+            .order_by(MemoryRecord.updated_at.desc())
+            .limit(100)
+        )
+        others = result.scalars().all()
+        entity_frequency: dict[str, int] = {}
+        multiword_entity_tokens: set[str] = set()
+        for candidate in [row, *others]:
+            entities = named_entity_phrases(candidate.content)
+            for entity in entities:
+                entity_frequency[entity] = entity_frequency.get(entity, 0) + 1
+                if " " in entity:
+                    multiword_entity_tokens.update(entity.split())
+        for other in others:
+            similarity = jaccard_similarity(row.content, other.content)
+            shared_entities = {
+                entity
+                for entity in named_entity_phrases(row.content)
+                & named_entity_phrases(other.content)
+                if (
+                    " " in entity
+                    or entity not in multiword_entity_tokens
+                    or entity_frequency.get(entity, 0) <= 3
+                )
+            }
+            edge_type = relation_type(row.content, other.content)
+            threshold = 0.25 if edge_type == "updates" else 0.45
+            if similarity < threshold and not shared_entities:
+                continue
+            if similarity < threshold:
+                edge_type = "related"
+            confidence = max(
+                similarity,
+                min(1.0, 0.35 + 0.15 * len(shared_entities)) if shared_entities else 0.0,
+            )
+            existing = await self.db.execute(
+                select(MemoryRelation).where(
+                    MemoryRelation.account_id == account_id,
+                    MemoryRelation.source_memory_id == row.id,
+                    MemoryRelation.target_memory_id == other.id,
+                    MemoryRelation.relation_type == edge_type,
+                )
+            )
+            if existing.scalar_one_or_none() is None:
+                self.db.add(
+                    MemoryRelation(
+                        account_id=account_id,
+                        source_memory_id=row.id,
+                        target_memory_id=other.id,
+                        relation_type=edge_type,
+                        confidence=round(confidence, 4),
+                    )
+                )
+            if edge_type == "updates" and _as_utc(other.updated_at) <= _as_utc(row.updated_at):
+                other.superseded_at = row.updated_at
+                other.superseded_by_id = row.id
+
+    async def get_for_account(
+        self, *, account_id: str, memory_id: str, include_expired: bool = False
+    ) -> MemoryRecord | None:
+        filters = [MemoryRecord.id == memory_id, MemoryRecord.account_id == account_id]
+        if not include_expired:
+            filters.append(_memory_is_live())
+        result = await self.db.execute(select(MemoryRecord).where(*filters))
+        return result.scalar_one_or_none()
+
+    async def list_for_account(
+        self,
+        *,
+        account_id: str,
+        scope: str | None,
+        limit: int,
+        offset: int,
+        include_superseded: bool = False,
+    ) -> list[MemoryRecord]:
+        query = select(MemoryRecord).where(
+            MemoryRecord.account_id == account_id,
+            _memory_is_live(),
+        )
+        if not include_superseded:
+            query = query.where(MemoryRecord.superseded_at.is_(None))
+        if scope is not None:
+            query = query.where(MemoryRecord.scope == scope)
+        result = await self.db.execute(
+            query.order_by(MemoryRecord.updated_at.desc()).limit(limit).offset(offset)
+        )
+        return list(result.scalars().all())
+
+    async def search(
+        self, *, account_id: str, query_text: str, scope: str | None, limit: int
+    ) -> list[tuple[MemoryRecord, float]]:
+        candidates_by_id: dict[str, MemoryRecord] = {}
+        semantic_scores: dict[str, float] = {}
+        include_superseded = query_requests_history(query_text)
+        graph_intent = query_requires_graph(query_text)
+        if self.vector_store is not None:
+            try:
+                vector_hits = await self.vector_store.search(
+                    account_id=account_id,
+                    query_text=query_text,
+                    scope=scope,
+                    limit=min(max(limit * 10, 50), 500),
+                    include_superseded=include_superseded or graph_intent,
+                )
+                candidates_by_id.update({hit.memory.id: hit.memory for hit in vector_hits})
+                semantic_scores.update({hit.memory.id: hit.score for hit in vector_hits})
+            except Exception:
+                logger.warning(
+                    "Memory vector search failed; continuing with lexical recall",
+                    exc_info=True,
+                )
+                await self.db.rollback()
+
+        query_filters = [MemoryRecord.account_id == account_id, _memory_is_live()]
+        if not include_superseded:
+            query_filters.append(MemoryRecord.superseded_at.is_(None))
+        query = select(MemoryRecord).where(*query_filters)
+        if scope is not None:
+            query = query.where(MemoryRecord.scope == scope)
+        candidate_limit = min(max(limit * 20, 100), 1_000)
+        dialect = self.db.bind.dialect.name if self.db.bind is not None else ""
+        search_views = query_variants(query_text)
+        tokens = sorted(
+            {token for view in search_views for token in meaningful_tokens(view)},
+            key=len,
+            reverse=True,
+        )[:24]
+        if dialect == "postgresql" and tokens:
+            document = func.to_tsvector("simple", MemoryRecord.content)
+            text_queries = [
+                func.websearch_to_tsquery("simple", view) for view in search_views
+            ]
+            text_query = func.websearch_to_tsquery("simple", query_text)
+            query = query.where(
+                or_(*(document.op("@@")(candidate) for candidate in text_queries))
+            ).order_by(
+                func.ts_rank_cd(document, text_query).desc(),
+                MemoryRecord.updated_at.desc(),
+            )
+        elif tokens:
+            lowered_content = func.lower(MemoryRecord.content)
+            token_matches = [lowered_content.contains(token) for token in tokens]
+            token_coverage = sum(
+                (case((matched, 1), else_=0) for matched in token_matches),
+                start=case((token_matches[0], 0), else_=0),
+            )
+            normalized_phrase = " ".join(query_text.lower().split())
+            phrase_match = case(
+                (lowered_content.contains(normalized_phrase), len(tokens) + 1),
+                else_=0,
+            )
+            query = query.where(or_(*token_matches)).order_by(
+                phrase_match.desc(),
+                token_coverage.desc(),
+                MemoryRecord.updated_at.desc(),
+            )
+        else:
+            query = None
+        if query is not None:
+            result = await self.db.execute(query.limit(candidate_limit))
+            candidates_by_id.update({row.id: row for row in result.scalars().all()})
+        query_entities = graph_link_phrases(query_text)
+        entity_tokens = {
+            token for entity in query_entities if " " in entity for token in entity.split()
+        }
+        specific_entities = {
+            entity
+            for entity in query_entities
+            if " " in entity or entity not in entity_tokens
+        }
+        if specific_entities:
+            entity_filters = [
+                func.lower(MemoryRecord.content).contains(entity)
+                for entity in specific_entities
+            ]
+            entity_query = select(MemoryRecord).where(
+                *query_filters,
+                or_(*entity_filters),
+            )
+            if scope is not None:
+                entity_query = entity_query.where(MemoryRecord.scope == scope)
+            entity_result = await self.db.execute(entity_query.limit(500))
+            candidates_by_id.update({row.id: row for row in entity_result.scalars().all()})
+        query_terms = set(meaningful_tokens(query_text))
+        normalized_query = " ".join(query_text.casefold().split())
+
+        def candidate_priority(row: MemoryRecord) -> tuple[float, float, float, float, str]:
+            content = str(row.content)
+            content_terms = set(meaningful_tokens(content))
+            anchor_coverage = len(query_terms & content_terms) / max(1, len(query_terms))
+            phrase_match = float(normalized_query in " ".join(content.casefold().split()))
+            entity_coverage = float(bool(query_entities & graph_link_phrases(content)))
+            semantic = semantic_scores.get(row.id, 0.0)
+            return (anchor_coverage, phrase_match, entity_coverage, semantic, str(row.id))
+
+        if len(candidates_by_id) > 2_000:
+            candidates = sorted(
+                candidates_by_id.values(),
+                key=candidate_priority,
+                reverse=True,
+            )[:2_000]
+        else:
+            candidates = list(candidates_by_id.values())
+        candidate_ids = {row.id for row in candidates}
+        relations: list[MemoryRelation] = []
+        if candidate_ids:
+            relation_result = await self.db.execute(
+                select(MemoryRelation)
+                .where(
+                    MemoryRelation.account_id == account_id,
+                    (MemoryRelation.source_memory_id.in_(candidate_ids))
+                    | (MemoryRelation.target_memory_id.in_(candidate_ids)),
+                )
+                .order_by(MemoryRelation.confidence.desc())
+                .limit(5_000)
+            )
+            relations = list(relation_result.scalars().all())
+            neighbor_ids = {
+                memory_id
+                for edge in relations
+                for memory_id in (edge.source_memory_id, edge.target_memory_id)
+                if memory_id not in candidate_ids
+            }
+            remaining = 2_000 - len(candidates)
+            if neighbor_ids and remaining > 0:
+                neighbor_filters = [
+                    MemoryRecord.account_id == account_id,
+                    MemoryRecord.id.in_(neighbor_ids),
+                    _memory_is_live(),
+                ]
+                if not include_superseded and not graph_intent:
+                    neighbor_filters.append(MemoryRecord.superseded_at.is_(None))
+                neighbor_query = select(MemoryRecord).where(*neighbor_filters)
+                if scope is not None:
+                    neighbor_query = neighbor_query.where(MemoryRecord.scope == scope)
+                neighbor_result = await self.db.execute(neighbor_query.limit(remaining))
+                candidates.extend(neighbor_result.scalars().all())
+
+        retrieval_limit = min(max(limit * 5, 50), 100)
+        retrieved = await retrieve_memories(
+            candidates,
+            query_text,
+            limit=retrieval_limit,
+            scope=scope,
+            relations=relations,
+            precomputed_semantic_scores=semantic_scores,
+            now=_utcnow(),
+            candidate_limit=max(1, len(candidates)),
+        ) if candidates else []
+        if graph_intent and not include_superseded and retrieved:
+            live_candidates = [
+                row for row in candidates if row.superseded_at is None
+            ]
+            if len(live_candidates) < len(candidates):
+                live_retrieved = await retrieve_memories(
+                    live_candidates,
+                    query_text,
+                    limit=1,
+                    scope=scope,
+                    relations=relations,
+                    precomputed_semantic_scores=semantic_scores,
+                    now=_utcnow(),
+                    candidate_limit=max(1, len(live_candidates)),
+                ) if live_candidates else []
+                retrieved = merge_live_and_expanded_results(
+                    live_retrieved, retrieved
+                )
+        if self.reranker_provider is not None and retrieved and not query_requires_graph(query_text):
+            rerank_candidates = retrieved[: settings.BOXXKITE_MEMORY_RERANKER_CANDIDATES]
+            try:
+                rerank_scores = await self.reranker_provider.rerank(
+                    query_text,
+                    [
+                        (result.memory_id, str(result.memory.content))
+                        for result in rerank_candidates
+                    ],
+                )
+                if rerank_scores:
+                    reranked = []
+                    for result in retrieved:
+                        blended_score = min(
+                            1.0,
+                            0.25 * float(rerank_scores.get(result.memory_id, result.score))
+                            + 0.75 * result.score,
+                        )
+                        reranked.append(replace(result, score=blended_score))
+                    reranked.sort(key=lambda result: (-result.score, result.memory_id))
+                    retrieved = reranked
+            except Exception:
+                logger.warning(
+                    "Memory reranking failed; continuing with hybrid retrieval",
+                    exc_info=True,
+                )
+        retrieved = retrieved[:limit]
+        now = _utcnow()
+        selected = [(result.memory, round(result.score, 6)) for result in retrieved]
+        for row, _score in selected:
+            row.access_count += 1
+            row.last_accessed_at = now
+        if selected:
+            await self.db.commit()
+        return selected
+
+    async def profile(
+        self, *, account_id: str, scope: str | None, limit: int
+    ) -> tuple[list[MemoryRecord], list[MemoryRecord]]:
+        query = select(MemoryRecord).where(
+            MemoryRecord.account_id == account_id,
+            _memory_is_live(),
+            MemoryRecord.superseded_at.is_(None),
+        )
+        if scope is not None:
+            query = query.where(MemoryRecord.scope == scope)
+        result = await self.db.execute(query.order_by(MemoryRecord.updated_at.desc()).limit(limit * 4))
+        rows = list(result.scalars().all())
+        static = [row for row in rows if row.kind in {"fact", "preference", "instruction"}][:limit]
+        dynamic = [row for row in rows if row.kind in {"goal", "note", "summary"}][:limit]
+        return static, dynamic
+
+    async def relations_for_account(
+        self, *, account_id: str, memory_id: str, limit: int
+    ) -> list[MemoryRelation]:
+        result = await self.db.execute(
+            select(MemoryRelation)
+            .join(MemoryRecord, MemoryRecord.id == MemoryRelation.target_memory_id)
+            .where(
+                MemoryRelation.account_id == account_id,
+                MemoryRelation.source_memory_id == memory_id,
+                _memory_is_live(),
+            )
+            .order_by(MemoryRelation.confidence.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def export_for_account(self, *, account_id: str, scope: str | None) -> dict[str, list[dict]]:
+        rows = await self.list_for_account(
+            account_id=account_id,
+            scope=scope,
+            limit=10_000,
+            offset=0,
+            include_superseded=True,
+        )
+        ids = {row.id for row in rows}
+        result = await self.db.execute(
+            select(MemoryRelation).where(
+                MemoryRelation.account_id == account_id,
+                MemoryRelation.source_memory_id.in_(ids or {""}),
+                MemoryRelation.target_memory_id.in_(ids or {""}),
+            )
+        )
+        return {
+            "memories": [_memory_export(row) for row in rows],
+            "relations": [_relation_export(row) for row in result.scalars().all()],
+        }
+
+    async def forget(self, *, account_id: str, memory_id: str) -> bool:
+        row = await self.get_for_account(account_id=account_id, memory_id=memory_id, include_expired=True)
+        if row is None:
+            return False
+        await self.db.execute(
+            delete(MemoryRelation).where(
+                MemoryRelation.account_id == account_id,
+                (MemoryRelation.source_memory_id == memory_id) | (MemoryRelation.target_memory_id == memory_id),
+            )
+        )
+        await self.db.delete(row)
+        await self.db.commit()
+        return True
+
+
+def _memory_export(row: MemoryRecord) -> dict:
+    return {
+        "id": row.id,
+        "scope": row.scope,
+        "kind": row.kind,
+        "content": row.content,
+        "metadata": row.metadata_json or {},
+        "source_session_id": row.source_session_id,
+        "source_content": row.source_content,
+        "document_date": row.document_date.isoformat() if row.document_date else None,
+        "event_dates": row.event_dates_json or [],
+        "importance": row.importance,
+        "created_at": row.created_at.isoformat(),
+        "updated_at": row.updated_at.isoformat(),
+        "expires_at": row.expires_at.isoformat() if row.expires_at else None,
+        "superseded_at": row.superseded_at.isoformat() if row.superseded_at else None,
+        "superseded_by_id": row.superseded_by_id,
+    }
+
+
+def _relation_export(row: MemoryRelation) -> dict:
+    return {
+        "source_memory_id": row.source_memory_id,
+        "target_memory_id": row.target_memory_id,
+        "relation_type": row.relation_type,
+        "confidence": row.confidence,
+    }
+
+
+def _memory_is_live():
+    return (MemoryRecord.expires_at.is_(None)) | (MemoryRecord.expires_at > _utcnow())

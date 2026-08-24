@@ -78,8 +78,22 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, LargeBinary, String, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import VECTOR
 
 
 def _new_uuid() -> str:
@@ -972,6 +986,124 @@ class EmailVerificationToken(Base):
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     account: Mapped["Account"] = relationship()
+
+
+class MemoryRecord(Base):
+    """Durable, account-scoped memory owned by this control plane.
+
+    Memory is deliberately separate from sandbox/session state: a session can
+    be destroyed without deleting the account's retained memories. `scope`
+    provides a caller-controlled project/workspace boundary, while
+    `account_id` remains the non-negotiable tenant boundary for every lookup.
+    """
+
+    __tablename__ = "memory_records"
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "scope",
+            "kind",
+            "content_hash",
+            name="uq_memory_records_account_scope_kind_hash",
+        ),
+        Index("ix_memory_records_account_scope_updated", "account_id", "scope", "updated_at"),
+        Index("ix_memory_records_account_expires", "account_id", "expires_at"),
+        Index("ix_memory_records_account_scope_kind", "account_id", "scope", "kind"),
+        Index("ix_memory_records_account_superseded", "account_id", "superseded_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_uuid)
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    scope: Mapped[str] = mapped_column(String(128), nullable=False, default="default")
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, default="fact")
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    metadata_json: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
+    source_session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    source_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    event_dates_json: Mapped[list | None] = mapped_column("event_dates", JSON, nullable=True)
+    importance: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    access_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_accessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    superseded_by_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("memory_records.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class MemoryEmbedding(Base):
+    __tablename__ = "memory_embeddings"
+    __table_args__ = (
+        UniqueConstraint("memory_id", "model_id", name="uq_memory_embeddings_memory_model"),
+        Index("ix_memory_embeddings_account_model", "account_id", "model_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_uuid)
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    memory_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("memory_records.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    model_id: Mapped[str] = mapped_column(String(191), nullable=False)
+    dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    embedding: Mapped[list] = mapped_column(JSON().with_variant(VECTOR(), "postgresql"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+
+Index(
+    "ix_memory_embeddings_default_hnsw",
+    func.cast(MemoryEmbedding.embedding, VECTOR(768)).label("embedding_768"),
+    postgresql_using="hnsw",
+    postgresql_ops={"embedding_768": "vector_cosine_ops"},
+    postgresql_where=(MemoryEmbedding.model_id == "qwen3-embedding-0.6b-768-v1")
+    & (MemoryEmbedding.dimensions == 768),
+).ddl_if(dialect="postgresql")
+
+Index(
+    "ix_memory_embeddings_harrier_hnsw",
+    func.cast(MemoryEmbedding.embedding, VECTOR(1024)).label("embedding_1024"),
+    postgresql_using="hnsw",
+    postgresql_ops={"embedding_1024": "vector_cosine_ops"},
+    postgresql_where=(MemoryEmbedding.model_id == "harrier-oss-v1-0.6b-1024-v1")
+    & (MemoryEmbedding.dimensions == 1024),
+).ddl_if(dialect="postgresql")
+
+
+class MemoryRelation(Base):
+    """Account-scoped edges between retained memories."""
+
+    __tablename__ = "memory_relations"
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id", "source_memory_id", "target_memory_id", "relation_type",
+            name="uq_memory_relations_edge",
+        ),
+        Index("ix_memory_relations_account_source", "account_id", "source_memory_id"),
+        Index("ix_memory_relations_account_target", "account_id", "target_memory_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_new_uuid)
+    account_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source_memory_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("memory_records.id", ondelete="CASCADE"), nullable=False
+    )
+    target_memory_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("memory_records.id", ondelete="CASCADE"), nullable=False
+    )
+    relation_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
 
 
 class IdempotencyKey(Base):

@@ -42,6 +42,8 @@ _HEADER = """\
 --
 -- All statements use IF NOT EXISTS so this is safe to run against an
 -- already-initialized database.
+
+CREATE EXTENSION IF NOT EXISTS vector;
 """
 
 

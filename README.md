@@ -200,6 +200,32 @@ control-plane creates per-session pods programmatically at runtime (a local
 `kind` cluster via `deploy/local-kind/setup.sh` works). Against SQLite with no
 cluster you can exercise the HTTP/auth surface, not real code execution.
 
+### Run the local MemoryBase embedding server
+
+MemoryBase's default embeddings and optional reranking can run in a separate
+local process using Hugging Face Transformers, without Ollama or PyTorch in
+the control-plane:
+
+```bash
+cd memory-model-server
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+BOXKITE_EAGER_LOAD=true .venv/bin/uvicorn app:app --host 127.0.0.1 --port 8000
+```
+
+The first start downloads the configured local embedding and reranker models.
+On Apple Silicon, device auto-detection selects MPS. Set the control-plane's
+`BOXXKITE_MEMORY_EMBEDDINGS_ENABLED` and
+`BOXXKITE_MEMORY_RERANKING_ENABLED` to `true` to use the local endpoints.
+
+For a managed embedding comparison, set
+`BOXXKITE_MEMORY_EMBEDDING_PROVIDER=gemini`,
+`BOXXKITE_MEMORY_EMBEDDING_MODEL=gemini-embedding-2`,
+`BOXXKITE_MEMORY_EMBEDDING_DIMENSIONS=1024`, and provide
+`BOXXKITE_MEMORY_EMBEDDING_API_KEY`. Gemini Embedding 2 uses a separate vector
+space, so switching providers requires re-embedding existing memories; the
+model ID and dimensions are part of the vector-store key for that reason.
+
 ## What's in this repo
 
 One repo, several independently-versioned pieces, kept together deliberately

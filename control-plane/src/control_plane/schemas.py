@@ -5,9 +5,10 @@ so they're written for that audience, not just as internal type hints.
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
@@ -183,6 +184,120 @@ class ApiKeyCreateRequest(BaseModel):
             "this permission is enforced on."
         ),
     )
+
+
+# ── Durable MemoryBase ───────────────────────────────────────────────────
+class MemoryCreateRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=64 * 1024)
+    scope: str = Field(default="default", min_length=1, max_length=128)
+    kind: Literal["fact", "preference", "goal", "instruction", "note", "summary"] = "fact"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    source_session_id: str | None = Field(default=None, max_length=36)
+    expires_at: datetime | None = None
+    source_content: str | None = Field(default=None, max_length=64 * 1024)
+    document_date: datetime | None = None
+    event_dates: list[str] = Field(default_factory=list, max_length=16)
+    importance: float = Field(default=0.5, ge=0.0, le=1.0)
+
+    @field_validator("metadata")
+    @classmethod
+    def _validate_metadata(cls, value: dict[str, Any]) -> dict[str, Any]:
+        try:
+            encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("metadata must contain JSON-compatible values") from exc
+        if len(encoded.encode("utf-8")) > 32 * 1024:
+            raise ValueError("metadata must be at most 32 KiB")
+        return value
+
+
+class MemoryIngestRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=256 * 1024)
+    scope: str = Field(default="default", min_length=1, max_length=128)
+    kind: Literal["auto", "fact", "preference", "goal", "instruction", "note", "summary"] = "auto"
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    source_session_id: str | None = Field(default=None, max_length=36)
+    expires_at: datetime | None = None
+    document_date: datetime | None = None
+
+    @field_validator("metadata")
+    @classmethod
+    def _validate_metadata(cls, value: dict[str, Any]) -> dict[str, Any]:
+        try:
+            encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("metadata must contain JSON-compatible values") from exc
+        if len(encoded.encode("utf-8")) > 32 * 1024:
+            raise ValueError("metadata must be at most 32 KiB")
+        return value
+
+
+class MemoryOut(BaseModel):
+    id: str
+    scope: str
+    kind: str
+    content: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    source_session_id: str | None
+    created_at: datetime
+    updated_at: datetime
+    expires_at: datetime | None
+    source_content: str | None = None
+    document_date: datetime | None = None
+    event_dates: list[str] = Field(default_factory=list)
+    importance: float = 0.5
+    access_count: int = 0
+    last_accessed_at: datetime | None = None
+    superseded_at: datetime | None = None
+    superseded_by_id: str | None = None
+
+
+class MemorySearchHit(MemoryOut):
+    score: float
+
+
+class MemorySearchResponse(BaseModel):
+    query: str
+    memories: list[MemorySearchHit]
+
+
+class MemoryIngestResponse(BaseModel):
+    source_session_id: str | None
+    memories: list[MemoryOut]
+
+
+class MemoryRelationOut(BaseModel):
+    source_memory_id: str
+    target_memory_id: str
+    relation_type: str
+    confidence: float
+    created_at: datetime
+
+
+class MemoryRelationsResponse(BaseModel):
+    memory_id: str
+    relations: list[MemoryRelationOut]
+
+
+class MemoryImportRelation(BaseModel):
+    source_memory_id: str
+    target_memory_id: str
+    relation_type: Literal["updates", "extends", "related", "derives"]
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class MemoryImportMemory(MemoryCreateRequest):
+    id: str | None = Field(default=None, max_length=36)
+
+
+class MemoryProfileResponse(BaseModel):
+    static: list[MemoryOut]
+    dynamic: list[MemoryOut]
+
+
+class MemoryImportRequest(BaseModel):
+    memories: list[MemoryImportMemory] = Field(min_length=1, max_length=500)
+    relations: list[MemoryImportRelation] = Field(default_factory=list, max_length=2_000)
 
 
 class ApiKeyOut(BaseModel):
