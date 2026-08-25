@@ -659,6 +659,106 @@ class BoxxkiteClient:
         account. 404s if already gone or never owned by this account."""
         self._request("DELETE", f"/v1/secrets/{secret_id}")
 
+    def remember(
+        self,
+        content: str,
+        *,
+        scope: str = "default",
+        kind: str = "fact",
+        metadata: dict[str, Any] | None = None,
+        source_session_id: str | None = None,
+        importance: float = 0.5,
+    ) -> dict:
+        """POST /v1/memory -- store one durable, account-scoped memory
+        directly. See docs/developers/guides/memory for the full
+        MemoryBase model (opt-in, self-hosted retrieval by default)."""
+        body: dict[str, Any] = {
+            "content": content,
+            "scope": scope,
+            "kind": kind,
+            "metadata": metadata or {},
+            "importance": importance,
+        }
+        if source_session_id is not None:
+            body["source_session_id"] = source_session_id
+        return self._request("POST", "/v1/memory", json=body)
+
+    def ingest_memory(
+        self,
+        content: str,
+        *,
+        scope: str = "default",
+        source_session_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict:
+        """POST /v1/memory/ingest -- split a bounded document or
+        conversation into atomic memories. Works with no model provider
+        configured (the default extractor is deterministic)."""
+        body: dict[str, Any] = {"content": content, "scope": scope, "metadata": metadata or {}}
+        if source_session_id is not None:
+            body["source_session_id"] = source_session_id
+        return self._request("POST", "/v1/memory/ingest", json=body)
+
+    def recall(self, query: str, *, scope: str | None = None, limit: int = 10) -> dict:
+        """GET /v1/memory/search -- rank live account memories against a
+        query using lexical evidence, phrase match, recency, and
+        importance."""
+        params: dict[str, Any] = {"q": query, "limit": limit}
+        if scope is not None:
+            params["scope"] = scope
+        return self._request("GET", "/v1/memory/search", params=params)
+
+    def memory_profile(self, *, scope: str | None = None, limit: int = 20) -> dict:
+        """GET /v1/memory/profile -- stable, long-lived memories
+        separated from recently-touched ones."""
+        params: dict[str, Any] = {"limit": limit}
+        if scope is not None:
+            params["scope"] = scope
+        return self._request("GET", "/v1/memory/profile", params=params)
+
+    def list_memories(
+        self, *, scope: str | None = None, include_superseded: bool = False, limit: int = 50, offset: int = 0
+    ) -> list[dict]:
+        """GET /v1/memory -- live memories for this account."""
+        params: dict[str, Any] = {
+            "include_superseded": str(include_superseded).lower(),
+            "limit": limit,
+            "offset": offset,
+        }
+        if scope is not None:
+            params["scope"] = scope
+        result = self._request("GET", "/v1/memory", params=params)
+        return result or []
+
+    def get_memory(self, memory_id: str) -> dict:
+        """GET /v1/memory/{id} -- one live memory owned by this account."""
+        return self._request("GET", f"/v1/memory/{memory_id}")
+
+    def memory_relations(self, memory_id: str, *, limit: int = 20) -> dict:
+        """GET /v1/memory/{id}/relations -- other memories related to
+        this one (updates/extends/related/derives edges)."""
+        return self._request("GET", f"/v1/memory/{memory_id}/relations", params={"limit": limit})
+
+    def forget_memory(self, memory_id: str) -> None:
+        """DELETE /v1/memory/{id} -- permanently delete one memory. Not a
+        soft-delete; a forgotten memory cannot be recalled again."""
+        self._request("DELETE", f"/v1/memory/{memory_id}")
+
+    def export_memories(self, *, scope: str | None = None) -> dict:
+        """GET /v1/memory/export -- export live memories (and their
+        relations) for this account, for backup or migration."""
+        params: dict[str, Any] = {}
+        if scope is not None:
+            params["scope"] = scope
+        return self._request("GET", "/v1/memory/export", params=params)
+
+    def import_memories(self, memories: list[dict], *, relations: list[dict] | None = None) -> dict:
+        """POST /v1/memory/import -- import memories (and optionally
+        their relations) previously produced by export_memories()."""
+        return self._request(
+            "POST", "/v1/memory/import", json={"memories": memories, "relations": relations or []}
+        )
+
     def exec(
         self, session_id: str, command: str, *, timeout: int | None = None, description: str | None = None
     ) -> dict:
@@ -1528,6 +1628,105 @@ class AsyncBoxxkiteClient:
         """DELETE /v1/secrets/{id} -- delete a secret owned by this
         account. 404s if already gone or never owned by this account."""
         await self._request("DELETE", f"/v1/secrets/{secret_id}")
+
+    async def remember(
+        self,
+        content: str,
+        *,
+        scope: str = "default",
+        kind: str = "fact",
+        metadata: dict[str, Any] | None = None,
+        source_session_id: str | None = None,
+        importance: float = 0.5,
+    ) -> dict:
+        """POST /v1/memory -- async counterpart of
+        `BoxxkiteClient.remember`. See that docstring."""
+        body: dict[str, Any] = {
+            "content": content,
+            "scope": scope,
+            "kind": kind,
+            "metadata": metadata or {},
+            "importance": importance,
+        }
+        if source_session_id is not None:
+            body["source_session_id"] = source_session_id
+        return await self._request("POST", "/v1/memory", json=body)
+
+    async def ingest_memory(
+        self,
+        content: str,
+        *,
+        scope: str = "default",
+        source_session_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict:
+        """POST /v1/memory/ingest -- async counterpart of
+        `BoxxkiteClient.ingest_memory`. See that docstring."""
+        body: dict[str, Any] = {"content": content, "scope": scope, "metadata": metadata or {}}
+        if source_session_id is not None:
+            body["source_session_id"] = source_session_id
+        return await self._request("POST", "/v1/memory/ingest", json=body)
+
+    async def recall(self, query: str, *, scope: str | None = None, limit: int = 10) -> dict:
+        """GET /v1/memory/search -- async counterpart of
+        `BoxxkiteClient.recall`. See that docstring."""
+        params: dict[str, Any] = {"q": query, "limit": limit}
+        if scope is not None:
+            params["scope"] = scope
+        return await self._request("GET", "/v1/memory/search", params=params)
+
+    async def memory_profile(self, *, scope: str | None = None, limit: int = 20) -> dict:
+        """GET /v1/memory/profile -- async counterpart of
+        `BoxxkiteClient.memory_profile`. See that docstring."""
+        params: dict[str, Any] = {"limit": limit}
+        if scope is not None:
+            params["scope"] = scope
+        return await self._request("GET", "/v1/memory/profile", params=params)
+
+    async def list_memories(
+        self, *, scope: str | None = None, include_superseded: bool = False, limit: int = 50, offset: int = 0
+    ) -> list[dict]:
+        """GET /v1/memory -- async counterpart of
+        `BoxxkiteClient.list_memories`. See that docstring."""
+        params: dict[str, Any] = {
+            "include_superseded": str(include_superseded).lower(),
+            "limit": limit,
+            "offset": offset,
+        }
+        if scope is not None:
+            params["scope"] = scope
+        result = await self._request("GET", "/v1/memory", params=params)
+        return result or []
+
+    async def get_memory(self, memory_id: str) -> dict:
+        """GET /v1/memory/{id} -- async counterpart of
+        `BoxxkiteClient.get_memory`. See that docstring."""
+        return await self._request("GET", f"/v1/memory/{memory_id}")
+
+    async def memory_relations(self, memory_id: str, *, limit: int = 20) -> dict:
+        """GET /v1/memory/{id}/relations -- async counterpart of
+        `BoxxkiteClient.memory_relations`. See that docstring."""
+        return await self._request("GET", f"/v1/memory/{memory_id}/relations", params={"limit": limit})
+
+    async def forget_memory(self, memory_id: str) -> None:
+        """DELETE /v1/memory/{id} -- async counterpart of
+        `BoxxkiteClient.forget_memory`. See that docstring."""
+        await self._request("DELETE", f"/v1/memory/{memory_id}")
+
+    async def export_memories(self, *, scope: str | None = None) -> dict:
+        """GET /v1/memory/export -- async counterpart of
+        `BoxxkiteClient.export_memories`. See that docstring."""
+        params: dict[str, Any] = {}
+        if scope is not None:
+            params["scope"] = scope
+        return await self._request("GET", "/v1/memory/export", params=params)
+
+    async def import_memories(self, memories: list[dict], *, relations: list[dict] | None = None) -> dict:
+        """POST /v1/memory/import -- async counterpart of
+        `BoxxkiteClient.import_memories`. See that docstring."""
+        return await self._request(
+            "POST", "/v1/memory/import", json={"memories": memories, "relations": relations or []}
+        )
 
     async def exec(
         self, session_id: str, command: str, *, timeout: int | None = None, description: str | None = None

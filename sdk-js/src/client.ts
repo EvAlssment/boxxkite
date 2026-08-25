@@ -37,6 +37,11 @@ import type {
   LogEntry,
   LsResult,
   McpConnection,
+  Memory,
+  MemoryIngestResponse,
+  MemoryProfileResponse,
+  MemoryRelationsResponse,
+  MemorySearchResponse,
   MessageResponse,
   PreviewRevokeResult,
   PreviewUrl,
@@ -261,6 +266,32 @@ export interface CreateSecretOptions {
    * secret. The only accepted value today is "testnet"; "mainnet" is
    * refused (422). */
   trustTier?: string;
+}
+
+export interface RememberOptions {
+  scope?: string;
+  kind?: "fact" | "preference" | "goal" | "instruction" | "note" | "summary";
+  metadata?: Record<string, unknown>;
+  sourceSessionId?: string;
+  importance?: number;
+}
+
+export interface IngestMemoryOptions {
+  scope?: string;
+  sourceSessionId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RecallOptions {
+  scope?: string;
+  limit?: number;
+}
+
+export interface ListMemoriesOptions {
+  scope?: string;
+  includeSuperseded?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
 /**
@@ -1226,6 +1257,98 @@ export class BoxxkiteClient {
    * account. 404s if already gone or never owned by this account. */
   async deleteSecret(secretId: string): Promise<void> {
     await this.request("DELETE", `/v1/secrets/${secretId}`);
+  }
+
+  /** POST /v1/memory -- store one durable, account-scoped memory directly.
+   * See the MemoryBase developer guide for the full model (opt-in,
+   * self-hosted retrieval by default, no third-party memory API). */
+  remember(content: string, options?: RememberOptions): Promise<Memory> {
+    const body: Record<string, unknown> = {
+      content,
+      scope: options?.scope ?? "default",
+      kind: options?.kind ?? "fact",
+      metadata: options?.metadata ?? {},
+      importance: options?.importance ?? 0.5,
+    };
+    if (options?.sourceSessionId !== undefined) body.source_session_id = options.sourceSessionId;
+    return this.request("POST", "/v1/memory", body);
+  }
+
+  /** POST /v1/memory/ingest -- split a bounded document or conversation
+   * into atomic memories. Works with no model provider configured (the
+   * default extractor is deterministic). */
+  ingestMemory(content: string, options?: IngestMemoryOptions): Promise<MemoryIngestResponse> {
+    const body: Record<string, unknown> = {
+      content,
+      scope: options?.scope ?? "default",
+      metadata: options?.metadata ?? {},
+    };
+    if (options?.sourceSessionId !== undefined) body.source_session_id = options.sourceSessionId;
+    return this.request("POST", "/v1/memory/ingest", body);
+  }
+
+  /** GET /v1/memory/search -- rank live account memories against a query
+   * using lexical evidence, phrase match, recency, and importance. */
+  recall(query: string, options?: RecallOptions): Promise<MemorySearchResponse> {
+    const params: Record<string, string> = { q: query, limit: String(options?.limit ?? 10) };
+    if (options?.scope !== undefined) params.scope = options.scope;
+    return this.request("GET", "/v1/memory/search", undefined, params);
+  }
+
+  /** GET /v1/memory/profile -- stable, long-lived memories separated from
+   * recently-touched ones. */
+  memoryProfile(options?: { scope?: string; limit?: number }): Promise<MemoryProfileResponse> {
+    const params: Record<string, string> = { limit: String(options?.limit ?? 20) };
+    if (options?.scope !== undefined) params.scope = options.scope;
+    return this.request("GET", "/v1/memory/profile", undefined, params);
+  }
+
+  /** GET /v1/memory -- live memories for this account. */
+  async listMemories(options?: ListMemoriesOptions): Promise<Memory[]> {
+    const params: Record<string, string> = {
+      include_superseded: String(options?.includeSuperseded ?? false),
+      limit: String(options?.limit ?? 50),
+      offset: String(options?.offset ?? 0),
+    };
+    if (options?.scope !== undefined) params.scope = options.scope;
+    const result = await this.request("GET", "/v1/memory", undefined, params);
+    return result ?? [];
+  }
+
+  /** GET /v1/memory/{memoryId} -- one live memory owned by this account. */
+  getMemory(memoryId: string): Promise<Memory> {
+    return this.request("GET", `/v1/memory/${memoryId}`);
+  }
+
+  /** GET /v1/memory/{memoryId}/relations -- other memories related to this
+   * one (updates/extends/related/derives edges). */
+  memoryRelations(memoryId: string, options?: { limit?: number }): Promise<MemoryRelationsResponse> {
+    return this.request("GET", `/v1/memory/${memoryId}/relations`, undefined, {
+      limit: String(options?.limit ?? 20),
+    });
+  }
+
+  /** DELETE /v1/memory/{memoryId} -- permanently delete one memory. Not a
+   * soft-delete; a forgotten memory cannot be recalled again. */
+  async forgetMemory(memoryId: string): Promise<void> {
+    await this.request("DELETE", `/v1/memory/${memoryId}`);
+  }
+
+  /** GET /v1/memory/export -- export live memories (and their relations)
+   * for this account, for backup or migration. */
+  exportMemories(options?: { scope?: string }): Promise<{ memories: unknown[]; relations: unknown[] }> {
+    const params: Record<string, string> = {};
+    if (options?.scope !== undefined) params.scope = options.scope;
+    return this.request("GET", "/v1/memory/export", undefined, params);
+  }
+
+  /** POST /v1/memory/import -- import memories (and optionally their
+   * relations) previously produced by exportMemories(). */
+  importMemories(
+    memories: Record<string, unknown>[],
+    relations?: Record<string, unknown>[],
+  ): Promise<MemoryIngestResponse> {
+    return this.request("POST", "/v1/memory/import", { memories, relations: relations ?? [] });
   }
 
   /**

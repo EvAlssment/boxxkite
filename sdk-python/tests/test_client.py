@@ -904,6 +904,128 @@ def test_delete_secret_returns_none_on_204():
     assert client.delete_secret("secret-1") is None
 
 
+def test_remember_sends_content_scope_and_kind():
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        assert request.method == "POST"
+        assert request.url.path == "/v1/memory"
+        assert json.loads(request.content) == {
+            "content": "The user prefers TypeScript.",
+            "scope": "default",
+            "kind": "fact",
+            "metadata": {},
+            "importance": 0.5,
+        }
+        return httpx.Response(201, json={"id": "mem-1", "content": "The user prefers TypeScript."})
+
+    client = _client_with(handler)
+    result = client.remember("The user prefers TypeScript.")
+    assert result["id"] == "mem-1"
+
+
+def test_ingest_memory_sends_content_and_scope():
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        assert request.method == "POST"
+        assert request.url.path == "/v1/memory/ingest"
+        assert json.loads(request.content) == {
+            "content": "long transcript",
+            "scope": "default",
+            "metadata": {},
+        }
+        return httpx.Response(201, json={"source_session_id": None, "memories": []})
+
+    client = _client_with(handler)
+    result = client.ingest_memory("long transcript")
+    assert result["memories"] == []
+
+
+def test_recall_sends_query_and_limit():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == "/v1/memory/search"
+        assert request.url.params["q"] == "TypeScript"
+        assert request.url.params["limit"] == "10"
+        return httpx.Response(200, json={"query": "TypeScript", "memories": []})
+
+    client = _client_with(handler)
+    result = client.recall("TypeScript")
+    assert result["query"] == "TypeScript"
+
+
+def test_memory_profile_returns_static_and_dynamic():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/memory/profile"
+        return httpx.Response(200, json={"static": [], "dynamic": []})
+
+    client = _client_with(handler)
+    result = client.memory_profile()
+    assert result == {"static": [], "dynamic": []}
+
+
+def test_list_memories_returns_empty_list_when_none():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == "/v1/memory"
+        return httpx.Response(200, json=[])
+
+    client = _client_with(handler)
+    assert client.list_memories() == []
+
+
+def test_get_memory_returns_result():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/memory/mem-1"
+        return httpx.Response(200, json={"id": "mem-1"})
+
+    client = _client_with(handler)
+    assert client.get_memory("mem-1")["id"] == "mem-1"
+
+
+def test_memory_relations_returns_result():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/memory/mem-1/relations"
+        return httpx.Response(200, json={"memory_id": "mem-1", "relations": []})
+
+    client = _client_with(handler)
+    assert client.memory_relations("mem-1")["memory_id"] == "mem-1"
+
+
+def test_forget_memory_returns_none_on_204():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "DELETE"
+        assert request.url.path == "/v1/memory/mem-1"
+        return httpx.Response(204)
+
+    client = _client_with(handler)
+    assert client.forget_memory("mem-1") is None
+
+
+def test_export_memories_returns_result():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/memory/export"
+        return httpx.Response(200, json={"memories": [], "relations": []})
+
+    client = _client_with(handler)
+    assert client.export_memories() == {"memories": [], "relations": []}
+
+
+def test_import_memories_sends_memories_and_relations():
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        assert request.method == "POST"
+        assert request.url.path == "/v1/memory/import"
+        assert json.loads(request.content) == {"memories": [{"content": "x"}], "relations": []}
+        return httpx.Response(201, json={"source_session_id": None, "memories": [{"id": "mem-1"}]})
+
+    client = _client_with(handler)
+    result = client.import_memories([{"content": "x"}])
+    assert result["memories"][0]["id"] == "mem-1"
+
+
 def test_api_error_parses_envelope():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(404, json={"error": {"code": "not_found", "message": "Sandbox session not found"}})

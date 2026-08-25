@@ -74,6 +74,7 @@ mod files;
 mod images;
 mod lsp;
 mod mcp_connections;
+mod memory;
 mod preview;
 mod processes;
 mod sandboxes;
@@ -98,6 +99,11 @@ pub use files::{
 pub use images::{CreateImageOptions, Image, ImageBase};
 pub use lsp::{LspCompletionResult, LspOpenResult, LspStartResult, LspStopResult};
 pub use mcp_connections::{McpCatalogId, McpConnection};
+pub use memory::{
+    IngestMemoryOptions, ListMemoriesOptions, Memory, MemoryIngestResponse,
+    MemoryProfileResponse, MemoryRelation, MemoryRelationsResponse, MemorySearchHit,
+    MemorySearchResponse, RememberOptions,
+};
 pub use preview::{PreviewRevokeResult, PreviewUrl};
 pub use processes::{
     ProcessInfo, ProcessInputResult, ProcessListResult, ProcessOutputResult, ProcessStartResult,

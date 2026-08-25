@@ -722,6 +722,127 @@ test("deleteSecret resolves on 204", async () => {
   await assert.doesNotReject(client.deleteSecret("secret-1"));
 });
 
+test("remember sends content, scope, and kind", async () => {
+  const client = clientWith(({ method, url, body }) => {
+    assert.equal(method, "POST");
+    assert.equal(new URL(url).pathname, "/v1/memory");
+    assert.deepEqual(body, {
+      content: "The user prefers TypeScript.",
+      scope: "default",
+      kind: "fact",
+      metadata: {},
+      importance: 0.5,
+    });
+    return new Response(JSON.stringify({ id: "mem-1", content: "The user prefers TypeScript." }), {
+      status: 201,
+    });
+  });
+
+  const result = await client.remember("The user prefers TypeScript.");
+  assert.equal(result.id, "mem-1");
+});
+
+test("ingestMemory sends content and scope", async () => {
+  const client = clientWith(({ method, url, body }) => {
+    assert.equal(method, "POST");
+    assert.equal(new URL(url).pathname, "/v1/memory/ingest");
+    assert.deepEqual(body, { content: "long transcript", scope: "default", metadata: {} });
+    return new Response(JSON.stringify({ source_session_id: null, memories: [] }), { status: 201 });
+  });
+
+  const result = await client.ingestMemory("long transcript");
+  assert.deepEqual(result.memories, []);
+});
+
+test("recall sends query and limit", async () => {
+  const client = clientWith(({ method, url }) => {
+    assert.equal(method, "GET");
+    const parsed = new URL(url);
+    assert.equal(parsed.pathname, "/v1/memory/search");
+    assert.equal(parsed.searchParams.get("q"), "TypeScript");
+    assert.equal(parsed.searchParams.get("limit"), "10");
+    return new Response(JSON.stringify({ query: "TypeScript", memories: [] }), { status: 200 });
+  });
+
+  const result = await client.recall("TypeScript");
+  assert.equal(result.query, "TypeScript");
+});
+
+test("memoryProfile returns static and dynamic", async () => {
+  const client = clientWith(({ url }) => {
+    assert.equal(new URL(url).pathname, "/v1/memory/profile");
+    return new Response(JSON.stringify({ static: [], dynamic: [] }), { status: 200 });
+  });
+
+  const result = await client.memoryProfile();
+  assert.deepEqual(result, { static: [], dynamic: [] });
+});
+
+test("listMemories returns empty array when there are none", async () => {
+  const client = clientWith(({ method, url }) => {
+    assert.equal(method, "GET");
+    assert.equal(new URL(url).pathname, "/v1/memory");
+    return new Response(JSON.stringify([]), { status: 200 });
+  });
+
+  const result = await client.listMemories();
+  assert.deepEqual(result, []);
+});
+
+test("getMemory returns the memory", async () => {
+  const client = clientWith(({ url }) => {
+    assert.equal(new URL(url).pathname, "/v1/memory/mem-1");
+    return new Response(JSON.stringify({ id: "mem-1" }), { status: 200 });
+  });
+
+  const result = await client.getMemory("mem-1");
+  assert.equal(result.id, "mem-1");
+});
+
+test("memoryRelations returns the relations", async () => {
+  const client = clientWith(({ url }) => {
+    assert.equal(new URL(url).pathname, "/v1/memory/mem-1/relations");
+    return new Response(JSON.stringify({ memory_id: "mem-1", relations: [] }), { status: 200 });
+  });
+
+  const result = await client.memoryRelations("mem-1");
+  assert.equal(result.memory_id, "mem-1");
+});
+
+test("forgetMemory resolves on 204", async () => {
+  const client = clientWith(({ method, url }) => {
+    assert.equal(method, "DELETE");
+    assert.equal(new URL(url).pathname, "/v1/memory/mem-1");
+    return new Response(null, { status: 204 });
+  });
+
+  await assert.doesNotReject(client.forgetMemory("mem-1"));
+});
+
+test("exportMemories returns the export payload", async () => {
+  const client = clientWith(({ url }) => {
+    assert.equal(new URL(url).pathname, "/v1/memory/export");
+    return new Response(JSON.stringify({ memories: [], relations: [] }), { status: 200 });
+  });
+
+  const result = await client.exportMemories();
+  assert.deepEqual(result, { memories: [], relations: [] });
+});
+
+test("importMemories sends memories and relations", async () => {
+  const client = clientWith(({ method, url, body }) => {
+    assert.equal(method, "POST");
+    assert.equal(new URL(url).pathname, "/v1/memory/import");
+    assert.deepEqual(body, { memories: [{ content: "x" }], relations: [] });
+    return new Response(JSON.stringify({ source_session_id: null, memories: [{ id: "mem-1" }] }), {
+      status: 201,
+    });
+  });
+
+  const result = await client.importMemories([{ content: "x" }]);
+  assert.equal(result.memories[0].id, "mem-1");
+});
+
 test("exec posts command", async () => {
   const client = clientWith(({ url }) => {
     assert.equal(new URL(url).pathname, "/v1/sandboxes/sess-1/exec");

@@ -296,3 +296,63 @@ export interface Secret {
 export interface AllowedCommandsResponse {
   rules: AllowedCommandRule[];
 }
+
+/** One durable, account-scoped memory (MemoryBase -- POST/GET /v1/memory). */
+export interface Memory {
+  id: string;
+  scope: string;
+  kind: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  source_session_id: string | null;
+  created_at: string;
+  updated_at: string;
+  expires_at: string | null;
+  source_content: string | null;
+  document_date: string | null;
+  event_dates: string[];
+  importance: number;
+  access_count: number;
+  last_accessed_at: string | null;
+  superseded_at: string | null;
+  superseded_by_id: string | null;
+}
+
+/** A memory returned from GET /v1/memory/search, with its retrieval score. */
+export interface MemorySearchHit extends Memory {
+  score: number;
+}
+
+/** GET /v1/memory/search. */
+export interface MemorySearchResponse {
+  query: string;
+  memories: MemorySearchHit[];
+}
+
+/** POST /v1/memory/ingest and POST /v1/memory/import. */
+export interface MemoryIngestResponse {
+  source_session_id: string | null;
+  memories: Memory[];
+}
+
+/** GET /v1/memory/profile -- stable, long-lived memories separated from
+ * recently-touched ones. */
+export interface MemoryProfileResponse {
+  static: Memory[];
+  dynamic: Memory[];
+}
+
+/** One edge in GET /v1/memory/{id}/relations. */
+export interface MemoryRelation {
+  source_memory_id: string;
+  target_memory_id: string;
+  relation_type: "updates" | "extends" | "related" | "derives";
+  confidence: number;
+  created_at: string;
+}
+
+/** GET /v1/memory/{id}/relations. */
+export interface MemoryRelationsResponse {
+  memory_id: string;
+  relations: MemoryRelation[];
+}
