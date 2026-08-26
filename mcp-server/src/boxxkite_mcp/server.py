@@ -1,5 +1,5 @@
 """MCP server exposing a hosted boxxkite control-plane's sandbox lifecycle,
-exec, and file tools as native MCP tools.
+exec, file, and MemoryBase tools as native MCP tools.
 
 Unlike ``boxxkite_client.langchain_tools.create_sandbox_tools`` (which binds
 one pre-created ``session_id`` at factory-creation time), every per-sandbox
@@ -130,7 +130,14 @@ def build_server(client: BoxxkiteClient) -> FastMCP:
             "sandbox. Use create_mcp_connection/list_mcp_connections/"
             "delete_mcp_connection to grant a sandbox network egress to a "
             "curated outbound-MCP catalog entry, then pass its label in "
-            "create_sandbox's mcp_connection_names."
+            "create_sandbox's mcp_connection_names. "
+            "This account also has boxxkite MemoryBase, which persists "
+            "durable facts, preferences, and decisions across sandboxes and "
+            "conversations. Call recall or memory_profile near the start of "
+            "a task to check for relevant context before assuming you know "
+            "the user's preferences or past decisions, and call remember "
+            "whenever you learn something durable worth keeping -- not "
+            "transient details of the current task."
         ),
     )
     # FastMCP's constructor takes no `version`, so the low-level server would
@@ -471,6 +478,118 @@ def build_server(client: BoxxkiteClient) -> FastMCP:
         except BoxxkiteConnectionError as exc:
             return _describe_connection_error(f"deleting MCP connection {connection_id}", exc)
         return f"Deleted MCP connection {connection_id}"
+
+    @mcp.tool()
+    def remember(
+        content: str,
+        kind: str = "fact",
+        scope: str = "default",
+    ) -> str:
+        """Store one durable fact, preference, goal, instruction, or note in
+        boxxkite MemoryBase, so it survives past this conversation and this
+        sandbox. Call this whenever you learn something about the user or
+        the task that would be genuinely useful in a future session --
+        stated preferences, decisions, recurring constraints -- not
+        transient details of the current task.
+
+        content: the fact to remember, written so it stands alone without
+            this conversation's context.
+        kind: one of "fact", "preference", "goal", "instruction", "note",
+            "summary". Defaults to "fact".
+        scope: partitions memories within the account (e.g. per project).
+            Defaults to "default".
+        """
+        try:
+            result = client.remember(content, kind=kind, scope=scope)
+        except BoxxkiteApiError as exc:
+            return _describe_api_error("remembering", exc)
+        except BoxxkiteConnectionError as exc:
+            return _describe_connection_error("remembering", exc)
+        return f"Remembered {result['id']} (kind: {result.get('kind')}, scope: {result.get('scope')})"
+
+    @mcp.tool()
+    def recall(query: str, scope: str | None = None, limit: int = 10) -> str:
+        """Search boxxkite MemoryBase for memories relevant to a query.
+        Call this early in a task -- before assuming you know the user's
+        preferences or past decisions -- to check whether relevant durable
+        context already exists.
+
+        query: what to search for.
+        scope: restrict to one scope. Omit to search across all scopes.
+        limit: maximum memories to return (1-50). Defaults to 10.
+        """
+        try:
+            result = client.recall(query, scope=scope, limit=limit)
+        except BoxxkiteApiError as exc:
+            return _describe_api_error("recalling memories", exc)
+        except BoxxkiteConnectionError as exc:
+            return _describe_connection_error("recalling memories", exc)
+        hits = result.get("memories", [])
+        if not hits:
+            return f"No memories found for {query!r}."
+        lines = [f"- {hit['id']} (score: {hit.get('score', 0):.2f}): {hit['content']}" for hit in hits]
+        return "\n".join(lines)
+
+    @mcp.tool()
+    def ingest_memory(content: str, scope: str = "default") -> str:
+        """Split a bounded document or conversation transcript into atomic
+        memories in one call, instead of calling remember() repeatedly.
+        Works with no model provider configured -- the default extractor is
+        deterministic.
+
+        content: the document or transcript text to extract memories from.
+        scope: partitions memories within the account. Defaults to
+            "default".
+        """
+        try:
+            result = client.ingest_memory(content, scope=scope)
+        except BoxxkiteApiError as exc:
+            return _describe_api_error("ingesting memory", exc)
+        except BoxxkiteConnectionError as exc:
+            return _describe_connection_error("ingesting memory", exc)
+        memories = result.get("memories", [])
+        if not memories:
+            return "No memories extracted."
+        lines = [f"- {mem['id']}: {mem['content']}" for mem in memories]
+        return "\n".join(lines)
+
+    @mcp.tool()
+    def memory_profile(scope: str | None = None, limit: int = 20) -> str:
+        """Return a compact profile of stable, long-lived memories separate
+        from recently-touched ones. Call this at the start of a task as a
+        cheaper alternative to recall() when you want a general sense of
+        what's known rather than searching for something specific.
+
+        scope: restrict to one scope. Omit to include all scopes.
+        limit: maximum memories per section (1-100). Defaults to 20.
+        """
+        try:
+            result = client.memory_profile(scope=scope, limit=limit)
+        except BoxxkiteApiError as exc:
+            return _describe_api_error("building memory profile", exc)
+        except BoxxkiteConnectionError as exc:
+            return _describe_connection_error("building memory profile", exc)
+        static, dynamic = result.get("static", []), result.get("dynamic", [])
+        if not static and not dynamic:
+            return "No memories yet."
+        sections = []
+        if static:
+            sections.append("Stable:\n" + "\n".join(f"- {mem['content']}" for mem in static))
+        if dynamic:
+            sections.append("Recent:\n" + "\n".join(f"- {mem['content']}" for mem in dynamic))
+        return "\n\n".join(sections)
+
+    @mcp.tool()
+    def forget_memory(memory_id: str) -> str:
+        """Permanently delete one memory by id. This is a real delete, not
+        a soft-delete -- a forgotten memory cannot be recalled again."""
+        try:
+            client.forget_memory(memory_id)
+        except BoxxkiteApiError as exc:
+            return _describe_api_error(f"forgetting memory {memory_id}", exc)
+        except BoxxkiteConnectionError as exc:
+            return _describe_connection_error(f"forgetting memory {memory_id}", exc)
+        return f"Forgot memory {memory_id}"
 
     @mcp.tool()
     def exec(session_id: str, command: str, timeout: int | None = None) -> str:

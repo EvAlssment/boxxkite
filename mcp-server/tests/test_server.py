@@ -87,7 +87,7 @@ def test_load_config_allows_http_localhost_for_local_dev(monkeypatch):
 # --- tool registration --------------------------------------------------
 
 
-async def test_all_twenty_six_tools_are_registered():
+async def test_all_thirty_one_tools_are_registered():
     client = _client_with(lambda request: httpx.Response(200, json={}))
     server = build_server(client)
     tools = await server.list_tools()
@@ -108,6 +108,11 @@ async def test_all_twenty_six_tools_are_registered():
         "create_mcp_connection",
         "list_mcp_connections",
         "delete_mcp_connection",
+        "remember",
+        "recall",
+        "ingest_memory",
+        "memory_profile",
+        "forget_memory",
         "exec",
         "lsp_start",
         "lsp_open",
@@ -619,6 +624,136 @@ async def test_delete_mcp_connection_surfaces_not_found_error():
 
     server = build_server(_client_with(handler))
     result = _text(await _call(server, "delete_mcp_connection", {"connection_id": "missing"}))
+    assert "not found" in result.lower()
+
+
+# --- remember / recall / ingest_memory / memory_profile / forget_memory ----
+
+
+async def test_remember_posts_content_kind_and_scope():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/v1/memory"
+        assert json.loads(request.content) == {
+            "content": "The user prefers TypeScript.",
+            "scope": "default",
+            "kind": "preference",
+            "metadata": {},
+            "importance": 0.5,
+        }
+        return httpx.Response(201, json={"id": "mem-1", "kind": "preference", "scope": "default"})
+
+    server = build_server(_client_with(handler))
+    result = _text(
+        await _call(server, "remember", {"content": "The user prefers TypeScript.", "kind": "preference"})
+    )
+    assert "Remembered mem-1" in result
+    assert "preference" in result
+
+
+async def test_remember_surfaces_api_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(422, json={"error": {"code": "validation_error", "message": "content too long"}})
+
+    server = build_server(_client_with(handler))
+    result = _text(await _call(server, "remember", {"content": "x"}))
+    assert "content too long" in result
+
+
+async def test_recall_sends_query_scope_and_limit():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == "/v1/memory/search"
+        assert request.url.params["q"] == "TypeScript"
+        assert request.url.params["scope"] == "project-a"
+        assert request.url.params["limit"] == "5"
+        return httpx.Response(
+            200,
+            json={
+                "query": "TypeScript",
+                "memories": [{"id": "mem-1", "content": "The user prefers TypeScript.", "score": 0.92}],
+            },
+        )
+
+    server = build_server(_client_with(handler))
+    result = _text(await _call(server, "recall", {"query": "TypeScript", "scope": "project-a", "limit": 5}))
+    assert "mem-1" in result
+    assert "0.92" in result
+    assert "The user prefers TypeScript." in result
+
+
+async def test_recall_reports_no_results():
+    server = build_server(_client_with(lambda r: httpx.Response(200, json={"query": "x", "memories": []})))
+    result = _text(await _call(server, "recall", {"query": "x"}))
+    assert "No memories found" in result
+
+
+async def test_ingest_memory_posts_content_and_scope():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/v1/memory/ingest"
+        assert json.loads(request.content) == {"content": "long transcript", "scope": "default", "metadata": {}}
+        return httpx.Response(
+            201,
+            json={"source_session_id": None, "memories": [{"id": "mem-1", "content": "extracted fact"}]},
+        )
+
+    server = build_server(_client_with(handler))
+    result = _text(await _call(server, "ingest_memory", {"content": "long transcript"}))
+    assert "mem-1" in result
+    assert "extracted fact" in result
+
+
+async def test_ingest_memory_reports_no_memories_extracted():
+    server = build_server(
+        _client_with(lambda r: httpx.Response(201, json={"source_session_id": None, "memories": []}))
+    )
+    result = _text(await _call(server, "ingest_memory", {"content": "nothing useful here"}))
+    assert "No memories extracted" in result
+
+
+async def test_memory_profile_returns_static_and_dynamic_sections():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/memory/profile"
+        return httpx.Response(
+            200,
+            json={
+                "static": [{"content": "Works in TypeScript."}],
+                "dynamic": [{"content": "Currently debugging a race condition."}],
+            },
+        )
+
+    server = build_server(_client_with(handler))
+    result = _text(await _call(server, "memory_profile", {}))
+    assert "Stable:" in result
+    assert "Works in TypeScript." in result
+    assert "Recent:" in result
+    assert "Currently debugging a race condition." in result
+
+
+async def test_memory_profile_reports_no_memories_yet():
+    server = build_server(_client_with(lambda r: httpx.Response(200, json={"static": [], "dynamic": []})))
+    result = _text(await _call(server, "memory_profile", {}))
+    assert "No memories yet." == result
+
+
+async def test_forget_memory_deletes_by_id():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "DELETE"
+        assert request.url.path == "/v1/memory/mem-1"
+        return httpx.Response(204)
+
+    server = build_server(_client_with(handler))
+    result = _text(await _call(server, "forget_memory", {"memory_id": "mem-1"}))
+    assert "Forgot memory mem-1" == result
+
+
+async def test_forget_memory_surfaces_not_found_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"error": {"code": "memory_not_found", "message": "Memory not found"}})
+
+    server = build_server(_client_with(handler))
+    result = _text(await _call(server, "forget_memory", {"memory_id": "missing"}))
     assert "not found" in result.lower()
 
 

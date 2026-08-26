@@ -71,7 +71,17 @@ language server, open a file into it, request completions at a position, then
 stop it — `lsp_start`, `lsp_open`, `lsp_completion`, `lsp_stop`. Like the other
 per-sandbox tools, each takes `session_id`.
 
-That's **26 tools** in total.
+MemoryBase tools — durable, account-scoped memory that survives past any one
+sandbox or conversation (see
+[the developer guide](https://boxxkite.com/developers/guides/memory) for the
+full model: opt-in, self-hosted retrieval by default, no third-party memory
+API) — `remember`, `recall`, `ingest_memory`, `memory_profile`,
+`forget_memory`. The server's MCP `instructions` steer a connecting agent to
+call `recall`/`memory_profile` early in a task and `remember` when it learns
+something durable, but nothing here changes what the account's own memory
+retrieval settings do server-side.
+
+That's **31 tools** in total.
 
 ## Security
 
