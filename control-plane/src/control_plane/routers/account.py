@@ -32,12 +32,19 @@ from ..deps import get_current_account_via_api_key, get_current_admin_user, get_
 from ..errors import ApiError
 from ..models_orm import Account
 from ..repository import SandboxSessionRepository
-from ..routers.admin import _compute_admin_cluster_metrics
+from ..routers.admin import (
+    _compute_admin_account_detail,
+    _compute_admin_audit_log,
+    _compute_admin_cluster_metrics,
+)
 from ..routers.sandboxes import _to_out
 from ..routers.social_login import _require_github_enabled, _require_google_enabled
 from ..schemas import (
+    ADMIN_AUDIT_LOG_DEFAULT_LIMIT,
     AccountLinkStartResponse,
     AccountOut,
+    AdminAccountDetail,
+    AdminAuditLogResponse,
     AdminClusterMetrics,
     AllowedCommandsRequest,
     AllowedCommandsResponse,
@@ -259,6 +266,52 @@ async def get_account_admin_cluster_metrics(
     db: AsyncSession = Depends(get_db),
 ) -> AdminClusterMetrics:
     return await _compute_admin_cluster_metrics(db=db, limit=limit, offset=offset)
+
+
+@router.get(
+    "/admin/accounts/{account_id}",
+    response_model=AdminAccountDetail,
+    summary="One account's full usage and feature-adoption picture (admin only, dashboard JWT)",
+    description=(
+        "Same response shape as GET /v1/admin/accounts/{account_id}, but "
+        "resolves the caller from a dashboard session JWT instead of an "
+        "API key -- the browser dashboard's admin account-detail page uses "
+        "this mirror since a logged-in session never holds a raw API key. "
+        "Still requires Account.is_admin and still logs to "
+        "admin_access_log the same as the API-key route "
+        "(docs/ADMIN-ROLE-DESIGN.md)."
+    ),
+)
+async def get_account_admin_account_detail(
+    account_id: str,
+    _admin: Account = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> AdminAccountDetail:
+    return await _compute_admin_account_detail(db=db, account_id=account_id)
+
+
+@router.get(
+    "/admin/audit-log",
+    response_model=AdminAuditLogResponse,
+    summary="Cross-account exec/file-op audit log aggregation (admin only, dashboard JWT)",
+    description=(
+        "Same response shape as GET /v1/admin/audit-log, but resolves the "
+        "caller from a dashboard session JWT instead of an API key -- the "
+        "browser dashboard's admin account-detail page uses this mirror to "
+        "show one account's recent activity, since a logged-in session "
+        "never holds a raw API key. Still requires Account.is_admin and "
+        "still logs to admin_access_log the same as the API-key route "
+        "(docs/ADMIN-ROLE-DESIGN.md)."
+    ),
+)
+async def get_account_admin_audit_log(
+    limit: int = Query(default=ADMIN_AUDIT_LOG_DEFAULT_LIMIT, ge=1),
+    offset: int = Query(default=0, ge=0),
+    account_id: str | None = Query(default=None),
+    _admin: Account = Depends(get_current_admin_user),
+    db: AsyncSession = Depends(get_db),
+) -> AdminAuditLogResponse:
+    return await _compute_admin_audit_log(db=db, limit=limit, offset=offset, account_id=account_id)
 
 
 @router.post(

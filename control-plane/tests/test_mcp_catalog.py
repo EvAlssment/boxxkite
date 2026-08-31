@@ -20,6 +20,7 @@ def test_default_catalog_has_an_entry_for_every_shipped_provider():
     assert catalog["notion"] == "mcp.notion.com"
     assert catalog["linear"] == "mcp.linear.app"
     assert catalog["github"] == "api.githubcopilot.com"
+    assert catalog["memcode"] == "mcp.memcode.in"
 
 
 def test_resolve_catalog_host_returns_configured_host():

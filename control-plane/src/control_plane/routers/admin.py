@@ -17,10 +17,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import settings
 from ..db import get_db
 from ..deps import get_current_admin_account
+from ..errors import ApiError
 from ..models_orm import Account
-from ..repository import AccountRepository, ExecLogEntryRepository, SandboxSessionRepository
+from ..repository import (
+    AccountRepository,
+    ExecLogEntryRepository,
+    McpConnectionRepository,
+    MemoryRepository,
+    SandboxImageRepository,
+    SandboxSessionRepository,
+    SandboxVolumeRepository,
+    SecretRepository,
+    SnapshotRepository,
+    WebhookSubscriptionRepository,
+)
 from ..schemas import (
     ADMIN_AUDIT_LOG_DEFAULT_LIMIT,
+    AdminAccountDetail,
+    AdminAccountFeatureUsage,
     AdminAccountUsage,
     AdminAuditLogEntryOut,
     AdminAuditLogResponse,
@@ -73,6 +87,73 @@ async def _compute_admin_cluster_metrics(
     )
 
 
+async def _compute_admin_account_detail(*, db: AsyncSession, account_id: str) -> AdminAccountDetail:
+    """Shared aggregation behind both the API-key route below and its
+    dashboard-JWT mirror in `routers/account.py` -- same numbers regardless
+    of which credential the caller used to prove they're an admin (mirrors
+    `_compute_admin_cluster_metrics`'s own convention above).
+
+    Deliberately scoped to ONE account: the six feature-usage counts below
+    are each a separate query, which is fine for a single account but would
+    be a real N+1 cost if run per-row across `AdminClusterMetrics`'s
+    paginated account list -- see docs/ADMIN-ROLE-DESIGN.md's boundary
+    section for why that list stays lean instead.
+    """
+    account = await AccountRepository(db).get_by_id(account_id)
+    if account is None:
+        raise ApiError(404, "account_not_found", "Account not found")
+
+    sessions_repo = SandboxSessionRepository(db)
+    policy = UsagePolicy(sandbox_manager=None, sessions=sessions_repo)
+
+    concurrent = await sessions_repo.count_active_for_account(account_id)
+    monthly_hours = await policy.monthly_hours_used(account_id)
+    total_sandboxes = await sessions_repo.count_total_for_account(account_id)
+
+    feature_usage = AdminAccountFeatureUsage(
+        secrets=await SecretRepository(db).count_for_account(account_id),
+        mcp_connections=await McpConnectionRepository(db).count_for_account(account_id),
+        webhooks=await WebhookSubscriptionRepository(db).count_for_account(account_id),
+        snapshots=await SnapshotRepository(db).count_active_for_account(account_id),
+        sandbox_images=await SandboxImageRepository(db).count_active_for_account(account_id),
+        sandbox_volumes=await SandboxVolumeRepository(db).count_active_for_account(account_id),
+        memory=await MemoryRepository(db).metrics_for_account(account_id=account_id, scope=None),
+    )
+
+    return AdminAccountDetail(
+        account_id=account.id,
+        email=account.email,
+        created_at=account.created_at,
+        concurrent_sandboxes=concurrent,
+        concurrent_sandboxes_limit=settings.BOXXKITE_MAX_CONCURRENT_SANDBOXES,
+        monthly_sandbox_hours_used=round(monthly_hours, 4),
+        total_sandboxes_created=total_sandboxes,
+        feature_usage=feature_usage,
+    )
+
+
+@router.get(
+    "/accounts/{account_id}",
+    response_model=AdminAccountDetail,
+    summary="One account's full usage and feature-adoption picture (admin only)",
+    description=(
+        "Admin-gated single-account view: the same usage numbers as this "
+        "account's row in GET /v1/admin/metrics, plus a per-feature "
+        "resource-count breakdown (secrets, MCP connections, webhooks, "
+        "snapshots, sandbox images, sandbox volumes, memory) not exposed "
+        "anywhere else. Pair with GET /v1/admin/audit-log?account_id=... "
+        "for that account's recent activity. 404s if the account doesn't "
+        "exist; 403s for a valid API key belonging to a non-admin account."
+    ),
+)
+async def get_admin_account_detail(
+    account_id: str,
+    _admin: Account = Depends(get_current_admin_account),
+    db: AsyncSession = Depends(get_db),
+) -> AdminAccountDetail:
+    return await _compute_admin_account_detail(db=db, account_id=account_id)
+
+
 @router.get(
     "/metrics",
     response_model=AdminClusterMetrics,
@@ -116,6 +197,15 @@ async def get_admin_audit_log(
     _admin: Account = Depends(get_current_admin_account),
     db: AsyncSession = Depends(get_db),
 ) -> AdminAuditLogResponse:
+    return await _compute_admin_audit_log(db=db, limit=limit, offset=offset, account_id=account_id)
+
+
+async def _compute_admin_audit_log(
+    *, db: AsyncSession, limit: int, offset: int, account_id: str | None
+) -> AdminAuditLogResponse:
+    """Shared aggregation behind both the API-key route above and its
+    dashboard-JWT mirror in `routers/account.py` -- same convention as
+    `_compute_admin_cluster_metrics`/`_compute_admin_account_detail`."""
     effective_limit = min(limit, settings.BOXXKITE_ADMIN_AUDIT_LOG_MAX_LIMIT)
 
     repo = ExecLogEntryRepository(db)

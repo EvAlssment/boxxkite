@@ -53,7 +53,7 @@ dependencies = [
     # /mcp endpoint (docs/HOSTED-MCP-DESIGN.md). Distinct from mcp-server/'s
     # own use of this same SDK for the local stdio boxxkite-mcp package --
     # the two share no code, they just both build on the same upstream SDK.
-    "mcp>=1.2",
+    "mcp>=1.2,<2",
     # Outbound calls to GitHub's/Google's OAuth token and userinfo endpoints
     # for social login (docs/MCP-OAUTH-AND-SOCIAL-LOGIN-DESIGN.md) -- was
     # dev-only (tests used it to mock the control-plane's own API), now also

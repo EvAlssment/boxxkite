@@ -207,3 +207,33 @@ async def test_non_admin_access_attempt_is_not_logged(client: httpx.AsyncClient)
 
     rows = await _admin_access_log_rows()
     assert rows == []
+
+
+async def test_dashboard_jwt_mirror_returns_same_shape(client: httpx.AsyncClient):
+    admin_email = "admin-audit-jwt@example.com"
+    admin_key = await signup_and_get_api_key(client, admin_email)
+    await _make_admin(admin_email)
+
+    login_resp = await client.post(
+        "/v1/auth/login", json={"email": admin_email, "password": "hunter2pass"}
+    )
+    assert login_resp.status_code == 200, login_resp.text
+    jwt = login_resp.json()["access_token"]
+
+    resp = await client.get("/v1/account/admin/audit-log", headers={"Authorization": f"Bearer {jwt}"})
+
+    assert resp.status_code == 200, resp.text
+    assert "entries" in resp.json()
+
+
+async def test_dashboard_jwt_mirror_403s_for_non_admin(client: httpx.AsyncClient):
+    email = "not-admin-audit-jwt@example.com"
+    await signup_and_get_api_key(client, email)
+
+    login_resp = await client.post("/v1/auth/login", json={"email": email, "password": "hunter2pass"})
+    jwt = login_resp.json()["access_token"]
+
+    resp = await client.get("/v1/account/admin/audit-log", headers={"Authorization": f"Bearer {jwt}"})
+
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "admin_required"

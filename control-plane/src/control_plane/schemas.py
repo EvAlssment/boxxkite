@@ -542,6 +542,39 @@ class AdminAccountUsage(BaseModel):
     total_sandboxes_created: int = 0
 
 
+class AdminAccountFeatureUsage(BaseModel):
+    """Per-feature resource counts for one account -- only ever computed
+    for a single account at a time (see `AdminAccountDetail`), never added
+    to the paginated `AdminClusterMetrics.accounts` list, which would turn
+    one list-page load into N extra queries per account shown."""
+
+    secrets: int
+    mcp_connections: int
+    webhooks: int
+    snapshots: int
+    sandbox_images: int
+    sandbox_volumes: int
+    memory: dict[str, Any]
+
+
+class AdminAccountDetail(BaseModel):
+    """GET /v1/admin/accounts/{account_id} response -- one account's full
+    picture: identity, the same usage numbers already exposed in
+    AdminClusterMetrics.accounts, plus the feature-usage breakdown that
+    doesn't exist anywhere else (docs/ADMIN-ROLE-DESIGN.md's boundary
+    still applies: read-only, no more than the account already sees about
+    itself via GET /v1/usage plus per-feature list/count routes)."""
+
+    account_id: str
+    email: str
+    created_at: datetime
+    concurrent_sandboxes: int
+    concurrent_sandboxes_limit: int
+    monthly_sandbox_hours_used: float
+    total_sandboxes_created: int
+    feature_usage: AdminAccountFeatureUsage
+
+
 class AdminClusterMetrics(BaseModel):
     """GET /v1/admin/metrics response -- cluster-wide aggregation across
     ALL accounts, admin-gated (docs/ADMIN-ROLE-DESIGN.md). Distinct from
@@ -1141,7 +1174,7 @@ class SecretCreatedResponse(SecretOut):
 # §6/§7), so this model deliberately has no credential field of any kind.
 BOXXKITE_MCP_CONNECTION_LABEL_MAX_LENGTH = 200
 
-McpCatalogId = Literal["slack", "notion", "linear", "github"]
+McpCatalogId = Literal["slack", "notion", "linear", "github", "memcode"]
 
 
 class McpConnectionCreateRequest(BaseModel):

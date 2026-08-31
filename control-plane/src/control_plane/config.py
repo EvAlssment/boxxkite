@@ -783,7 +783,8 @@ class Settings(BaseSettings):
         "slack=mcp.slack.com,"
         "notion=mcp.notion.com,"
         "linear=mcp.linear.app,"
-        "github=api.githubcopilot.com"
+        "github=api.githubcopilot.com,"
+        "memcode=mcp.memcode.in"
     )
 
     @property
