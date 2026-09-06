@@ -4,8 +4,8 @@ Shows the **hosted-control-plane, runtime-composed** alternative to
 `deploy/sandbox-claude-code.Dockerfile`: instead of a maintainer
 hand-writing and rebuilding a Dockerfile every time the Claude Code version
 bumps, a caller of the hosted control-plane API can compose an equivalent
-image at request time via `POST /v1/images` (the "declarative builder",
-`docs/DECLARATIVE-BUILDER-DESIGN.md`).
+image at request time via `POST /v1/images` (the "declarative builder"; see
+the [declarative image builder guide](../../../docs/guides/declarative-image-builders.md)).
 
 This is **not** a replacement for `deploy/sandbox-claude-code.Dockerfile` in
 general — that Dockerfile still exists and is still what a self-hoster
@@ -21,7 +21,7 @@ had to be hand-maintained out-of-band: `SandboxImageBuildRequest` originally
 only had `python_packages`/`apt_packages` — no `npm_packages` field — so an
 npm-global-install use case (installing `@anthropic-ai/claude-code`) could
 not be self-served through `POST /v1/images`. `npm_packages` was added to
-`SandboxImageBuildRequest` after `docs/E2B-COMPARISON.md` flagged that gap
+`SandboxImageBuildRequest` after the image-builder comparison work flagged that gap
 (see `control-plane/src/control_plane/schemas.py`'s
 `_NPM_PINNED_PACKAGE_RE` and `image_builder.py`'s `render_dockerfile`). That
 closes the gap for this specific use case — this example is that closed
@@ -84,8 +84,9 @@ The script (`build_claude_code_image.py`):
 
 ## Read this before treating the build step as production-ready
 
-`docs/DECLARATIVE-BUILDER-DESIGN.md`'s own status note is explicit about
-what's implemented and what isn't, and this example does not oversell past
+the [declarative image builder guide](../../../docs/guides/declarative-image-builders.md)'s
+verification boundary is explicit about what's implemented and what isn't,
+and this example does not oversell past
 that:
 
 - The declarative builder is **off by default**

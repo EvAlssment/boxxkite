@@ -4,6 +4,9 @@ Closes the gap `docs/E2B-COMPARISON.md` §4.2 named directly: E2B ships a
 dedicated `claude` sandbox template and docs page; this is boxxkite's
 equivalent quickstart. This README covers why the custom image is needed;
 read the [security policy](../../../SECURITY.md) before supplying an API key.
+The task-level overview and verification boundary also live in the
+[Claude Code sandbox guide](../../../docs/guides/claude-code-sandbox.md); the
+commands below remain the runnable source of truth.
 
 ## What it does
 

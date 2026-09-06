@@ -122,7 +122,6 @@ a plan.
 | Item | Status | Tracking |
 | --- | --- | --- |
 | Enhancement-proposal (BEP) process for major changes | Proposed | [#79](https://github.com/EvAlssment/boxxkite/issues/79) |
-| Docs-site restructure (getting-started / guides / reference / architecture) | Proposed | [#100](https://github.com/EvAlssment/boxxkite/issues/100) |
 | `examples/` reorganized into a discoverable taxonomy | Proposed | [#101](https://github.com/EvAlssment/boxxkite/issues/101) |
 | "Try boxxkite in 60 seconds" single-command trial | Proposed | [#113](https://github.com/EvAlssment/boxxkite/issues/113) |
 | `troubleshoot-sandbox` Skill for Claude Code / Cursor | Proposed | [#89](https://github.com/EvAlssment/boxxkite/issues/89) |

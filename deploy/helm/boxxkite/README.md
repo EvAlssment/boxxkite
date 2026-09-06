@@ -11,7 +11,7 @@ sandbox pod itself. `src/boxxkite/manager.py` builds that pod spec
 programmatically at session-creation time -- `../pod-template.yaml` is a
 reference doc for it, not something applied once via `helm install`, and
 this chart follows the same split. See the top-level README's "Quickstart:
-real Kubernetes, via kind" section and `../local-kind/README.md` for a
+real Kubernetes, via kind" section and `../../local-kind/README.md` for a
 full local walkthrough of what a real deployment looks like end-to-end.
 
 ## Install
