@@ -24,6 +24,10 @@ helm install boxxkite ./deploy/helm/boxxkite \
 
 Review `values.yaml` first -- in particular:
 
+- [`SIZING.md`](SIZING.md) lists small, medium, and large capacity overlays.
+  Choose one as a starting point, then measure your representative workload;
+  these overlays change only the adaptive warm-pool target.
+
 - `networkPolicy.storageEgress.mode` defaults to `none` (no storage egress
   rule at all, fails closed). Set it to `inCluster`, `ipBlock`, or `fqdn`
   and fill in the matching real value before the sidecar's S3/Azure/MinIO
