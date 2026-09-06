@@ -95,3 +95,18 @@ func TestTypedErrorsUnwrapToAPIError(t *testing.T) {
 		})
 	}
 }
+
+// specs/error-taxonomy.json lists service_unavailable as an explicit code, not
+// only a 5xx fallback. A 4xx carrying it previously fell through to default and
+// lost its Taxonomy, unlike the other three SDKs.
+func TestExplicitServiceUnavailableCodeIsClassifiedOnA4xx(t *testing.T) {
+	err := apiErrorFromResponse(400, []byte(`{"error":{"code":"service_unavailable","message":"draining"}}`))
+
+	var svc *ServiceUnavailableError
+	if !errors.As(err, &svc) {
+		t.Fatalf("errors.As(*ServiceUnavailableError) failed for %T", err)
+	}
+	if svc.Taxonomy != "service_unavailable" {
+		t.Fatalf("Taxonomy = %q, want service_unavailable", svc.Taxonomy)
+	}
+}

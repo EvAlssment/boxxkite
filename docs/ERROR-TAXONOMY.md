@@ -1,5 +1,12 @@
 # Boxxkite error taxonomy
 
+> The machine-readable copy of this contract lives in
+> [`specs/error-taxonomy.json`](../specs/error-taxonomy.json), and
+> `tests/test_sdk_error_parity.py` fails the build when an SDK drifts from it.
+> Change the spec and this document together: a code added to one and not the
+> other is the drift both are meant to prevent.
+
+
 Every error raised as `ApiError`, plus `HTTPException` (the rate limiter's
 429s), uses this envelope. Two paths do not yet: `idempotency.py` and
 `hosted_mcp.py` still emit the older two-field `{"code", "message"}` shape.

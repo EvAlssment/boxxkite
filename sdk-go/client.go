@@ -282,8 +282,12 @@ func apiErrorFromResponse(statusCode int, body []byte) error {
 		message = envelope.Error.Message
 	}
 	base := APIError{StatusCode: statusCode, Code: code, Message: message, Retryable: envelope.Error.Retryable, Remediation: envelope.Error.Remediation, Details: envelope.Error.Details}
-	if code == "" { base.Code = "error" }
-	if statusCode >= 500 && !envelope.Error.Retryable { base.Retryable = true }
+	if code == "" {
+		base.Code = "error"
+	}
+	if statusCode >= 500 && !envelope.Error.Retryable {
+		base.Retryable = true
+	}
 	switch {
 	case strings.HasSuffix(code, "_limit_reached"), strings.HasSuffix(code, "_capacity_reached"):
 		return &QuotaExceededError{APIError: base}
@@ -305,10 +309,18 @@ func apiErrorFromResponse(statusCode int, body []byte) error {
 	case code == "sandbox_crashed":
 		base.Taxonomy = "sandbox_crashed"
 		return &SandboxCrashedError{APIError: base}
+	// Explicit code, distinct from the statusCode >= 500 fallback below. Without
+	// this, a 4xx carrying service_unavailable fell through to default and lost
+	// its Taxonomy entirely, while sdk-python, sdk-js and sdk-rust all classify
+	// it. specs/error-taxonomy.json is the shared source of truth.
+	case code == "service_unavailable":
+		base.Taxonomy = "service_unavailable"
+		return &ServiceUnavailableError{APIError: base}
 	case statusCode >= 500:
 		base.Taxonomy = "service_unavailable"
 		return &base
-	default: return &base
+	default:
+		return &base
 	}
 }
 
