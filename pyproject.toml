@@ -117,6 +117,9 @@ boxxkite = "boxxkite.cli:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+boxxkite = ["skill_assets/troubleshoot_sandbox/*.md", "skill_assets/troubleshoot_sandbox/*.mdc"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

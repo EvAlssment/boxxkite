@@ -1,0 +1,2 @@
+recursive-include skills *.md *.mdc
+recursive-include .cursor *.mdc

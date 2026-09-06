@@ -27,6 +27,8 @@ available.
 
 - [Handoff adapters](handoff-adapters.md) — move a resumable local coding-agent
   session into a fresh sandbox using its portable credential.
+- [Troubleshoot a sandbox](troubleshoot-sandbox.md) — install a read-only
+  diagnostics skill for Claude Code or Cursor.
 - [Framework and provider examples](../../examples/) — LangChain, LangGraph,
   LlamaIndex, OpenAI Agents, Google ADK, and native function-calling examples.
 - [Declarative image builders](declarative-image-builders.md) — request a
