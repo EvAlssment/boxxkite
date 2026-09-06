@@ -613,6 +613,60 @@ class AdminWarmPoolUtilization(BaseModel):
     sizes: list[AdminWarmPoolSizeUtilization] = Field(default_factory=list)
 
 
+class AdminFleetSignal(BaseModel):
+    """One fleet signal, including an explicit unsupported state."""
+
+    supported: bool
+    value: int | float | dict[str, int] | None = None
+    reason: str | None = None
+
+
+class AdminFleetWarmPool(BaseModel):
+    """Warm-pool data sourced from the runtime's K8s label scan."""
+
+    supported: bool
+    target_by_size: dict[str, int] = Field(default_factory=dict)
+    actual_by_size: dict[str, int] = Field(default_factory=dict)
+    total_active: int | None = None
+    max_size: int | None = None
+    adaptive_enabled: bool | None = None
+    reason: str | None = None
+
+
+class AdminFleetClaimRate(BaseModel):
+    """Recent warm-pod claims from the runtime-local rolling tracker."""
+
+    supported: bool
+    window_seconds: int | None = None
+    per_second_by_size: dict[str, float] = Field(default_factory=dict)
+    reason: str | None = None
+
+
+class AdminFleetClusterStatus(BaseModel):
+    """Operational snapshot for one currently configured runtime."""
+
+    cluster_id: str
+    runtime: str
+    warm_pool: AdminFleetWarmPool
+    recent_claim_rate: AdminFleetClaimRate
+    cold_fallthroughs: AdminFleetSignal
+    pending_pods: AdminFleetSignal
+    node_pressure: AdminFleetSignal
+    placement: AdminFleetSignal
+
+
+class AdminFleetStatusResponse(BaseModel):
+    """GET /v1/admin/fleet/status response.
+
+    This release reports the current control-plane runtime. A cluster
+    registry is not part of the current architecture, so the list contains
+    one record rather than implying discovery of other clusters.
+    """
+
+    generated_at: datetime
+    clusters: list[AdminFleetClusterStatus]
+
+
 class SandboxCreatedResponse(SandboxSessionOut):
     usage: UsageSummary
 

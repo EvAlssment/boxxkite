@@ -101,3 +101,22 @@ byte-identical to `src/boxxkite/resource_config.py`'s
 `DEFAULT_SANDBOX_*_VOLUME_SIZE_LIMIT` constants -- the same drift class that
 previously caused a real ~4-13x mismatch in `../pod-template.yaml`. If you
 change one, change the other in the same commit.
+
+## Admin fleet status
+
+The control-plane exposes a read-only, admin-key-only operational snapshot at
+`GET /v1/admin/fleet/status`. It reports the current runtime's warm-pool target
+and actual counts by size, plus the recent claim rate from the existing
+warm-pool status source:
+
+```bash
+curl -H "Authorization: Bearer bxk_live_..." \
+  https://control-plane.example/v1/admin/fleet/status
+```
+
+The current architecture has one runtime record rather than a multi-cluster
+registry; its `cluster_id` comes from `BOXXKITE_CLUSTER_ID` and defaults to
+`default`. Signals that are not available from the runtime status source (such
+as claim fall-throughs, node pressure, pending pod phases, or placement
+classes) are returned as `supported: false` with a reason; consumers should
+not treat those fields as zero.
