@@ -436,6 +436,8 @@ class PodLifecycleMixin:
                 # Auto-terminate after 30 minutes to prevent orphaned pods
                 active_deadline_seconds=active_deadline_seconds or SANDBOX_ACTIVE_DEADLINE_SECONDS,
                 priority_class_name=SANDBOX_CLAIMED_PRIORITY_CLASS or None,
+                node_selector=SANDBOX_NODE_SELECTOR or None,
+                tolerations=[client.V1Toleration(**item) for item in SANDBOX_TOLERATIONS] or None,
                 containers=[
                     # Sandbox container
                     client.V1Container(

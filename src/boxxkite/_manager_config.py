@@ -35,6 +35,7 @@ from .aws_identity import (
     build_sidecar_aws_web_identity_volume_mount,
 )
 from .k8s_auth import build_kubernetes_api_client, load_kubernetes_config
+from .fleet_capacity import ACTIVE_CLUSTER_CAPACITY
 from .pod_claim_policy import compute_max_claimable_age_seconds, pod_age_seconds
 from .resource_config import (
     DEFAULT_SANDBOX_SIZE,
@@ -90,6 +91,11 @@ SANDBOX_SERVICE_ACCOUNT_NAME = os.environ.get(
 # Image defaults use ACR registry - overridden by ConfigMap in K8s deployment
 SANDBOX_IMAGE = os.environ.get("SANDBOX_IMAGE", "boxxkite-sandbox:latest")
 SIDECAR_IMAGE = os.environ.get("SIDECAR_IMAGE", "boxxkite-sidecar:latest")
+if ACTIVE_CLUSTER_CAPACITY:
+    SANDBOX_IMAGE = ACTIVE_CLUSTER_CAPACITY.images.get("sandbox", SANDBOX_IMAGE)
+    SIDECAR_IMAGE = ACTIVE_CLUSTER_CAPACITY.images.get("sidecar", SIDECAR_IMAGE)
+SANDBOX_NODE_SELECTOR = dict(ACTIVE_CLUSTER_CAPACITY.node_selector) if ACTIVE_CLUSTER_CAPACITY else {}
+SANDBOX_TOLERATIONS = list(ACTIVE_CLUSTER_CAPACITY.tolerations) if ACTIVE_CLUSTER_CAPACITY else []
 SIDECAR_PORT = 8080
 REQUEST_TIMEOUT = 120  # seconds
 # Backstop deadline: safety net in case the activity-based reaper fails.

@@ -32,6 +32,7 @@ from .aws_identity import (
     build_sidecar_aws_web_identity_volume_mount,
 )
 from .k8s_auth import build_kubernetes_api_client, load_kubernetes_config
+from .fleet_capacity import ACTIVE_CLUSTER_CAPACITY
 from .manager import (
     ORGANIZATION_ID_ANNOTATION,
     SESSION_ID_ANNOTATION,
@@ -83,6 +84,11 @@ SANDBOX_SERVICE_ACCOUNT_NAME = os.environ.get(
 # Image defaults use ACR registry - overridden by ConfigMap in K8s deployment
 SANDBOX_IMAGE = os.environ.get("SANDBOX_IMAGE", "boxxkite-sandbox:latest")
 SIDECAR_IMAGE = os.environ.get("SIDECAR_IMAGE", "boxxkite-sidecar:latest")
+if ACTIVE_CLUSTER_CAPACITY:
+    SANDBOX_IMAGE = ACTIVE_CLUSTER_CAPACITY.images.get("sandbox", SANDBOX_IMAGE)
+    SIDECAR_IMAGE = ACTIVE_CLUSTER_CAPACITY.images.get("sidecar", SIDECAR_IMAGE)
+SANDBOX_NODE_SELECTOR = dict(ACTIVE_CLUSTER_CAPACITY.node_selector) if ACTIVE_CLUSTER_CAPACITY else {}
+SANDBOX_TOLERATIONS = list(ACTIVE_CLUSTER_CAPACITY.tolerations) if ACTIVE_CLUSTER_CAPACITY else []
 SIDECAR_PORT = 8080
 # Backstop deadline: safety net in case the activity-based reaper fails.
 # Normal lifecycle is handled by idle-based reaping, not this deadline.
@@ -139,6 +145,9 @@ SAFE_TO_EVICT_ANNOTATION = "cluster-autoscaler.kubernetes.io/safe-to-evict"
 # Pool configuration
 WARM_POOL_SIZE = int(os.environ.get("WARM_POOL_SIZE", "3"))
 WARM_POOL_MAX = int(os.environ.get("WARM_POOL_MAX", "15"))
+if ACTIVE_CLUSTER_CAPACITY:
+    WARM_POOL_SIZE = ACTIVE_CLUSTER_CAPACITY.targets["small"]
+    WARM_POOL_MAX = ACTIVE_CLUSTER_CAPACITY.max_size
 WARM_POOL_RECYCLE = os.environ.get("WARM_POOL_RECYCLE", "true").lower() == "true"
 WARM_POOL_REPLENISH_INTERVAL = 10  # seconds between replenish checks
 
@@ -148,9 +157,14 @@ WARM_POOL_REPLENISH_INTERVAL = 10  # seconds between replenish checks
 # pre-warming a bigger pod costs real idle CPU/memory, so it's off until
 # asked for). All three still share the single WARM_POOL_MAX active-pod
 # ceiling below.
-WARM_POOL_SIZE_SMALL = int(os.environ.get("WARM_POOL_SIZE_SMALL", str(WARM_POOL_SIZE)))
-WARM_POOL_SIZE_MEDIUM = int(os.environ.get("WARM_POOL_SIZE_MEDIUM", "0"))
-WARM_POOL_SIZE_LARGE = int(os.environ.get("WARM_POOL_SIZE_LARGE", "0"))
+if ACTIVE_CLUSTER_CAPACITY:
+    WARM_POOL_SIZE_SMALL = ACTIVE_CLUSTER_CAPACITY.targets["small"]
+    WARM_POOL_SIZE_MEDIUM = ACTIVE_CLUSTER_CAPACITY.targets["medium"]
+    WARM_POOL_SIZE_LARGE = ACTIVE_CLUSTER_CAPACITY.targets["large"]
+else:
+    WARM_POOL_SIZE_SMALL = int(os.environ.get("WARM_POOL_SIZE_SMALL", str(WARM_POOL_SIZE)))
+    WARM_POOL_SIZE_MEDIUM = int(os.environ.get("WARM_POOL_SIZE_MEDIUM", "0"))
+    WARM_POOL_SIZE_LARGE = int(os.environ.get("WARM_POOL_SIZE_LARGE", "0"))
 WARM_POOL_SIZE_TARGETS: dict[str, int] = {
     "small": WARM_POOL_SIZE_SMALL,
     "medium": WARM_POOL_SIZE_MEDIUM,
@@ -828,6 +842,8 @@ class WarmPoolManager:
                 enable_service_links=False,
                 active_deadline_seconds=SANDBOX_ACTIVE_DEADLINE_SECONDS,
                 priority_class_name=SANDBOX_WARM_PRIORITY_CLASS or None,
+                node_selector=SANDBOX_NODE_SELECTOR or None,
+                tolerations=[client.V1Toleration(**item) for item in SANDBOX_TOLERATIONS] or None,
                 containers=[
                     client.V1Container(
                         name="sandbox",
