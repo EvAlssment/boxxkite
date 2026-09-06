@@ -1717,6 +1717,30 @@ class WatchDirectoryResponse(BaseModel):
     timed_out: bool
 
 
+# --- explain_last_failure (GitHub issue #77) -------------------------------
+
+class ExplainLastFailureRequest(BaseModel):
+    include_touched_files: bool = True
+
+
+class TouchedFile(BaseModel):
+    path: str
+    size_bytes: int
+    modified_at: float
+
+
+class ExplainLastFailureResponse(BaseModel):
+    found: bool
+    command: Optional[str] = None
+    exit_code: Optional[int] = None
+    stdout: Optional[str] = None
+    stderr: Optional[str] = None
+    duration_seconds: Optional[float] = None
+    source: Optional[str] = None
+    touched_files: list[TouchedFile] = []
+    notes: list[str] = []
+
+
 # --- workspace_diff (GitHub issue #71) -------------------------------------
 # /watch answers "what is changing right now"; it holds an inotify watch for
 # the duration of one call and is blind to anything that happens between two
@@ -1933,6 +1957,7 @@ import sidecar_files  # noqa: E402
 import sidecar_sync  # noqa: E402
 import sidecar_scratch  # noqa: E402
 import sidecar_workspace_diff  # noqa: E402
+import sidecar_last_failure  # noqa: E402
 
 from sidecar_paths import (  # noqa: E402,F401
     _is_under_root, _normalize_input_path, _typed_allowed_roots, _ls_allowed_roots,
@@ -2018,6 +2043,7 @@ app.include_router(sidecar_files.router)
 app.include_router(sidecar_sync.router)
 app.include_router(sidecar_scratch.router)
 app.include_router(sidecar_workspace_diff.router)
+app.include_router(sidecar_last_failure.router)
 
 if __name__ == "__main__":
     import uvicorn

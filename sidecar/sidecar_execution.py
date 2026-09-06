@@ -266,6 +266,26 @@ async def exec_command(req: main.ExecRequest):
 
     await main._record_session_exec_duration_or_raise(duration_seconds, source="exec")
 
+    if exit_code != 0:
+        # Recorded AFTER _scrub_secret_values above, deliberately: a value
+        # scrubbed out of this response must not survive in the failure slot
+        # for /explain-last-failure to hand back later (GitHub issue #77).
+        import sidecar_last_failure
+
+        # One clock read, not two: the window is derived from the monotonic
+        # duration already measured above, so start and end cannot drift
+        # apart by however long this block takes to run.
+        _ended_at = _time.time()
+        sidecar_last_failure.record_failure(
+            command=req.command,
+            exit_code=exit_code,
+            stdout=stdout,
+            stderr=stderr,
+            started_at=_ended_at - duration_seconds,
+            ended_at=_ended_at,
+            source="exec",
+        )
+
     return main.ExecResponse(
         exit_code=exit_code,
         stdout=stdout,

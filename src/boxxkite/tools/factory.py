@@ -52,6 +52,7 @@ from .process_tools import (
 from .python_interpreter_tool import create_python_interpreter_tool_spec
 from .run_tests_tool import create_run_tests_tool_spec
 from .scratch_memory_tool import create_scratch_memory_tool_spec
+from .explain_last_failure_tool import create_explain_last_failure_tool_spec
 from .workspace_diff_tool import create_workspace_diff_tool_spec
 from .search_tools import (
     create_ls_tool_spec,
@@ -82,6 +83,7 @@ def create_sandbox_tool_specs(
     enable_run_tests: bool = False,
     enable_scratch_memory: bool = False,
     enable_workspace_diff: bool = False,
+    enable_explain_last_failure: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
     enable_memory_tools: bool = False,
@@ -114,6 +116,9 @@ def create_sandbox_tool_specs(
     - (opt-in, see enable_run_tests) run_tests: Run a test command and parse
       its output into a structured schema instead of raw stdout (see
       run_tests_tool.py; only pytest output is parsed so far)
+    - (opt-in, see enable_explain_last_failure) explain_last_failure: The
+      last failed bash_tool command with the files it touched
+      (see explain_last_failure_tool.py)
     - (opt-in, see enable_workspace_diff) workspace_diff: What changed in
       the workspace since the last check, as one structured call
       (see workspace_diff_tool.py)
@@ -200,6 +205,13 @@ def create_sandbox_tool_specs(
             notes never land in file_glob results or get flushed to the
             session's storage prefix. Off by default: an agent that doesn't
             need it shouldn't pay for the extra tool in its context.
+        enable_explain_last_failure: Opt in to the `explain_last_failure`
+            tool (GitHub issue #77) -- returns the most recent nonzero-exit
+            bash_tool command with its output and the files it touched while
+            running, collapsing a several-call debugging loop into one. Makes
+            the sidecar retain the last failure's streams for the session, so
+            it is off by default like every tool added since the "flag new
+            surface off by default" convention.
         enable_workspace_diff: Opt in to the `workspace_diff` tool
             (GitHub issue #71) -- reports added/removed/modified files under
             the workspace since the last check, with unified diffs, in one
@@ -545,6 +557,18 @@ def create_sandbox_tool_specs(
             )
         )
 
+    if enable_explain_last_failure:
+        # explain_last_failure (opt-in, see its docstring above). Runs no
+        # commands of its own -- it reads the sidecar's recorded last failure
+        # and stats the workspace under the same containment check.
+        specs.append(
+            create_explain_last_failure_tool_spec(
+                sandbox_manager=sandbox_manager,
+                session_id=effective_session_id,
+                lazy_runtime=lazy_runtime,
+            )
+        )
+
     if enable_workspace_diff:
         # workspace_diff (opt-in, see enable_workspace_diff's docstring above).
         # Takes no allowed_commands: it runs no commands, it walks the
@@ -651,6 +675,7 @@ def create_sandbox_tools(
     enable_run_tests: bool = False,
     enable_scratch_memory: bool = False,
     enable_workspace_diff: bool = False,
+    enable_explain_last_failure: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
     enable_memory_tools: bool = False,
@@ -710,6 +735,7 @@ def create_sandbox_tools(
         enable_run_tests=enable_run_tests,
         enable_scratch_memory=enable_scratch_memory,
         enable_workspace_diff=enable_workspace_diff,
+        enable_explain_last_failure=enable_explain_last_failure,
         enable_browser_tool=enable_browser_tool,
         enable_lsp_tools=enable_lsp_tools,
         enable_memory_tools=enable_memory_tools,

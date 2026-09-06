@@ -841,6 +841,40 @@ class SidecarProxyMixin:
             request_fn=_request,
         )
 
+    async def explain_last_failure(
+        self,
+        session_id: str,
+        include_touched_files: bool = True,
+    ) -> dict:
+        """
+        The most recent nonzero-exit command, with the files it touched
+        (GitHub issue #77).
+
+        Only `/exec` (bash_tool) is recorded -- background processes and the
+        PTY are not. Touched files are found by scanning modification times
+        inside the command's runtime window, so deletions are invisible to
+        it; `workspace_diff` compares snapshots and does see them.
+
+        Returns:
+            Dict with `found`, and when found: command, exit_code, stdout,
+            stderr, duration_seconds, source, touched_files, notes.
+        """
+        async def _request() -> dict:
+            pod_name, pod_ip = await self._resolve_session(session_id)
+            http_client = self._get_http_client(pod_name, pod_ip)
+            response = await http_client.post(
+                "/explain-last-failure",
+                json={"include_touched_files": include_touched_files},
+            )
+            response.raise_for_status()
+            return response.json()
+
+        return await self._call_sidecar_with_recovery(
+            session_id=session_id,
+            operation="explain_last_failure",
+            request_fn=_request,
+        )
+
     async def pty_exec(
         self,
         session_id: str,
