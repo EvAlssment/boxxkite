@@ -95,7 +95,8 @@ technical details, and a maintainer will reach out for a private channel.
 `.github/workflows/publish-images.yml` (GitHub issue #227) generates an SPDX
 SBOM and signs both the image and its SBOM keylessly via
 [cosign](https://github.com/sigstore/cosign)/Sigstore for every image it
-publishes. Keyless signing means Fulcio issues a short-lived certificate
+publishes, then a required verification job checks both artifacts before the
+release workflow can succeed. Keyless signing means Fulcio issues a short-lived certificate
 bound to that specific workflow run's GitHub Actions OIDC identity — no
 long-lived private key is generated, stored, or exposed to rotate — and
 Rekor logs the signature to a public, append-only transparency log.

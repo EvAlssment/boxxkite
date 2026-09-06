@@ -292,3 +292,39 @@ jobs:
             --predicate boxxkite-control-plane.spdx.json \
             --type spdxjson \
             "${{ env.IMAGE_REF }}@${{ steps.build.outputs.digest }}"
+
+  verify:
+    name: Verify signatures and SBOM attestations
+    needs: [version, sandbox, sandbox-minimal, sidecar, control-plane]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CERTIFICATE_IDENTITY: "^https://github\\.com/EvAlssment/boxxkite/\\.github/workflows/publish-images\\.yml@refs/tags/.+$"
+      OIDC_ISSUER: https://token.actions.githubusercontent.com
+    strategy:
+      fail-fast: true
+      matrix:
+        image:
+          - boxxkite-sandbox
+          - boxxkite-sandbox-minimal
+          - boxxkite-sidecar
+          - boxxkite-control-plane
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Verify image signature
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "$CERTIFICATE_IDENTITY" \
+            --certificate-oidc-issuer "$OIDC_ISSUER" \
+            "$REGISTRY/$IMAGE_OWNER/${{ matrix.image }}:${{ needs.version.outputs.version }}"
+
+      - name: Verify SPDX SBOM attestation
+        run: |
+          cosign verify-attestation \
+            --type spdxjson \
+            --certificate-identity-regexp "$CERTIFICATE_IDENTITY" \
+            --certificate-oidc-issuer "$OIDC_ISSUER" \
+            "$REGISTRY/$IMAGE_OWNER/${{ matrix.image }}:${{ needs.version.outputs.version }}"
