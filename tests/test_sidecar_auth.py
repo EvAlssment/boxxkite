@@ -103,6 +103,7 @@ def test_route_inventory_matches_known_sidecar_routes():
         "/ls",
         "/glob",
         "/grep",
+        "/semantic-search",
         "/watch",
         "/workspace-diff",
         "/explain-last-failure",
@@ -118,6 +119,7 @@ def test_route_inventory_matches_known_sidecar_routes():
         "/process/{process_id}/input",
         "/process/{process_id}/stop",
         "/process",
+        "/process/tree",
         "/process/kill-all",
         "/preview/{port}/{path:path}",
     }

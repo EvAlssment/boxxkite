@@ -31,6 +31,7 @@ Endpoints:
 - POST /read-image - Read image file bytes from shared volume
 - POST /str-replace - Edit file on shared volume
 - POST /present-files - Ensure storage sync, return file info
+- POST /semantic-search - Bounded, deterministic local lexical code search
 - POST /process/start - Start a tracked background process (nsenter, like /exec)
 - GET /process/{id}/output - Poll a background process's output since an offset
 - POST /process/{id}/input - Write to a background process's stdin
@@ -1095,7 +1096,7 @@ _METRICS_KNOWN_SEGMENTS = {
     "stop", "kill-all", "interpreter", "reset", "status", "ensure-skills",
     "inject-skills", "file-create", "view", "read-image", "str-replace",
     "present-files", "ls", "glob", "grep", "configure", "prefetch-uploads",
-    "flush", "confirmed", "tool-call", "metrics", "pty",
+    "semantic-search", "flush", "confirmed", "tool-call", "metrics", "pty",
 }
 
 
@@ -1544,6 +1545,27 @@ class GrepResponse(BaseModel):
     matches: list[dict]
     error: Optional[str] = None
     truncated: bool = False
+
+
+class SemanticSearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=512)
+    path: str = "/"
+    max_results: int = Field(default=10, ge=1, le=50)
+
+
+class SemanticSearchMatch(BaseModel):
+    path: str
+    line: int
+    text: str = Field(max_length=1000)
+    score: float
+
+
+class SemanticSearchResponse(BaseModel):
+    matches: list[SemanticSearchMatch]
+    truncated: bool = False
+    indexed_files: int = 0
+    indexed_bytes: int = 0
+    notes: list[str] = []
 
 
 class HttpRequestRequest(BaseModel):
@@ -2016,6 +2038,10 @@ from sidecar_files import (  # noqa: E402,F401
     _compute_skills_rev, _materialize_skills, _grep_search_sync,
     _parse_inotify_events, _watch_directory_once,
 )
+import sidecar_semantic_search  # noqa: E402
+from sidecar_semantic_search import (  # noqa: E402,F401
+    invalidate_semantic_search_path, reset_semantic_search_index,
+)
 from sidecar_scratch import (  # noqa: E402,F401
     clear_scratch_memory,
 )
@@ -2040,6 +2066,7 @@ app.include_router(sidecar_browser.router)
 app.include_router(sidecar_lsp.router)
 app.include_router(sidecar_secrets.router)
 app.include_router(sidecar_files.router)
+app.include_router(sidecar_semantic_search.router)
 app.include_router(sidecar_sync.router)
 app.include_router(sidecar_scratch.router)
 app.include_router(sidecar_workspace_diff.router)

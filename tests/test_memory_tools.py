@@ -51,7 +51,7 @@ async def test_factory_keeps_default_tool_count_and_adds_memory_only_when_enable
         pass
 
     default = create_sandbox_tool_specs(sandbox_manager=_Sandbox())
-    assert len(default) == 15
+    assert len(default) == 17
     memory = create_sandbox_tool_specs(
         sandbox_manager=_Sandbox(),
         hosted_api_key="key",

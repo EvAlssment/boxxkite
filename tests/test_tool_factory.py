@@ -47,6 +47,7 @@ def test_create_sandbox_tools_returns_the_full_tool_set():
         "ls",
         "glob",
         "grep",
+        "semantic_search",
         "start_process",
         "get_process_output",
         "send_process_input",
@@ -55,7 +56,7 @@ def test_create_sandbox_tools_returns_the_full_tool_set():
         "process_tree",
         "watch_directory",
     }
-    assert len(tools) == 16
+    assert len(tools) == 17
 
 
 def test_create_sandbox_tools_omits_budget_status_by_default():
@@ -83,7 +84,7 @@ def test_create_sandbox_tools_with_hosted_api_key_includes_budget_status():
 
     tool_names = {t.name for t in tools}
     assert "budget_status" in tool_names
-    assert len(tools) == 17
+    assert len(tools) == 18
 
 
 def test_create_sandbox_tools_run_tests_is_off_by_default():
@@ -108,7 +109,7 @@ def test_create_sandbox_tools_with_run_tests_enabled_includes_run_tests():
 
     tool_names = {t.name for t in tools}
     assert "run_tests" in tool_names
-    assert len(tools) == 17
+    assert len(tools) == 18
 
 
 def test_create_sandbox_tools_with_git_tools_enabled_includes_git_tool_set():
@@ -131,7 +132,7 @@ def test_create_sandbox_tools_with_git_tools_enabled_includes_git_tool_set():
         "git_branch",
         "git_checkout",
     }.issubset(tool_names)
-    assert len(tools) == 24
+    assert len(tools) == 25
 
 
 def test_create_sandbox_tools_with_agent_pty_enabled_includes_pty_exec():
@@ -145,7 +146,7 @@ def test_create_sandbox_tools_with_agent_pty_enabled_includes_pty_exec():
 
     tool_names = {t.name for t in tools}
     assert "pty_exec" in tool_names
-    assert len(tools) == 17
+    assert len(tools) == 18
 
 
 def test_create_sandbox_tools_omits_pty_exec_by_default():
@@ -170,7 +171,7 @@ def test_create_sandbox_tools_with_node_interpreter_enabled_includes_node_interp
 
     tool_names = {t.name for t in tools}
     assert "node_interpreter" in tool_names
-    assert len(tools) == 17
+    assert len(tools) == 18
 
 
 def test_create_sandbox_tools_omits_node_interpreter_by_default():
@@ -200,7 +201,7 @@ def test_create_sandbox_tools_with_browser_tool_enabled_includes_all_four_browse
         "browser_screenshot",
         "browser_close",
     }.issubset(tool_names)
-    assert len(tools) == 20
+    assert len(tools) == 21
 
 
 def test_create_sandbox_tools_omits_browser_tools_by_default():
@@ -231,7 +232,7 @@ def test_create_sandbox_tools_with_lsp_tools_enabled_includes_all_three_lsp_tool
 
     tool_names = {t.name for t in tools}
     assert {"lsp_start", "lsp_completion", "lsp_stop"}.issubset(tool_names)
-    assert len(tools) == 19
+    assert len(tools) == 20
 
 
 def test_create_sandbox_tools_omits_lsp_tools_by_default():
@@ -258,7 +259,7 @@ def test_create_sandbox_tools_works_with_no_audit_sink():
         sandbox_manager=_FakeSandboxManager(),
         audit_sink=None,
     )
-    assert len(tools) == 16
+    assert len(tools) == 17
 
 
 def test_create_sandbox_tools_accepts_a_partial_audit_sink():
@@ -273,7 +274,7 @@ def test_create_sandbox_tools_accepts_a_partial_audit_sink():
         sandbox_manager=_FakeSandboxManager(),
         audit_sink=PartialSink(),
     )
-    assert len(tools) == 16
+    assert len(tools) == 17
 
 
 @pytest.mark.asyncio
