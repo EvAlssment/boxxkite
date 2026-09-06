@@ -135,6 +135,25 @@ What a successful
   disclosed by the SBOM itself (the SBOM is a dependency inventory for your
   own scanning, not a guarantee of a clean scan).
 
+### Optional custom-image admission gate
+
+The declarative custom-image path already records the Kaniko-produced digest
+and refuses to schedule a tag-only reference. Deployments that sign their
+custom images can additionally set
+`BOXXKITE_IMAGE_ADMISSION_VERIFY_SIGNATURES=true`, an explicit certificate
+identity regexp, and an OIDC issuer. Before a completed custom image is used,
+the control-plane invokes the operator-installed `cosign` binary against that
+exact digest. A missing binary, incomplete trust policy, missing signature,
+invalid signature, or timeout fails the sandbox request closed. The default is
+off for compatibility, and this feature does not provision signing keys,
+registry credentials, or additional pod egress.
+
+This is a control-plane admission check, not a cluster-wide Kubernetes
+admission policy. A deployment that needs enforcement for every workload or
+protection against a post-check registry-policy race still needs a reviewed
+image-policy provider/runtime integration; this slice does not claim to
+provide that guarantee.
+
 ## Known, currently-unmitigated limitations
 
 Disclosed here rather than left for you to discover:
