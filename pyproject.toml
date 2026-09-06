@@ -72,6 +72,12 @@ Issues = "https://github.com/EvAlssment/boxxkite/issues"
 langchain = [
     "langchain-core>=1.0,<2",
 ]
+# Install this extra for the explicit LangGraph ToolNode adapter and the
+# examples/langgraph_agent cookbook. LangGraph is not required by the core
+# ToolSpec surface or by the LangChain adapter.
+langgraph = [
+    "langgraph>=1.0,<2",
+]
 # Install this extra only if you want boxxkite.tools.adapters.to_llamaindex_tools
 # to hand back LlamaIndex FunctionTool objects for a ReActAgent/FunctionAgent.
 # llama-index-core pulls in pydantic itself, which the schema-conversion

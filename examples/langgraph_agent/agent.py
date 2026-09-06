@@ -36,7 +36,8 @@ from langchain.chat_models import init_chat_model
 from langgraph.prebuilt import create_react_agent
 
 from boxxkite import SandboxManager
-from boxxkite.tools import create_sandbox_tools
+from boxxkite.tools import create_sandbox_tool_specs
+from boxxkite.tools.adapters import to_langgraph_tools
 
 TASK = """\
 You have a sandbox with bash_tool, file_create, view, str_replace, and
@@ -75,11 +76,12 @@ async def main() -> None:
     await manager.create_session(organization_id=organization_id, session_id=session_id)
 
     try:
-        tools = create_sandbox_tools(
+        specs = create_sandbox_tool_specs(
             sandbox_manager=manager,
             organization_id=organization_id,
             session_id=session_id,
         )
+        tools = to_langgraph_tools(specs)
         print(f"Tools wired: {[t.name for t in tools]}")
 
         agent = create_react_agent(model, tools)
