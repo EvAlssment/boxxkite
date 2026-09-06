@@ -36,6 +36,7 @@ from ..routers.admin import (
     _compute_admin_account_detail,
     _compute_admin_audit_log,
     _compute_admin_cluster_metrics,
+    _get_admin_warm_pool_utilization,
 )
 from ..routers.sandboxes import _to_out
 from ..routers.social_login import _require_github_enabled, _require_google_enabled
@@ -46,6 +47,7 @@ from ..schemas import (
     AdminAccountDetail,
     AdminAuditLogResponse,
     AdminClusterMetrics,
+    AdminWarmPoolUtilization,
     AllowedCommandsRequest,
     AllowedCommandsResponse,
     SandboxCreateTokenResponse,
@@ -312,6 +314,22 @@ async def get_account_admin_audit_log(
     db: AsyncSession = Depends(get_db),
 ) -> AdminAuditLogResponse:
     return await _compute_admin_audit_log(db=db, limit=limit, offset=offset, account_id=account_id)
+
+
+@router.get(
+    "/admin/warm-pool",
+    response_model=AdminWarmPoolUtilization,
+    summary="Warm-pool utilization by sandbox size (admin only, dashboard JWT)",
+    description=(
+        "Same response shape as GET /v1/admin/warm-pool, but resolves the "
+        "caller from a dashboard session JWT instead of an API key. The route "
+        "still requires Account.is_admin and uses the same live manager status."
+    ),
+)
+async def get_account_admin_warm_pool_utilization(
+    _admin: Account = Depends(get_current_admin_user),
+) -> AdminWarmPoolUtilization:
+    return await _get_admin_warm_pool_utilization()
 
 
 @router.post(

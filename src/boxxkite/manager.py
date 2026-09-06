@@ -31,6 +31,7 @@ from ._manager_recovery import RecoveryMixin
 from ._manager_proxy import SidecarProxyMixin
 from ._manager_files_skills import FilesSkillsMixin
 from ._manager_checkpoint import FullStateCheckpointMixin
+from .warm_pool_sizing import CLAIM_RATE_TRACKER
 
 
 # PodLifecycleMixin is defined inline (not extracted to a sibling module)
@@ -95,6 +96,8 @@ class PodLifecycleMixin:
             if claimed:
                 pod_name, pod_ip = claimed
                 logger.info(f"[SandboxManager] Claimed warm pod via K8s: {pod_name}")
+            else:
+                CLAIM_RATE_TRACKER.record_cold_fallthrough(size)
 
         _t_claimed = _time.monotonic()
         logger.info(f"[TIMING] sandbox_pod_claim: {(_t_claimed - _t0)*1000:.0f}ms (pod={pod_name or 'none'})")

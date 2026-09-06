@@ -278,6 +278,7 @@ class WarmPoolManager:
         self._manual_replenish_task: Optional[asyncio.Task] = None
         self._running = False
         self._lifecycle_lock = asyncio.Lock()
+        self._pool_scan_available = True
         # Opt-in fast-claim ready-pod index (BOXXKITE_FAST_CLAIM_ENABLED):
         # per-size FIFO of claim-ready pods snapshotted by the background
         # scan (see _refresh_ready_index). Empty and never touched when the
@@ -1080,6 +1081,7 @@ class WarmPoolManager:
                           BOXXKITE_FAST_CLAIM_ENABLED is on.
         """
         if not self._k8s_core_api:
+            self._pool_scan_available = False
             return ({}, 0, {}, [], [])
         try:
             pods = await self._k8s_core_api.list_namespaced_pod(
@@ -1087,8 +1089,11 @@ class WarmPoolManager:
                 label_selector="app=sandbox",
             )
         except Exception as e:
+            self._pool_scan_available = False
             logger.warning(f"[WarmPool] Failed to list pods for status: {e}")
             return ({}, 0, {}, [], [])
+
+        self._pool_scan_available = True
 
         max_claimable_age = compute_max_claimable_age_seconds(
             active_deadline_seconds=SANDBOX_ACTIVE_DEADLINE_SECONDS,
@@ -1156,6 +1161,20 @@ class WarmPoolManager:
             WARM_POOL_SIZE_TARGETS, WARM_POOL_MAX, CLAIM_RATE_TRACKER
         )
 
+    def _build_utilization_report(
+        self, warm_by_size: dict[str, int], targets: dict[str, int]
+    ) -> dict[str, dict[str, int]]:
+        """Combine live claim-ready counts with local rolling demand signals."""
+        return {
+            size: {
+                "target": targets.get(size, 0),
+                "actual_warm_count": warm_by_size.get(size, 0),
+                "claims_last_window": CLAIM_RATE_TRACKER.claim_count(size),
+                "cold_fallthroughs_last_window": CLAIM_RATE_TRACKER.cold_fallthrough_count(size),
+            }
+            for size in WARM_POOL_SIZE_TARGETS
+        }
+
     async def _replenish(self):
         """Replenish each size's warm sub-pool to its target.
 
@@ -1210,6 +1229,12 @@ class WarmPoolManager:
             await self._delete_sidecar_auth_secret(sidecar_auth_secret_name(pod_name))
 
         targets = self._current_warm_pool_size_targets()
+        if self._pool_scan_available:
+            logger.info(
+                "[WarmPool] Utilization window=%ss by_size=%s",
+                CLAIM_RATE_TRACKER.window_seconds(),
+                self._build_utilization_report(warm_by_size, targets),
+            )
         remaining_budget = max(WARM_POOL_MAX - total_active, 0)
         pods_to_create_by_size: dict[str, int] = {}
         for size, target in targets.items():
@@ -1348,9 +1373,12 @@ class WarmPoolManager:
     async def get_status(self) -> dict:
         """Get warm pool status from K8s labels."""
         warm_by_size, total_active, by_state = await self._get_pool_counts()
+        if not self._pool_scan_available:
+            raise RuntimeError("Warm-pool Kubernetes status scan is unavailable")
+        targets = self._current_warm_pool_size_targets()
         return {
             "target_size": WARM_POOL_SIZE,
-            "target_sizes": self._current_warm_pool_size_targets(),
+            "target_sizes": targets,
             "max_size": WARM_POOL_MAX,
             "recycle_enabled": WARM_POOL_RECYCLE,
             "warm_count": sum(warm_by_size.values()),
@@ -1361,6 +1389,8 @@ class WarmPoolManager:
             "reaper_flush_timeout_seconds": REAPER_FLUSH_TIMEOUT,
             "backstop_deadline_seconds": SANDBOX_ACTIVE_DEADLINE_SECONDS,
             "adaptive_warm_pool_enabled": adaptive_warm_pool_enabled(),
+            "utilization_window_seconds": CLAIM_RATE_TRACKER.window_seconds(),
+            "utilization_by_size": self._build_utilization_report(warm_by_size, targets),
             "claim_rate_per_second_by_size": {
                 size: CLAIM_RATE_TRACKER.claim_rate_per_second(size)
                 for size in WARM_POOL_SIZE_TARGETS

@@ -589,6 +589,30 @@ class AdminClusterMetrics(BaseModel):
     accounts: list[AdminAccountUsage]
 
 
+class AdminWarmPoolSizeUtilization(BaseModel):
+    """Rolling warm-pool signals for one sandbox size class."""
+
+    size: Literal["small", "medium", "large"]
+    target: int
+    actual_warm_count: int
+    claims_last_window: int
+    cold_fallthroughs_last_window: int
+
+
+class AdminWarmPoolUtilization(BaseModel):
+    """Admin-only warm-pool view from the manager's live pod scan.
+
+    Demand counters are process-local rolling signals, so the response
+    explicitly reports when the warm pool is unavailable rather than
+    substituting database or account-level counts.
+    """
+
+    available: bool
+    unavailable_reason: Literal["not_configured", "unavailable"] | None = None
+    window_seconds: int | None = None
+    sizes: list[AdminWarmPoolSizeUtilization] = Field(default_factory=list)
+
+
 class SandboxCreatedResponse(SandboxSessionOut):
     usage: UsageSummary
 
