@@ -39,6 +39,15 @@ touches code-execution isolation; changes to `deploy/pod-template.yaml`,
 `src/boxxkite/manager.py`'s security context construction get extra scrutiny
 before merge.
 
+For a new SDK-visible API or wire contract, an isolation/runtime or
+security-model change, a control-plane auth/account/session-boundary change,
+or a licensing/entitlement-model change, start with a
+[Boxxkite Enhancement Proposal (BEP)](beps/README.md). The BEP should be
+discussed before implementation, then linked from the implementation PR and
+kept current through its status transition. Small fixes, documentation-only
+changes, test-only changes, dependency updates, and internal refactors with
+no observable behavior normally do not need a BEP.
+
 ## Developer Certificate of Origin (DCO), not a CLA
 
 We use the [Developer Certificate of Origin](https://developercertificate.org/)
@@ -221,6 +230,8 @@ this size, not because they're broken.
   from the setup above.
 - Describe what changed and why in the PR description; link the issue it
   addresses if one exists.
+- If the change implements or materially changes a BEP, link the BEP in the
+  PR description and update its status and shipped references.
 
 ## Security issues
 

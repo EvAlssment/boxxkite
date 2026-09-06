@@ -28,10 +28,11 @@ trade-offs in the associated issue or pull request. If consensus is not
 reached, the current maintainer makes the final decision under the current
 single-maintainer model.
 
-Issue [#79](https://github.com/EvAlssment/boxxkite/issues/79) tracks a
-proposal for a future formal BEP process. That process is not yet established;
-until it is, changes to this governance model or other major project processes
-are discussed and decided using the model described above.
+Major changes use the [Boxxkite Enhancement Proposal (BEP) process](beps/README.md)
+when they meet its scope. The process records technical reasoning and status;
+it does not change the current maintainer's final decision authority. Until a
+BEP is accepted, changes to this governance model or other major project
+processes are discussed and decided using the model described above.
 
 ## Related documents
 
