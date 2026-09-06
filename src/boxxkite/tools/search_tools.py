@@ -401,6 +401,125 @@ def create_grep_tool(
     return to_langchain_tools([spec])[0]
 
 
+SEMANTIC_SEARCH_DESCRIPTION = """Find relevant file:line spans for a natural-language code query.
+
+This sandbox-local MVP uses deterministic lexical ranking over bounded UTF-8
+text files. It does not download an embedding model or make network calls, so
+results are reproducible and compatible with default-deny egress. Use `grep`
+when you know the literal pattern; use this tool when you want ranked clues.
+
+Args:
+    query: Natural-language description such as "where retry logic is handled"
+    path: Directory or file to search (default "/")
+    max_results: Maximum ranked file:line spans to return (default 10, max 50)
+
+Returns:
+    Ranked file paths, line numbers, snippets, and a score, or an error message
+"""
+
+SEMANTIC_SEARCH_PARAMETERS = {
+    "type": "object",
+    "properties": {
+        "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "Natural-language description of the code to find",
+        },
+        "path": {
+            "type": "string",
+            "description": 'Directory or file to search (default "/")',
+            "default": "/",
+        },
+        "max_results": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10,
+            "description": "Maximum ranked file:line spans to return",
+        },
+    },
+    "required": ["query"],
+}
+
+
+def create_semantic_search_tool_spec(
+    sandbox_manager: Optional['SandboxManager'] = None,
+    session_id: Optional[str] = None,
+    lazy_runtime: Optional['LazySandboxRuntime'] = None,
+) -> ToolSpec:
+    """Build the framework-agnostic ToolSpec for semantic_search."""
+    if sandbox_manager is None and lazy_runtime is None:
+        raise ValueError("sandbox_manager must be provided")
+
+    async def semantic_search(
+        query: str,
+        path: str = "/",
+        max_results: int = 10,
+    ) -> str:
+        if not query or not query.strip():
+            return "Error: query is required"
+        path = (path or "/").strip() or "/"
+        max_results = max(1, min(int(max_results), 50))
+        logger.info(f"[semantic_search] Searching {path} for {query!r}")
+        try:
+            resolved_manager, resolved_session_id = await resolve_sandbox_operation_context(
+                lazy_runtime=lazy_runtime,
+                sandbox_manager=sandbox_manager,
+                session_id=session_id,
+            )
+            result = await resolved_manager.semantic_search(
+                session_id=resolved_session_id,
+                query=query.strip(),
+                path=path,
+                max_results=max_results,
+            )
+        except Exception as e:
+            logger.error(f"[semantic_search] Error: {e}", exc_info=True)
+            return f"Error searching semantically: {str(e)}"
+
+        matches = result.get("matches", [])
+        if not matches:
+            return f"No ranked matches for {query.strip()!r} under {path}"
+
+        lines = [f"Ranked matches for {query.strip()!r} under {path}:", ""]
+        for match in matches:
+            score = match.get("score", 0.0)
+            lines.append(
+                f"{match.get('path', '')}:{match.get('line', 0)} "
+                f"(score {score:.3f}) {match.get('text', '')}"
+            )
+        if result.get("truncated"):
+            lines.extend(["", "Results or index were truncated; narrow the path or query."])
+        notes = result.get("notes") or []
+        if notes:
+            lines.extend(["", "Note: " + " ".join(notes)])
+        return "\n".join(lines)
+
+    return ToolSpec(
+        name="semantic_search",
+        description=SEMANTIC_SEARCH_DESCRIPTION,
+        parameters=SEMANTIC_SEARCH_PARAMETERS,
+        handler=semantic_search,
+    )
+
+
+def create_semantic_search_tool(
+    sandbox_manager: Optional['SandboxManager'] = None,
+    session_id: Optional[str] = None,
+    lazy_runtime: Optional['LazySandboxRuntime'] = None,
+):
+    """Create semantic_search as a LangChain tool."""
+    from .adapters import to_langchain_tools
+
+    spec = create_semantic_search_tool_spec(
+        sandbox_manager=sandbox_manager,
+        session_id=session_id,
+        lazy_runtime=lazy_runtime,
+    )
+    return to_langchain_tools([spec])[0]
+
+
 WATCH_DIRECTORY_DESCRIPTION = """Wait for the first filesystem change under a directory in the sandbox workspace, or time out.
 
 Use this instead of polling `ls` in a loop when you're waiting on a file another process will produce (a build's output, a test runner's report, a dev server writing its build cache).

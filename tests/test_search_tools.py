@@ -12,6 +12,8 @@ from boxxkite.tools.search_tools import (
     create_glob_tool,
     create_grep_tool,
     create_ls_tool,
+    create_semantic_search_tool,
+    create_semantic_search_tool_spec,
     create_watch_directory_tool_spec,
 )
 
@@ -26,6 +28,14 @@ class _FakeSandboxManager:
         self.ls_result = []
         self.glob_result = []
         self.grep_result = {"matches": [], "error": None, "truncated": False}
+        self.semantic_search_calls = []
+        self.semantic_search_result = {
+            "matches": [],
+            "truncated": False,
+            "indexed_files": 0,
+            "indexed_bytes": 0,
+            "notes": [],
+        }
         self.raise_error = None
         self.watch_calls = []
         self.watch_result = {"changes": [], "timed_out": True}
@@ -64,6 +74,19 @@ class _FakeSandboxManager:
         )
         return self.grep_result
 
+    async def semantic_search(self, session_id, query, path="/", max_results=10):
+        if self.raise_error:
+            raise self.raise_error
+        self.semantic_search_calls.append(
+            {
+                "session_id": session_id,
+                "query": query,
+                "path": path,
+                "max_results": max_results,
+            }
+        )
+        return self.semantic_search_result
+
 
 def test_create_ls_tool_requires_a_manager_or_lazy_runtime():
     with pytest.raises(ValueError, match="sandbox_manager must be provided"):
@@ -78,6 +101,11 @@ def test_create_glob_tool_requires_a_manager_or_lazy_runtime():
 def test_create_grep_tool_requires_a_manager_or_lazy_runtime():
     with pytest.raises(ValueError, match="sandbox_manager must be provided"):
         create_grep_tool()
+
+
+def test_create_semantic_search_tool_requires_a_manager_or_lazy_runtime():
+    with pytest.raises(ValueError, match="sandbox_manager must be provided"):
+        create_semantic_search_tool()
 
 
 @pytest.mark.asyncio
@@ -238,6 +266,46 @@ async def test_grep_reports_truncation():
     result = await tool.ainvoke({"pattern": "x"})
 
     assert "truncated" in result
+
+
+@pytest.mark.asyncio
+async def test_semantic_search_calls_manager_and_formats_ranked_matches():
+    manager = _FakeSandboxManager()
+    manager.semantic_search_result = {
+        "matches": [{"path": "/workspace/retry.py", "line": 4, "text": "retry()", "score": 2.5}],
+        "truncated": False,
+        "indexed_files": 1,
+        "indexed_bytes": 8,
+        "notes": ["Deterministic lexical ranking is used"],
+    }
+    tool = create_semantic_search_tool(sandbox_manager=manager, session_id="session-1")
+
+    result = await tool.ainvoke(
+        {"query": "where retry logic is handled", "path": "/workspace", "max_results": 5}
+    )
+
+    assert manager.semantic_search_calls == [
+        {
+            "session_id": "session-1",
+            "query": "where retry logic is handled",
+            "path": "/workspace",
+            "max_results": 5,
+        }
+    ]
+    assert "/workspace/retry.py:4" in result
+    assert "2.500" in result
+    assert "Deterministic lexical ranking" in result
+
+
+@pytest.mark.asyncio
+async def test_semantic_search_requires_a_query():
+    manager = _FakeSandboxManager()
+    spec = create_semantic_search_tool_spec(sandbox_manager=manager, session_id="session-1")
+
+    result = await spec.handler(query="  ")
+
+    assert result == "Error: query is required"
+    assert manager.semantic_search_calls == []
 
 
 def test_create_watch_directory_tool_spec_requires_a_manager_or_lazy_runtime():
