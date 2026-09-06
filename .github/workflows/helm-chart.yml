@@ -5,13 +5,17 @@ on:
     branches: [main]
     paths:
       - deploy/helm/boxxkite/**
+      - deploy/kustomize/**
       - tests/test_helm_smoke.py
+      - tests/test_kustomize.py
       - .github/workflows/helm-chart.yml
   pull_request:
     branches: [main]
     paths:
       - deploy/helm/boxxkite/**
+      - deploy/kustomize/**
       - tests/test_helm_smoke.py
+      - tests/test_kustomize.py
       - .github/workflows/helm-chart.yml
 
 permissions:
@@ -19,7 +23,7 @@ permissions:
 
 jobs:
   lint-and-template:
-    name: Lint and template Helm chart
+    name: Lint Helm chart and validate Kustomize projection
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -43,4 +47,4 @@ jobs:
       - name: Run Helm schema tests
         run: |
           pip install --quiet pytest pyyaml
-          pytest tests/test_helm_smoke.py -q
+          pytest tests/test_helm_smoke.py tests/test_kustomize.py -q

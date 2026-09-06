@@ -1,0 +1,18 @@
+apiVersion: builtin
+kind: NamespaceTransformer
+metadata:
+  name: boxxkite-dev
+  namespace: boxxkite-dev
+fieldSpecs:
+- path: metadata/namespace
+  kind: ServiceAccount
+- path: metadata/namespace
+  kind: Role
+- path: metadata/namespace
+  kind: RoleBinding
+- path: metadata/namespace
+  kind: ConfigMap
+- path: metadata/namespace
+  kind: Secret
+- path: metadata/namespace
+  kind: NetworkPolicy

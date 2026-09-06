@@ -1,0 +1,12 @@
+apiVersion: builtin
+kind: PatchTransformer
+metadata:
+  name: boxxkite-staging-cluster-scope-binding
+patch: |-
+  - op: remove
+    path: /metadata/namespace
+target:
+  group: admissionregistration.k8s.io
+  version: v1
+  kind: ValidatingAdmissionPolicyBinding
+  name: boxxkite-staging-sandbox-pod-hardening-binding

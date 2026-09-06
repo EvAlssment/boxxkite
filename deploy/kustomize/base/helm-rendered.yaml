@@ -1,0 +1,241 @@
+---
+# Source: boxxkite/templates/network-policy.yaml
+# Wraps ../../network-policy.yaml -- READ THAT FILE'S HEADER COMMENT IN FULL
+# before applying: NetworkPolicy is a second/backstop layer, not the primary
+# isolation boundary, and enforcement is CNI-dependent. This template keeps
+# the same fail-closed defaults: no storage egress rule at all until you pick
+# one of `networkPolicy.storageEgress.mode`'s options, and no 0.0.0.0/0
+# fallback anywhere.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandbox-network-policy
+  namespace: boxxkite
+  labels:
+    app.kubernetes.io/name: boxxkite
+    app.kubernetes.io/instance: boxxkite
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: boxxkite-0.1.0
+spec:
+  podSelector:
+    matchLabels:
+      app: sandbox
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: "api-gateway"
+    - podSelector:
+        matchLabels:
+          app: "worker"
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Source: boxxkite/templates/serviceaccount.yaml
+# Wraps ../../rbac.yaml's ServiceAccount block -- see that file's comments
+# for rationale.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sandbox-service-account
+  namespace: boxxkite
+  labels:
+    app.kubernetes.io/name: boxxkite
+    app.kubernetes.io/instance: boxxkite
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: boxxkite-0.1.0
+automountServiceAccountToken: false
+
+---
+# Source: boxxkite/templates/secret-storage-credentials.yaml
+# Wraps ../../rbac.yaml's sandbox-s3-credentials Secret. Empty by default,
+# same as the raw manifest -- fill in via `--set` / a values override file
+# you do NOT commit, or better, manage this Secret out-of-band (IRSA/
+# Workload Identity, external-secrets, sealed-secrets) and skip this
+# template with `--set storageCredentials.manage=false` (default: true).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sandbox-s3-credentials
+  namespace: boxxkite
+  labels:
+    app.kubernetes.io/name: boxxkite
+    app.kubernetes.io/instance: boxxkite
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: boxxkite-0.1.0
+type: Opaque
+stringData:
+  access-key-id: ""
+  secret-access-key: ""
+
+---
+# Source: boxxkite/templates/configmap.yaml
+# Wraps ../../rbac.yaml's sandbox-config ConfigMap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sandbox-config
+  namespace: boxxkite
+  labels:
+    app.kubernetes.io/name: boxxkite
+    app.kubernetes.io/instance: boxxkite
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: boxxkite-0.1.0
+data:
+  s3-bucket: "boxxkite-sandbox"
+  aws-region: "us-east-1"
+  warm-pool-size: "3"
+  pod-timeout-seconds: "1800"
+
+---
+# Source: boxxkite/templates/rbac.yaml
+# Wraps ../../rbac.yaml's Role/RoleBinding for the sandbox manager (the
+# control plane / SandboxManager process) -- see that file's comments for
+# the full rationale, including the documented KNOWN LIMITATION that
+# Kubernetes RBAC cannot scope these verbs to only sandbox-labeled
+# pods/secrets, and the dedicated-namespace mitigation that implies.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: sandbox-manager-role
+  namespace: boxxkite
+  labels:
+    app.kubernetes.io/name: boxxkite
+    app.kubernetes.io/instance: boxxkite
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: boxxkite-0.1.0
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+- apiGroups: [""]
+  resources: ["pods/status"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+  resourceNames: ["sandbox-config"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "create", "delete"]
+- apiGroups: [""]
+  resources: ["serviceaccounts/token"]
+  verbs: ["create"]
+  resourceNames: ["boxxkite-control-plane"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "create", "update", "delete"]
+---
+# Source: boxxkite/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sandbox-manager-binding
+  namespace: boxxkite
+  labels:
+    app.kubernetes.io/name: boxxkite
+    app.kubernetes.io/instance: boxxkite
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: boxxkite-0.1.0
+subjects:
+- kind: ServiceAccount
+  name: boxxkite-control-plane
+  namespace: boxxkite
+roleRef:
+  kind: Role
+  name: sandbox-manager-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Source: boxxkite/templates/image-builder-network-policy.yaml
+# Wraps ../../image-builder-network-policy.yaml -- see that file's header
+# comment IN FULL before applying. OFF by default (imageBuilder.enabled:
+# false). Same fail-closed discipline as the raw manifest: the CIDR values
+# default to a non-routable RFC 5737 placeholder, so enabling the builder
+# without also setting real registry CIDRs gives egress to nothing rather
+# than silently falling back to 0.0.0.0/0.
+
+---
+# Source: boxxkite/templates/image-builder-rbac.yaml
+# Wraps ../../image-builder-rbac.yaml -- see that file's comments. OFF by
+# default (imageBuilder.enabled: false), matching
+# BOXXKITE_IMAGE_BUILDER_ENABLED=false. The dedicated `boxxkite-image-builder`
+# ServiceAccount below gets ZERO Kubernetes API permissions on purpose (its
+# only real credential is a registry-push identity bound outside this chart,
+# e.g. via an IRSA/Workload Identity annotation on the ServiceAccount) --
+# only the CONTROL PLANE's own ServiceAccount is granted the dispatch Role.
+
+---
+# Source: boxxkite/templates/pod-security-policy.yaml
+# Wraps ../../pod-security-policy.yaml -- see that file's comments for the
+# full threat-model rationale (RBAC's pods/secrets grants aren't scopable to
+# sandbox-labeled objects, so this closes the node-compromise vectors a
+# leaked control-plane credential could otherwise reach via an arbitrary pod
+# spec). Requires the ValidatingAdmissionPolicy API (GA in Kubernetes 1.30,
+# beta since 1.28, alpha since 1.26) -- disable on older clusters.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: boxxkite-sandbox-pod-hardening
+  labels:
+    app.kubernetes.io/name: boxxkite
+    app.kubernetes.io/instance: boxxkite
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: boxxkite-0.1.0
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: ["v1"]
+      operations: ["CREATE", "UPDATE"]
+      resources: ["pods"]
+  validations:
+  - expression: "!has(object.spec.hostNetwork) || object.spec.hostNetwork == false"
+    message: "hostNetwork is not permitted for pods in this cluster"
+  - expression: "!has(object.spec.hostPID) || object.spec.hostPID == false"
+    message: "hostPID is not permitted for pods in this cluster"
+  - expression: "!has(object.spec.hostIPC) || object.spec.hostIPC == false"
+    message: "hostIPC is not permitted for pods in this cluster"
+  - expression: >
+      !object.spec.volumes.exists(v, has(v.hostPath))
+    message: "hostPath volumes are not permitted for pods in this cluster"
+  - expression: >
+      object.spec.containers.all(c,
+        !has(c.securityContext) || !has(c.securityContext.privileged) || c.securityContext.privileged == false
+      )
+    message: "privileged containers are not permitted in this cluster"
+---
+# Source: boxxkite/templates/pod-security-policy.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: boxxkite-sandbox-pod-hardening-binding
+  labels:
+    app.kubernetes.io/name: boxxkite
+    app.kubernetes.io/instance: boxxkite
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: boxxkite-0.1.0
+spec:
+  policyName: boxxkite-sandbox-pod-hardening
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: boxxkite

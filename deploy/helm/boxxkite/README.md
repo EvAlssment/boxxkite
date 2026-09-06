@@ -22,6 +22,11 @@ helm install boxxkite ./deploy/helm/boxxkite \
   --set namespace=boxxkite
 ```
 
+For Argo CD, Flux, or another Kustomize-based GitOps flow, use the generated
+projection and environment overlays in [`../../kustomize/README.md`](../../kustomize/README.md).
+The chart remains the source of truth for that projection; do not maintain a
+second copy of these resources by hand.
+
 Review `values.yaml` first -- in particular:
 
 - [`SIZING.md`](SIZING.md) lists small, medium, and large capacity overlays.
