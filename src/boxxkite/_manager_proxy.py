@@ -782,6 +782,65 @@ class SidecarProxyMixin:
             request_fn=_request,
         )
 
+    async def workspace_diff(
+        self,
+        session_id: str,
+        path: str = "/",
+        checkpoint: Optional[str] = None,
+        exclude: Optional[list] = None,
+        include_diffs: bool = True,
+        max_diff_bytes: int = 32768,
+    ) -> dict:
+        """
+        Report what changed under `path` since a previous snapshot
+        (GitHub issue #71).
+
+        The complement to `watch_directory`, not a replacement: that one holds
+        an inotify watch for the duration of a single call and is blind to
+        anything happening in the gap between calls. This compares content
+        snapshots, so a change made in that gap, by a background process, or
+        by a previous turn is still reported.
+
+        `checkpoint=None` means "since the last snapshot of this path". The
+        first such call has nothing to compare against and returns
+        `baseline=True` with no changes rather than listing every existing
+        file as added.
+
+        Snapshots live in the sidecar process, so a checkpoint does not
+        survive a pod restart -- an unknown token is a 404, not a silent
+        re-baseline.
+
+        Returns:
+            Dict with:
+            - checkpoint: token identifying the snapshot just taken
+            - baseline: True if there was nothing to compare against
+            - changes: list of {path, change, size_bytes, size_delta_bytes,
+              binary, diff, diff_omitted_reason}, change being one of
+              "added", "removed", "modified"
+            - files_scanned, truncated, notes
+        """
+        async def _request() -> dict:
+            pod_name, pod_ip = await self._resolve_session(session_id)
+            http_client = self._get_http_client(pod_name, pod_ip)
+            response = await http_client.post(
+                "/workspace-diff",
+                json={
+                    "path": path,
+                    "checkpoint": checkpoint,
+                    "exclude": exclude,
+                    "include_diffs": include_diffs,
+                    "max_diff_bytes": max_diff_bytes,
+                },
+            )
+            response.raise_for_status()
+            return response.json()
+
+        return await self._call_sidecar_with_recovery(
+            session_id=session_id,
+            operation="workspace_diff",
+            request_fn=_request,
+        )
+
     async def pty_exec(
         self,
         session_id: str,

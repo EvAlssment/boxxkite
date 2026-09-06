@@ -104,6 +104,7 @@ def test_route_inventory_matches_known_sidecar_routes():
         "/glob",
         "/grep",
         "/watch",
+        "/workspace-diff",
         "/pty-exec",
         "/mount-bucket",
         "/configure",

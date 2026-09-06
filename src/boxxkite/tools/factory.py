@@ -52,6 +52,7 @@ from .process_tools import (
 from .python_interpreter_tool import create_python_interpreter_tool_spec
 from .run_tests_tool import create_run_tests_tool_spec
 from .scratch_memory_tool import create_scratch_memory_tool_spec
+from .workspace_diff_tool import create_workspace_diff_tool_spec
 from .search_tools import (
     create_ls_tool_spec,
     create_glob_tool_spec,
@@ -80,6 +81,7 @@ def create_sandbox_tool_specs(
     enable_node_interpreter: bool = False,
     enable_run_tests: bool = False,
     enable_scratch_memory: bool = False,
+    enable_workspace_diff: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
     enable_memory_tools: bool = False,
@@ -112,6 +114,9 @@ def create_sandbox_tool_specs(
     - (opt-in, see enable_run_tests) run_tests: Run a test command and parse
       its output into a structured schema instead of raw stdout (see
       run_tests_tool.py; only pytest output is parsed so far)
+    - (opt-in, see enable_workspace_diff) workspace_diff: What changed in
+      the workspace since the last check, as one structured call
+      (see workspace_diff_tool.py)
     - (opt-in, see enable_scratch_memory) scratch_memory: Session-scoped
       key/value bookkeeping for the agent's own working state, kept out of
       the workspace filesystem entirely (see scratch_memory_tool.py)
@@ -195,6 +200,17 @@ def create_sandbox_tool_specs(
             notes never land in file_glob results or get flushed to the
             session's storage prefix. Off by default: an agent that doesn't
             need it shouldn't pay for the extra tool in its context.
+        enable_workspace_diff: Opt in to the `workspace_diff` tool
+            (GitHub issue #71) -- reports added/removed/modified files under
+            the workspace since the last check, with unified diffs, in one
+            call instead of several ls/glob/view round-trips. The complement
+            to the always-on `watch_directory`, which only sees changes that
+            happen while it blocks and is blind to the gap between calls.
+            Read-only, but off by default like every tool added since the
+            "flag new surface off by default" convention: it makes the
+            sidecar retain file content between calls to produce diffs, and
+            an agent that doesn't need it shouldn't pay for the extra tool
+            in its context.
         enable_run_tests: Opt in to the `run_tests` tool
             (src/boxxkite/tools/run_tests_tool.py, docs/issue #123) -- runs a
             test command through the exact same exec primitive and command
@@ -529,6 +545,19 @@ def create_sandbox_tool_specs(
             )
         )
 
+    if enable_workspace_diff:
+        # workspace_diff (opt-in, see enable_workspace_diff's docstring above).
+        # Takes no allowed_commands: it runs no commands, it walks the
+        # sidecar's own filesystem under the same allowed-roots containment
+        # check ls/glob/grep apply.
+        specs.append(
+            create_workspace_diff_tool_spec(
+                sandbox_manager=sandbox_manager,
+                session_id=effective_session_id,
+                lazy_runtime=lazy_runtime,
+            )
+        )
+
     if enable_scratch_memory:
         # scratch_memory (opt-in, see enable_scratch_memory's docstring above).
         # Takes no allowed_commands: it runs no commands at all, it only
@@ -621,6 +650,7 @@ def create_sandbox_tools(
     enable_node_interpreter: bool = False,
     enable_run_tests: bool = False,
     enable_scratch_memory: bool = False,
+    enable_workspace_diff: bool = False,
     enable_browser_tool: bool = False,
     enable_lsp_tools: bool = False,
     enable_memory_tools: bool = False,
@@ -679,6 +709,7 @@ def create_sandbox_tools(
         enable_node_interpreter=enable_node_interpreter,
         enable_run_tests=enable_run_tests,
         enable_scratch_memory=enable_scratch_memory,
+        enable_workspace_diff=enable_workspace_diff,
         enable_browser_tool=enable_browser_tool,
         enable_lsp_tools=enable_lsp_tools,
         enable_memory_tools=enable_memory_tools,

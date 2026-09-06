@@ -1717,6 +1717,50 @@ class WatchDirectoryResponse(BaseModel):
     timed_out: bool
 
 
+# --- workspace_diff (GitHub issue #71) -------------------------------------
+# /watch answers "what is changing right now"; it holds an inotify watch for
+# the duration of one call and is blind to anything that happens between two
+# calls (its own docstring says so). workspace_diff answers the other
+# question -- "what changed since I last looked" -- by comparing content
+# snapshots, so a change made in the gap, by a background process, or by a
+# previous turn is still reported.
+
+class WorkspaceDiffRequest(BaseModel):
+    # "/" is the workspace root, matching WatchDirectoryRequest and /ls.
+    path: str = "/"
+    # None means "since the last snapshot taken for this path", which is the
+    # "since my last tool call" default. An explicit token pins the
+    # comparison to a specific earlier point instead.
+    checkpoint: Optional[str] = None
+    # Extra directory names to prune, on top of WORKSPACE_DIFF_DEFAULT_EXCLUDES.
+    exclude: Optional[list[str]] = None
+    include_diffs: bool = True
+    max_diff_bytes: int = 32768
+
+
+class WorkspaceDiffEntry(BaseModel):
+    path: str
+    change: str  # added | removed | modified
+    size_bytes: int = 0
+    size_delta_bytes: int = 0
+    binary: bool = False
+    diff: Optional[str] = None
+    # Set when a diff was wanted but could not be produced, so the agent is
+    # told why instead of silently getting no diff.
+    diff_omitted_reason: Optional[str] = None
+
+
+class WorkspaceDiffResponse(BaseModel):
+    checkpoint: str
+    baseline: bool = False
+    changes: list[WorkspaceDiffEntry] = []
+    files_scanned: int = 0
+    truncated: bool = False
+    # Populated when a cap was hit, naming which one -- a silently trimmed
+    # result reads as "nothing else changed", which is the wrong conclusion.
+    notes: list[str] = []
+
+
 # ============================================================================
 # Tool Call Proxy — Code Execution Mode
 # ============================================================================
@@ -1888,6 +1932,7 @@ import sidecar_secrets  # noqa: E402
 import sidecar_files  # noqa: E402
 import sidecar_sync  # noqa: E402
 import sidecar_scratch  # noqa: E402
+import sidecar_workspace_diff  # noqa: E402
 
 from sidecar_paths import (  # noqa: E402,F401
     _is_under_root, _normalize_input_path, _typed_allowed_roots, _ls_allowed_roots,
@@ -1972,6 +2017,7 @@ app.include_router(sidecar_secrets.router)
 app.include_router(sidecar_files.router)
 app.include_router(sidecar_sync.router)
 app.include_router(sidecar_scratch.router)
+app.include_router(sidecar_workspace_diff.router)
 
 if __name__ == "__main__":
     import uvicorn
