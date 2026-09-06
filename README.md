@@ -299,22 +299,23 @@ covers the runtime boundary and its trade-offs.
 | `boxxkite-client` (Go) | [pkg.go.dev](https://pkg.go.dev/github.com/EvAlssment/boxxkite/sdk-go) |
 | `boxxkite-client` (Rust) | [crates.io](https://crates.io/crates/boxxkite-client) |
 
-Container images are published to GHCR (`ghcr.io/evalssment/…`):
+Container images are published to GHCR (`ghcr.io/evalssment/…`). The
+machine-readable platform contract is [`deploy/image-platforms.json`](deploy/image-platforms.json);
+the release workflow and tests validate their platform lists against it.
 
 | Image | Architectures |
 |---|---|
 | `boxxkite-sandbox` | **linux/amd64 only** |
-| `boxxkite-sandbox-minimal` | linux/amd64, linux/arm64 |
-| `boxxkite-sidecar` | linux/amd64, linux/arm64 |
+| `boxxkite-sandbox-minimal` | **linux/amd64 only** |
+| `boxxkite-sidecar` | **linux/amd64 only** |
 | `boxxkite-control-plane` | linux/amd64, linux/arm64 |
 
-> **`boxxkite-sandbox` is amd64-only.** Its Dockerfile deliberately hard-fails on
-> arm64 because the pinned Chrome-for-Testing release has no `linux/arm64` build
-> (`deploy/sandbox.Dockerfile`). **arm64 / Apple-Silicon users should use
-> `boxxkite-sandbox-minimal`** (multi-arch, no Chrome/LibreOffice/pandoc stack),
-> or build/run the full image under `linux/amd64` emulation — `docker-compose.yml`
-> already forces `platform: linux/amd64` for exactly this reason. The other three
-> images are multi-arch.
+> The three Wolfi-based runtime images are currently amd64-only. The full
+> `boxxkite-sandbox` image is limited by its pinned Chrome-for-Testing release;
+> `boxxkite-sandbox-minimal` and `boxxkite-sidecar` are additionally blocked on
+> arm64 by the pinned Wolfi base's glibc/Python mismatch. The control-plane is
+> the only published image currently built for both amd64 and arm64. Do not use
+> the runtime images on arm64 until their platform contract is updated.
 
 ## Community
 

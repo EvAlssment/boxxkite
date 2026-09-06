@@ -22,3 +22,6 @@ keywords:
   - kubernetes
 maintainers:
   - name: boxxkite maintainers
+annotations:
+  boxxkite.dev/supported-platforms: linux/amd64,linux/arm64
+  boxxkite.dev/runtime-image-platforms: ../../image-platforms.json

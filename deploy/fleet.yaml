@@ -14,6 +14,9 @@ clusters:
       sidecar: boxxkite-sidecar:latest
     nodeSelector:
       kubernetes.io/os: linux
+      # The published sandbox and sidecar images are currently linux/amd64-only.
+      # Select arm64 only after configuring images with an arm64 platform contract.
+      kubernetes.io/arch: amd64
     tolerations: []
   - name: eu-west
     region: eu-west-1
@@ -28,4 +31,5 @@ clusters:
       sidecar: boxxkite-sidecar:latest
     nodeSelector:
       kubernetes.io/os: linux
+      kubernetes.io/arch: amd64
     tolerations: []
