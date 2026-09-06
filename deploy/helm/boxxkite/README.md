@@ -52,6 +52,27 @@ Review `values.yaml` first -- in particular:
   -- fill in your real package-registry/container-registry CIDRs before
   enabling it for real.
 
+## Platform compatibility
+
+The chart is architecture-neutral: it installs cluster-level RBAC,
+NetworkPolicy, ConfigMap/Secret scaffolding, and no image-bearing Deployment
+or sandbox Pod. Its Helm metadata declares support for `linux/amd64` and
+`linux/arm64`; there is deliberately no chart-level `nodeSelector` default.
+
+The runtime image contract is maintained in [`../../image-platforms.json`](../../image-platforms.json):
+
+| Image | Supported platforms |
+|---|---|
+| `boxxkite-sandbox` | `linux/amd64` only |
+| `boxxkite-sandbox-minimal` | `linux/amd64` only |
+| `boxxkite-sidecar` | `linux/amd64` only |
+| `boxxkite-control-plane` | `linux/amd64`, `linux/arm64` |
+
+Only the control-plane image is currently supported on arm64. The sandbox and
+sidecar images remain amd64-only until their pinned Wolfi glibc/Python
+dependency mismatch is resolved; the chart cannot make that per-session
+runtime choice because the control plane creates those Pods programmatically.
+
 Before moving between chart releases, inspect the machine-readable
 compatibility matrix:
 

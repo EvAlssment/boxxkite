@@ -5,6 +5,10 @@
 # wrap -- keep both in sync (tests/test_helm_values_defaults_match_resource_config_defaults
 # in the root test suite only guards the resource-sizing numbers below, not
 # structural drift between the raw manifests and these templates).
+# This chart creates no image-bearing workload pods, so it intentionally has
+# no image, nodeSelector, or architecture default. Runtime image/platform
+# compatibility is declared in ../../image-platforms.json and configured in
+# the control-plane environment or FleetCapacity file.
 
 namespace: default
 
