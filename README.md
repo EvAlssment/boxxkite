@@ -17,7 +17,7 @@
 <p align="center">
   <a href="https://boxxkite.com">Website</a> ·
   <a href="#quickstart">Quickstart</a> ·
-  <a href="https://boxxkite.com/developers">Docs</a> ·
+  <a href="docs/">Docs</a> ·
   <a href="#self-hosting">Self-hosting</a> ·
   <a href="#security">Security</a> ·
   <a href="ROADMAP.md">Roadmap</a> ·
@@ -77,6 +77,10 @@ If you are new to the repo, use this decision tree:
 3. **I want the hosted API / multi-tenant control-plane**  
    Use the control-plane section below, then the
    [`examples/basic/hosted_control_plane/`](examples/basic/hosted_control_plane/) guide.
+
+4. **I want the repository documentation map**
+   Start with [`docs/`](docs/), which groups getting started, guides,
+   reference, architecture, and community material.
 
 For contributors, the important mental model is: the root package gives you
 the sandbox runtime, while `control-plane/`, the SDKs, and `mcp-server/` are
@@ -179,7 +183,7 @@ API — is something you deploy yourself:
   [`docs/FLEET-CAPACITY.md`](docs/FLEET-CAPACITY.md) when each process needs
   a reviewed cluster-specific capacity target.
 - **Serving more than one internal team?** See
-  [docs/SELF-HOSTED-MULTI-TENANCY.md](docs/SELF-HOSTED-MULTI-TENANCY.md) for
+  [docs/guides/self-hosted-multi-tenancy.md](docs/guides/self-hosted-multi-tenancy.md) for
   what separates one tenant from another (and what doesn't), plus reference
   `ResourceQuota`/`LimitRange`/`NetworkPolicy` manifests in
   [deploy/multi-tenancy/](deploy/multi-tenancy/).
@@ -195,8 +199,9 @@ API — is something you deploy yourself:
 > [SECURITY.md](SECURITY.md) for the current list of disclosed limitations.
 
 Full walkthroughs for every path above (Kubernetes, Helm, Render, the
-`boxxkite` CLI's hosted mode, secrets, webhooks, MCP, and every SDK) live on
-the [developer docs site](https://boxxkite.com/developers).
+`boxxkite` CLI's hosted mode, secrets, webhooks, MCP, and every SDK) are
+organized in the [repository documentation map](docs/) and the
+[developer docs site](https://boxxkite.com/developers).
 
 ### Run the control-plane locally
 
@@ -264,7 +269,7 @@ One repo, several independently-versioned pieces, kept together deliberately
 | `control-plane/` | Optional hosted-API layer in front of `SandboxManager` — accounts, API keys, fair-use limits. |
 | `sdk-python/`, `sdk-js/`, `sdk-go/`, `sdk-rust/` | Thin HTTP clients for *your own* running control-plane. |
 | `mcp-server/` (`boxxkite-mcp`) | Wraps the Python SDK as an MCP tool source for Claude Code, Claude Desktop, Codex, or Cursor. |
-| `src/boxxkite/handoff/` (`boxxkite handoff <tool>`, part of the main CLI) | Moves an in-progress local Claude Code/Codex CLI/opencode/Cursor session into a fresh sandbox, full conversation history included — see [docs/handoff-adapters.md](docs/handoff-adapters.md). |
+| `src/boxxkite/handoff/` (`boxxkite handoff <tool>`, part of the main CLI) | Moves an in-progress local Claude Code/Codex CLI/opencode/Cursor session into a fresh sandbox, full conversation history included — see [the handoff guide](docs/guides/handoff-adapters.md). |
 | `bastion/` | Standalone SSH server bridging into a session's human-takeover WebSocket. |
 | `deploy/` | Kubernetes manifests, Helm chart, Dockerfiles, docker-compose, Render Blueprint. |
 | `examples/` | Runnable cookbook — LangGraph, LangChain, raw HTTP, OpenAI/Gemini/Mistral function calling, and more. |
@@ -280,8 +285,8 @@ one of these is meant to stand alone.
 See [SECURITY.md](SECURITY.md) for the full model, known limitations, and
 how to report a vulnerability privately — this project runs arbitrary code,
 so a sandbox-escape report deserves a fast, private path, not a public
-issue. The [security model guide](https://boxxkite.com/developers/guides/security-model)
-covers the same ground with runnable examples.
+issue. The repository's [isolation model](docs/architecture/isolation-model.md)
+covers the runtime boundary and its trade-offs.
 
 ## Published packages and images
 
@@ -313,9 +318,10 @@ Container images are published to GHCR (`ghcr.io/evalssment/…`):
 
 ## Community
 
-Join the [Discord](https://discord.gg/JntfAx7cg5) — get help from other users and maintainers, report a bug,
-ask for a usage-limit/credit bump, or discuss elevated access if you're a startup (dedicated thread for that
-once you're in).
+Join the [Discord](https://discord.gg/JntfAx7cg5) — get help from other users
+and maintainers, report a bug, or discuss implementation ideas. The
+[community guide](docs/community/) links contribution, governance, conduct,
+security, roadmap, and release information.
 
 ## License
 

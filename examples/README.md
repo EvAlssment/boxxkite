@@ -4,6 +4,12 @@ Every example has its own README with a copy-pasteable run command and a
 one-line statement of what it demonstrates. Start with the category that
 matches your use case:
 
+If you are starting from a fresh checkout, follow the linear
+[getting-started path](../docs/getting-started/) first. The [guides index](../docs/guides/)
+links deployment and integration tasks back to the relevant examples.
+
+## Which example should I run?
+
 | Category | Use it for |
 |---|---|
 | [`basic/`](basic/) | Direct HTTP, hosted control-plane, and interpreter workflows |

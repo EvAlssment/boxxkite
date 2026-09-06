@@ -5,6 +5,7 @@ boxxkite's default sandbox image already ships `pandas`/`numpy`/`polars`/
 `scikit-learn` (see the related write-up on the
 [developer documentation site](https://boxxkite.com/developers/)), but a
 real quant research desk leans on more specialized libraries the
+(`deploy/sandbox.Dockerfile` also records the default image packages).
 default image doesn't carry:
 
 - **`vectorbt`** — vectorized, NumPy/Numba-accelerated backtesting; fast
@@ -22,8 +23,8 @@ default image doesn't carry:
 None of these need a new base image or a hand-maintained Dockerfile: they're
 exact-version-pinned `python_packages` layered on top of `"boxxkite-default"`
 through the existing declarative builder (`POST /v1/images`, see the
-[Helm deployment notes](../../../deploy/helm/boxxkite/README.md)), the same
-mechanism
+[declarative image builder guide](../../../docs/guides/declarative-image-builders.md)),
+the same mechanism
 [`claude_code_declarative_builder`](../../browser-desktop/claude_code_declarative_builder)
 uses for a Claude-Code-capable image.
 
