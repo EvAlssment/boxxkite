@@ -78,11 +78,13 @@ class ProcessHandle:
         description: Optional[str],
         max_runtime_seconds: int,
         expose_port: Optional[int] = None,
+        context_id: Optional[str] = None,
     ):
         self.process_id = process_id
         self.proc = proc
         self.command = command
         self.description = description
+        self.context_id = context_id
         self.max_runtime_seconds = max_runtime_seconds
         self.expose_port = expose_port
         self.started_at = datetime.now()
@@ -536,6 +538,7 @@ async def process_start(req: main.ProcessStartRequest):
             proc=proc,
             command=req.command,
             description=req.description,
+            context_id=req.context_id,
             max_runtime_seconds=req.max_runtime_seconds,
             expose_port=req.expose_port,
         )
@@ -614,6 +617,7 @@ async def process_list():
             process_id=handle.process_id,
             command=handle.command,
             description=handle.description,
+            context_id=handle.context_id,
             status=handle.status,
             started_at=handle.started_at.isoformat(),
             exit_code=handle.exit_code,
@@ -622,6 +626,34 @@ async def process_list():
         for handle in main._process_registry.values()
     ]
     return main.ProcessListResponse(processes=processes)
+
+
+@router.get("/process/tree", response_model=main.ProcessTreeResponse)
+async def process_tree(context_id: Optional[str] = None):
+    """Return tracked processes grouped by their originating context."""
+    grouped: dict[str, list[main.ProcessInfo]] = {}
+    for handle in main._process_registry.values():
+        if context_id is not None and handle.context_id != context_id:
+            continue
+        key = handle.context_id or "unscoped"
+        grouped.setdefault(key, []).append(
+            main.ProcessInfo(
+                process_id=handle.process_id,
+                command=handle.command,
+                description=handle.description,
+                context_id=handle.context_id,
+                status=handle.status,
+                started_at=handle.started_at.isoformat(),
+                exit_code=handle.exit_code,
+                expose_port=handle.expose_port,
+            )
+        )
+    return main.ProcessTreeResponse(
+        contexts=[
+            main.ProcessTreeContext(context_id=key, processes=processes)
+            for key, processes in grouped.items()
+        ]
+    )
 
 
 @router.post("/process/kill-all", response_model=main.ProcessKillAllResponse)

@@ -851,6 +851,7 @@ class SidecarProxyMixin:
         description: Optional[str] = None,
         max_runtime_seconds: int = 3600,
         expose_port: Optional[int] = None,
+        context_id: Optional[str] = None,
     ) -> dict:
         """
         Start a background process in the sandbox, tracked by the sidecar
@@ -873,6 +874,7 @@ class SidecarProxyMixin:
                 "description": description,
                 "max_runtime_seconds": max_runtime_seconds,
                 "expose_port": expose_port,
+                "context_id": context_id,
             })
             response.raise_for_status()
             return response.json()
@@ -1006,6 +1008,24 @@ class SidecarProxyMixin:
         return await self._call_sidecar_with_recovery(
             session_id=session_id,
             operation="list_processes",
+            request_fn=_request,
+        )
+
+    async def process_tree(self, session_id: str, context_id: Optional[str] = None) -> list[dict]:
+        """List tracked processes grouped by originating code context."""
+        async def _request() -> list[dict]:
+            pod_name, pod_ip = await self._resolve_session(session_id)
+            http_client = self._get_http_client(pod_name, pod_ip)
+            response = await http_client.get(
+                "/process/tree",
+                params={"context_id": context_id} if context_id is not None else None,
+            )
+            response.raise_for_status()
+            return response.json().get("contexts", [])
+
+        return await self._call_sidecar_with_recovery(
+            session_id=session_id,
+            operation="process_tree",
             request_fn=_request,
         )
 
@@ -1187,4 +1207,3 @@ class SidecarProxyMixin:
                 f"[SandboxManager] Failed to kill tracked processes on pod {pod_name} "
                 f"before teardown: {e}"
             )
-

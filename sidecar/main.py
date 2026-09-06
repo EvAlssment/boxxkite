@@ -1289,6 +1289,7 @@ VIEW_MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25MB
 class ProcessStartRequest(BaseModel):
     command: str
     description: Optional[str] = None
+    context_id: Optional[str] = Field(default=None, max_length=200)
     # Required, not optional — see the SANDBOX_PROCESS_MAX_RUNTIME_SECONDS_CEILING
     # comment above: a background process is a standing resource commitment,
     # unlike a bounded /exec call, so it never gets an unbounded default.
@@ -1343,6 +1344,7 @@ class ProcessInfo(BaseModel):
     process_id: str
     command: str
     description: Optional[str] = None
+    context_id: Optional[str] = None
     status: str
     started_at: str
     exit_code: Optional[int] = None
@@ -1351,6 +1353,15 @@ class ProcessInfo(BaseModel):
 
 class ProcessListResponse(BaseModel):
     processes: list[ProcessInfo]
+
+
+class ProcessTreeContext(BaseModel):
+    context_id: str
+    processes: list[ProcessInfo]
+
+
+class ProcessTreeResponse(BaseModel):
+    contexts: list[ProcessTreeContext]
 
 
 class ProcessKillAllResponse(BaseModel):

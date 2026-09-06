@@ -15,8 +15,8 @@ session management tools with a cleaner interface:
 - glob: Find files by name pattern
 - grep: Search file contents by regex
 - start_process / get_process_output / send_process_input / stop_process /
-  list_processes: track a long-running background process across multiple
-  tool calls
+  list_processes / process_tree: track long-running processes and group them
+  by execution context
 - (opt-in, see enable_git_tools) git_clone/git_status/git_add/git_commit/
   git_push/git_pull/git_branch/git_checkout
 - (opt-in, see enable_run_tests) run_tests: run a test command and parse
@@ -69,6 +69,8 @@ from .process_tools import (
     create_stop_process_tool_spec,
     create_list_processes_tool,
     create_list_processes_tool_spec,
+    create_process_tree_tool,
+    create_process_tree_tool_spec,
 )
 from .python_interpreter_tool import (
     create_python_interpreter_tool,

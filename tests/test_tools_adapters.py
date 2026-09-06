@@ -126,9 +126,10 @@ def test_create_sandbox_tool_specs_returns_the_full_agnostic_tool_set():
         "send_process_input",
         "stop_process",
         "list_processes",
+        "process_tree",
         "watch_directory",
     }
-    assert len(specs) == 15
+    assert len(specs) == 16
     assert all(isinstance(s, ToolSpec) for s in specs)
     assert all(callable(s.handler) for s in specs)
 
@@ -304,7 +305,9 @@ def test_to_llamaindex_tools_schema_marks_required_and_optional_params_correctly
 
 
 class _FakeProcessSandboxManager:
-    async def start_process(self, session_id, command, description=None, max_runtime_seconds=3600):
+    async def start_process(
+        self, session_id, command, description=None, max_runtime_seconds=3600, context_id=None
+    ):
         return {"process_id": "proc_1", "status": "running"}
 
 
@@ -614,4 +617,3 @@ def test_to_google_adk_tools_preserves_parameter_signature():
     assert isinstance(tool, FunctionTool)
     sig = inspect.signature(tool.func)
     assert "code" in sig.parameters
-
