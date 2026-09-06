@@ -90,7 +90,11 @@ impl Client {
         // A non-clonable body (streaming) or a disabled policy can't/shouldn't
         // be retried -- send once and return whatever happens.
         if self.retry.max_retries == 0 || request.try_clone().is_none() {
-            return self.http.execute(request).await.map_err(BoxxkiteError::from);
+            return self
+                .http
+                .execute(request)
+                .await
+                .map_err(BoxxkiteError::from);
         }
 
         let idempotent = is_idempotent(request.method());

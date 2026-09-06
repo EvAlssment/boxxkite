@@ -90,7 +90,7 @@ pub use account::{
 pub use audit::{AuditLogEntry, AuditLogResponse, GetLogOptions};
 pub use client::{Client, ClientBuilder, RetryConfig};
 pub use desktop::DesktopStream;
-pub use error::BoxxkiteError;
+pub use error::{ApiErrorKind, BoxxkiteError};
 pub use files::{
     ExecOptions, ExecResult, FileCreateResult, FileOptions, GlobOptions, GlobResult, GrepOptions,
     GrepResult, HttpRequestOptions, HttpRequestResult, LsOptions, LsResult, StrReplaceOptions,

@@ -186,8 +186,8 @@ async fn get_process_output_maps_unknown_process_id_to_404() {
 
 #[tokio::test]
 async fn stream_process_output_yields_output_then_exit() {
-    use futures_util::StreamExt;
     use boxxkite_client::ProcessStreamEvent;
+    use futures_util::StreamExt;
 
     let server = common::mock_server().await;
     let client = common::client_for(&server);
@@ -212,14 +212,22 @@ async fn stream_process_output_yields_output_then_exit() {
     let mut stream = client.stream_process_output("sess-1", "proc-1", 0);
     let first = stream.next().await.expect("first event").expect("first ok");
     match first {
-        ProcessStreamEvent::Output { stdout_chunk, next_offset, truncated } => {
+        ProcessStreamEvent::Output {
+            stdout_chunk,
+            next_offset,
+            truncated,
+        } => {
             assert_eq!(stdout_chunk, "hi");
             assert_eq!(next_offset, 2);
             assert!(!truncated);
         }
         other => panic!("expected Output, got {other:?}"),
     }
-    let second = stream.next().await.expect("second event").expect("second ok");
+    let second = stream
+        .next()
+        .await
+        .expect("second event")
+        .expect("second ok");
     match second {
         ProcessStreamEvent::Exit { status, exit_code } => {
             assert_eq!(status, "exited");

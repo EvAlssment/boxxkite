@@ -224,7 +224,8 @@ impl Client {
         session_id: &str,
         process_id: &str,
         since_offset: i64,
-    ) -> Pin<Box<dyn Stream<Item = Result<ProcessStreamEvent, BoxxkiteError>> + Send + 'static>> {
+    ) -> Pin<Box<dyn Stream<Item = Result<ProcessStreamEvent, BoxxkiteError>> + Send + 'static>>
+    {
         let request_builder = self
             .request(
                 Method::GET,

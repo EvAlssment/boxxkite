@@ -80,7 +80,11 @@ impl SandboxSession {
             .await
     }
 
-    pub async fn view(&self, path: &str, options: ViewOptions) -> Result<ViewResult, BoxxkiteError> {
+    pub async fn view(
+        &self,
+        path: &str,
+        options: ViewOptions,
+    ) -> Result<ViewResult, BoxxkiteError> {
         self.client.view(&self.id, path, options).await
     }
 

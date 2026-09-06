@@ -2,6 +2,48 @@
 
 use std::fmt;
 
+/// Which named failure class an API error belongs to.
+///
+/// Mirrors `sdk-python`'s `api_error_type`, `sdk-js`'s error subclasses and
+/// `sdk-go`'s typed errors so the same `code` classifies identically in every
+/// SDK. Rust gets an enum on the `Api` variant rather than separate error
+/// types, which is the idiomatic shape here and keeps `BoxxkiteError` a small
+/// closed set.
+///
+/// `Other` is deliberately not an error: a `code` this crate has not seen
+/// before still arrives with its status, message and retryable flag intact,
+/// so a code added to the control-plane later does not require an SDK release
+/// to be usable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ApiErrorKind {
+    QuotaExceeded,
+    EgressDenied,
+    CapabilityDenied,
+    ReadonlyFilesystem,
+    SandboxNotReady,
+    SandboxCrashed,
+    ServiceUnavailable,
+    Other,
+}
+
+/// Classify an error `code` exactly as the other SDKs do.
+pub(crate) fn classify(code: &str, status: u16) -> ApiErrorKind {
+    if code.ends_with("_limit_reached") || code.ends_with("_capacity_reached") {
+        return ApiErrorKind::QuotaExceeded;
+    }
+    match code {
+        "egress_denied" => ApiErrorKind::EgressDenied,
+        "capability_denied" | "command_not_allowed" => ApiErrorKind::CapabilityDenied,
+        "readonly_filesystem" => ApiErrorKind::ReadonlyFilesystem,
+        "sandbox_not_ready" => ApiErrorKind::SandboxNotReady,
+        "sandbox_crashed" => ApiErrorKind::SandboxCrashed,
+        "service_unavailable" => ApiErrorKind::ServiceUnavailable,
+        _ if status >= 500 => ApiErrorKind::ServiceUnavailable,
+        _ => ApiErrorKind::Other,
+    }
+}
+
 /// Everything this crate's `Result<T, BoxxkiteError>` can fail with.
 ///
 /// Mirrors `sdk-python`'s `BoxxkiteApiError`/`BoxxkiteConnectionError` split
@@ -20,6 +62,9 @@ pub enum BoxxkiteError {
         message: String,
         retryable: bool,
         remediation: Option<String>,
+        /// Named failure class for this `code`, classified the same way in
+        /// every SDK. See [`ApiErrorKind`].
+        kind: ApiErrorKind,
     },
 
     /// The request never reached the control-plane, or its response
@@ -96,12 +141,27 @@ impl BoxxkiteError {
         }
     }
 
+    /// Named failure class, when this is an API error. `None` for transport,
+    /// decode, websocket, event-stream and config errors.
+    pub fn kind(&self) -> Option<ApiErrorKind> {
+        match self {
+            BoxxkiteError::Api { kind, .. } => Some(*kind),
+            _ => None,
+        }
+    }
+
     pub fn retryable(&self) -> bool {
-        match self { BoxxkiteError::Api { retryable, .. } => *retryable, _ => false }
+        match self {
+            BoxxkiteError::Api { retryable, .. } => *retryable,
+            _ => false,
+        }
     }
 
     pub fn remediation(&self) -> Option<&str> {
-        match self { BoxxkiteError::Api { remediation, .. } => remediation.as_deref(), _ => None }
+        match self {
+            BoxxkiteError::Api { remediation, .. } => remediation.as_deref(),
+            _ => None,
+        }
     }
 }
 
@@ -117,8 +177,12 @@ pub(crate) struct ErrorBody {
     pub code: String,
     #[serde(default)]
     pub message: Option<String>,
+    /// Absent on a control-plane predating the taxonomy. `None` means "not
+    /// stated", which `api_error_from_bytes` resolves to `status >= 500` --
+    /// matching Python, JS and Go. A plain `#[serde(default)]` would have made
+    /// an older 5xx look non-retryable, which is the opposite of the truth.
     #[serde(default)]
-    pub retryable: bool,
+    pub retryable: Option<bool>,
     #[serde(default)]
     pub remediation: Option<String>,
 }
@@ -135,14 +199,30 @@ fn default_error_code() -> String {
 pub(crate) fn api_error_from_bytes(status: u16, bytes: &[u8]) -> BoxxkiteError {
     let parsed = serde_json::from_slice::<ErrorEnvelope>(bytes).ok();
     let (code, message, retryable, remediation) = parsed
-        .map(|env| (env.error.code, env.error.message.unwrap_or_default(), env.error.retryable, env.error.remediation))
-        .unwrap_or_else(|| ("error".to_string(), format!("HTTP {status}"), status >= 500, None));
+        .map(|env| {
+            (
+                env.error.code,
+                env.error.message.unwrap_or_default(),
+                env.error.retryable.unwrap_or(status >= 500),
+                env.error.remediation,
+            )
+        })
+        .unwrap_or_else(|| {
+            (
+                "error".to_string(),
+                format!("HTTP {status}"),
+                status >= 500,
+                None,
+            )
+        });
+    let kind = classify(&code, status);
     BoxxkiteError::Api {
         status,
         code,
         message,
         retryable,
         remediation,
+        kind,
     }
 }
 

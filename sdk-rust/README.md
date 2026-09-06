@@ -111,6 +111,14 @@ retried on a `5xx`, since it may have already applied server-side.
   it exists on the control-plane: filesystem snapshots (`/snapshots/*`).
   This crate mirrors its two reference SDKs' actual method sets rather
   than inventing new surface area ahead of them.
+- **Typed error structs per failure class.** Rust classifies instead:
+  `BoxxkiteError::Api` carries an `ApiErrorKind` (`QuotaExceeded`,
+  `EgressDenied`, `CapabilityDenied`, `ReadonlyFilesystem`,
+  `SandboxNotReady`, `SandboxCrashed`, `ServiceUnavailable`, `Other`),
+  reachable via `err.kind()`. Same classification as sdk-python's
+  `api_error_type`, sdk-js's subclasses and sdk-go's typed errors, expressed
+  as an enum because that is the idiomatic shape for a small closed set here
+  and keeps `BoxxkiteError` from fanning out into seven types.
 - **`Webhook`'s newer `payload_format`/`hec_token` fields** (added to
   `control_plane.schemas.WebhookCreateRequest` for the Splunk HEC/audit-log
   export addendum, issue #125) — `sdk-python`/`sdk-js` haven't picked these
