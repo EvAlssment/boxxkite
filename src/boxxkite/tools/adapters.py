@@ -41,7 +41,7 @@ that's:
   `FunctionTool(func=...)`. NOTE: raw `google-genai` function-calling
   without ADK does not need this adapter — use `to_openai_functions` to
   get a JSON schema dict and unwrap it into `FunctionDeclaration` objects
-  yourself, the same way `examples/gemini_function_calling/agent.py` does.
+  yourself, the same way `examples/agent-integrations/gemini_function_calling/agent.py` does.
 
 CrewAI, AutoGen, and hand-rolled agent loops don't need a bespoke adapter
 here: a `ToolSpec`'s `handler` is already a plain callable, and its
@@ -291,7 +291,7 @@ def to_google_adk_tools(specs: list[ToolSpec]) -> list:
     NOTE: if you are using raw `google-genai` without the ADK framework, do not
     use this adapter — use `to_openai_functions()` to get a JSON schema dict
     and convert it to `FunctionDeclaration` objects yourself (see
-    `examples/gemini_function_calling/agent.py` for the canonical pattern).
+    `examples/agent-integrations/gemini_function_calling/agent.py` for the canonical pattern).
     """
     return [_to_google_adk_tool(spec) for spec in specs]
 
