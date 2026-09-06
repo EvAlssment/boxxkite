@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "images": {
+    "boxxkite-sandbox": {
+      "dockerfile": "deploy/sandbox.Dockerfile",
+      "platforms": ["linux/amd64"],
+      "reason": "The pinned Chrome-for-Testing release has no Linux arm64 artifact."
+    },
+    "boxxkite-sandbox-minimal": {
+      "dockerfile": "deploy/sandbox-minimal.Dockerfile",
+      "platforms": ["linux/amd64"],
+      "reason": "The pinned Wolfi base exposes arm64 glibc 2.43 while its current Python package requires GLIBC_2.44."
+    },
+    "boxxkite-sidecar": {
+      "dockerfile": "deploy/sidecar.Dockerfile",
+      "platforms": ["linux/amd64"],
+      "reason": "The pinned Wolfi base exposes arm64 glibc 2.43 while its current Python package requires GLIBC_2.44."
+    },
+    "boxxkite-control-plane": {
+      "dockerfile": "control-plane/Dockerfile",
+      "platforms": ["linux/amd64", "linux/arm64"]
+    }
+  }
+}

@@ -117,10 +117,15 @@ cosign verify-attestation \
 ```
 
 Swap `boxxkite-sandbox` for `boxxkite-sandbox-minimal`, `boxxkite-sidecar`, or
-`boxxkite-control-plane` for the other three images. Note that `boxxkite-sandbox`
-is published for **linux/amd64 only** (its Dockerfile hard-fails on arm64 — the
-pinned Chrome-for-Testing release has no arm64 build); the other three are
-multi-arch, and arm64 / Apple-Silicon users should use `boxxkite-sandbox-minimal`.
+`boxxkite-control-plane` for the other three images. `boxxkite-sandbox`,
+`boxxkite-sandbox-minimal`, and `boxxkite-sidecar` are published for
+**linux/amd64 only**. The full sandbox is limited by its pinned Chrome-for-
+Testing release; the minimal sandbox and sidecar are blocked by the pinned
+Wolfi arm64 glibc/Python mismatch. Only `boxxkite-control-plane` is currently
+published for both amd64 and arm64.
+The source of truth for these platform claims is
+[`deploy/image-platforms.json`](deploy/image-platforms.json), which the image
+workflow and static tests validate.
 What a successful
 `cosign verify` does and does not protect against:
 
