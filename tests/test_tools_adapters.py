@@ -121,6 +121,7 @@ def test_create_sandbox_tool_specs_returns_the_full_agnostic_tool_set():
         "ls",
         "glob",
         "grep",
+        "semantic_search",
         "start_process",
         "get_process_output",
         "send_process_input",
@@ -129,7 +130,7 @@ def test_create_sandbox_tool_specs_returns_the_full_agnostic_tool_set():
         "process_tree",
         "watch_directory",
     }
-    assert len(specs) == 16
+    assert len(specs) == 17
     assert all(isinstance(s, ToolSpec) for s in specs)
     assert all(callable(s.handler) for s in specs)
 

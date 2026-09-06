@@ -336,6 +336,7 @@ async def configure(req: main.ConfigureRequest):
         # Clear sync state.
         main.pending_sync_files.clear()
         main.synced_file_signatures.clear()
+        main.reset_semantic_search_index()
 
         # Update session state
         # Use new unified storage prefix: work-items/{org_id}/{work_item_id}

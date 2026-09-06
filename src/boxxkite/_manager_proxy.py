@@ -742,6 +742,35 @@ class SidecarProxyMixin:
             request_fn=_request,
         )
 
+    async def semantic_search(
+        self,
+        session_id: str,
+        query: str,
+        path: str = "/",
+        max_results: int = 10,
+    ) -> dict:
+        """Search sandbox files with bounded, deterministic local ranking.
+
+        The sidecar uses a lexical fallback rather than downloading or calling
+        an embedding model, so this remains compatible with default-deny
+        egress and is reproducible in tests.
+        """
+        async def _request() -> dict:
+            pod_name, pod_ip = await self._resolve_session(session_id)
+            http_client = self._get_http_client(pod_name, pod_ip)
+            response = await http_client.post(
+                "/semantic-search",
+                json={"query": query, "path": path, "max_results": max_results},
+            )
+            response.raise_for_status()
+            return response.json()
+
+        return await self._call_sidecar_with_recovery(
+            session_id=session_id,
+            operation="semantic_search",
+            request_fn=_request,
+        )
+
     async def watch_directory(
         self,
         session_id: str,

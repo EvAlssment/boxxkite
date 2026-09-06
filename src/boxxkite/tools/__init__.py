@@ -14,6 +14,7 @@ session management tools with a cleaner interface:
 - ls: List direct children of a directory
 - glob: Find files by name pattern
 - grep: Search file contents by regex
+- semantic_search: Rank file:line spans with a sandbox-local lexical index
 - start_process / get_process_output / send_process_input / stop_process /
   list_processes / process_tree: track long-running processes and group them
   by execution context
@@ -107,6 +108,8 @@ from .search_tools import (
     create_glob_tool_spec,
     create_grep_tool,
     create_grep_tool_spec,
+    create_semantic_search_tool,
+    create_semantic_search_tool_spec,
 )
 from .budget_status_tool import create_budget_status_tool_spec
 from .memory_tools import create_memory_tool_specs
@@ -172,6 +175,8 @@ __all__ = [
     "create_glob_tool_spec",
     "create_grep_tool",
     "create_grep_tool_spec",
+    "create_semantic_search_tool",
+    "create_semantic_search_tool_spec",
     "create_budget_status_tool_spec",
     "create_memory_tool_specs",
     "create_scratch_memory_tool_spec",
