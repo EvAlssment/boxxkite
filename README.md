@@ -117,6 +117,26 @@ boxxkite files ls /
 That confirms the sandbox, the sidecar, and the CLI are talking to each other
 correctly.
 
+### Start a project with `boxxkite new`
+
+To create a small Python project wired to the hosted control-plane client:
+
+```bash
+boxxkite new my-agent
+cd my-agent
+cp .env.example .env
+# Edit .env with your control-plane URL and API key.
+set -a && source .env && set +a
+python app.py
+```
+
+The generated project creates one sandbox, runs `print(1 + 1)`, and cleans up
+the sandbox when it exits. The command never writes a live `.env` file and
+refuses to overwrite an existing destination. Its initial template is
+available as `--language python --framework plain --use-case code-interpreter`;
+the other integration choices can be added without changing the generated
+project contract.
+
 ```python
 from uuid import uuid4
 from boxxkite import SandboxManager
