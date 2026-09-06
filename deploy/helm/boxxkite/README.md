@@ -52,6 +52,49 @@ Review `values.yaml` first -- in particular:
   -- fill in your real package-registry/container-registry CIDRs before
   enabling it for real.
 
+## Additional cluster registration contract
+
+The optional `fleet.clusters[]` values section records additional cluster
+metadata and an out-of-band kubeconfig Secret reference:
+
+```yaml
+fleet:
+  primaryClusterName: default
+  clusters:
+    - name: eu-west
+      region: eu-west-1
+      kubeconfigSecretRef:
+        name: boxxkite-cluster-eu-west
+        key: kubeconfig
+      warmPool:
+        maxSize: 8
+        targets:
+          small: 5
+          medium: 0
+          large: 0
+```
+
+The chart renders these entries as the non-secret `boxxkite-fleet-clusters`
+ConfigMap, with a `boxxkite.dev/v1alpha1` `FleetRegistration` document in
+`data.clusters.yaml`. It renders only the Secret name and key; kubeconfig
+contents are never accepted in values, copied into the ConfigMap, or created
+by this chart. Create the referenced Secret out-of-band in the namespace where
+the control-plane process runs, preferably through external-secrets,
+sealed-secrets, or a cloud secret manager. The `key` must contain the
+kubeconfig bytes expected by a future provider; this chart does not inspect or
+mount them.
+
+This is deliberately a registration handoff, not live cross-cluster routing.
+The current runtime has one Kubernetes client/provider per process and does
+not consume this ConfigMap. The chart does not create RBAC, ServiceAccounts,
+or NetworkPolicies in any additional cluster, and it does not broaden the
+current cluster's RBAC. Install this chart separately in each target cluster
+if that cluster should run boxxkite workloads, and review each cluster's
+RBAC and NetworkPolicy independently. Empty `fleet.clusters` renders no
+registration ConfigMap. Duplicate names, a name matching
+`primaryClusterName`, missing Secret reference fields, and warm-pool target
+overflow fail Helm rendering.
+
 Before moving between chart releases, inspect the machine-readable
 compatibility matrix:
 
