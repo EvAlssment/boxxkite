@@ -59,6 +59,13 @@ from ..deps import (
     _reject_if_scim_deactivated,
 )
 from ..errors import ApiError, error_metadata
+from ..image_admission import (
+    ImageAdmissionConfigurationError,
+    ImageAdmissionUnavailableError,
+    ImageReferenceError,
+    ImageSignatureRejectedError,
+    verify_custom_image,
+)
 from ..pty_recording import PtyRecordingBuffer, finalize_takeover_recording
 from ..models_orm import Account, ApiKey, SandboxSession
 from ..rate_limit import enforce_rate_limit
@@ -424,9 +431,36 @@ async def _resolve_image_ref_or_404(*, image_id: str | None, account: Account, d
     if image_id is None:
         return None
     row = await SandboxImageRepository(db).get_for_account(image_id=image_id, account_id=account.id)
-    if row is None or row.deleted_at is not None or row.status != "completed" or not row.registry_ref:
+    if (
+        row is None
+        or row.deleted_at is not None
+        or row.status != "completed"
+        or not row.registry_ref
+        or not row.digest
+    ):
         raise ApiError(404, "not_found", "Sandbox image not found or not ready")
-    return row.registry_ref
+    try:
+        return await verify_custom_image(row.registry_ref, expected_digest=row.digest)
+    except ImageSignatureRejectedError as exc:
+        raise ApiError(
+            403,
+            "image_signature_invalid",
+            "Custom sandbox image signature verification failed.",
+        ) from exc
+    except (ImageAdmissionConfigurationError, ImageAdmissionUnavailableError) as exc:
+        logger.error("Custom image admission verification is unavailable for image %s", image_id)
+        raise ApiError(
+            503,
+            "image_admission_unavailable",
+            "Custom sandbox image verification is unavailable.",
+        ) from exc
+    except ImageReferenceError as exc:
+        logger.error("Stored custom image %s failed immutable reference validation", image_id)
+        raise ApiError(
+            500,
+            "image_admission_failed",
+            "Custom sandbox image failed its integrity checks.",
+        ) from exc
 
 
 async def _resolve_volume_mounts_or_404(

@@ -38,6 +38,15 @@ ERROR_TAXONOMY: dict[str, ErrorMetadata] = {
     "monthly_usage_limit_reached": ErrorMetadata(False, "Wait for the usage window to reset or change the deployment policy."),
     "image_build_limit_reached": ErrorMetadata(False, "Reduce image build frequency or change the deployment policy."),
     "global_build_capacity_reached": ErrorMetadata(True, "Retry later when image-builder capacity is available."),
+    "image_signature_invalid": ErrorMetadata(
+        False, "Use a custom image with a signature matching the deployment's trust policy."
+    ),
+    "image_admission_unavailable": ErrorMetadata(
+        True, "Restore the deployment's image-verification tooling and retry."
+    ),
+    "image_admission_failed": ErrorMetadata(
+        False, "Use a completed custom image with a valid immutable reference."
+    ),
     "volume_limit_reached": ErrorMetadata(False, "Delete an unused volume or change the deployment policy."),
     "webhook_limit_reached": ErrorMetadata(False, "Delete an unused webhook or change the deployment policy."),
     "snapshot_limit_reached": ErrorMetadata(False, "Delete an unused snapshot or change the deployment policy."),
