@@ -25,6 +25,7 @@ from . import (
     cmd_snapshots,
     cmd_session,
     cmd_signup,
+    cmd_upgrade,
     cmd_up,
     cmd_volumes,
     cmd_webhooks,
@@ -135,6 +136,13 @@ snapshots_app.command("get")(cli_error_boundary(cmd_snapshots.get))
 snapshots_app.command("restore")(cli_error_boundary(cmd_snapshots.restore))
 snapshots_app.command("rm")(cli_error_boundary(cmd_snapshots.rm))
 app.add_typer(snapshots_app, name="snapshots")
+
+upgrade_app = typer.Typer(
+    help="Inspect the Helm chart migration path before an upgrade.",
+    no_args_is_help=True,
+)
+upgrade_app.command("check")(cli_error_boundary(cmd_upgrade.check))
+app.add_typer(upgrade_app, name="upgrade")
 
 images_app = typer.Typer(
     help=(
