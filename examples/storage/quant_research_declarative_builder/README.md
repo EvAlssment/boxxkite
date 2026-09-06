@@ -2,9 +2,9 @@
 
 Builds on [GitHub issue #135](https://github.com/EvAlssment/boxxkite/issues/135):
 boxxkite's default sandbox image already ships `pandas`/`numpy`/`polars`/
-`scikit-learn` (see the blog post this follows on from,
-[`site/app/blog/self-hosted-quant-research-agent-for-banks/page.tsx`](../../../site/app/blog/self-hosted-quant-research-agent-for-banks/page.tsx)),
-but a real quant research desk leans on more specialized libraries the
+`scikit-learn` (see the related write-up on the
+[developer documentation site](https://boxxkite.com/developers/)), but a
+real quant research desk leans on more specialized libraries the
 default image doesn't carry:
 
 - **`vectorbt`** — vectorized, NumPy/Numba-accelerated backtesting; fast
@@ -21,9 +21,10 @@ default image doesn't carry:
 
 None of these need a new base image or a hand-maintained Dockerfile: they're
 exact-version-pinned `python_packages` layered on top of `"boxxkite-default"`
-through the existing declarative builder (`POST /v1/images`, see
-[`docs/DECLARATIVE-BUILDER-DESIGN.md`](../../../docs/DECLARATIVE-BUILDER-DESIGN.md)),
-the same mechanism [`../claude_code_declarative_builder`](../claude_code_declarative_builder)
+through the existing declarative builder (`POST /v1/images`, see the
+[Helm deployment notes](../../../deploy/helm/boxxkite/README.md)), the same
+mechanism
+[`claude_code_declarative_builder`](../../browser-desktop/claude_code_declarative_builder)
 uses for a Claude-Code-capable image.
 
 ## Why both vectorbt and backtrader
@@ -115,10 +116,11 @@ simplest to demonstrate over the *hosted control-plane's* HTTP API, which
 only exposes one-shot `/exec`, not the kept-alive
 `python_interpreter`/`node_interpreter` tools (those are wired at the
 agent-framework layer via `boxxkite.tools.create_sandbox_tool_specs`, see
-[`../stateful_interpreters`](../stateful_interpreters)). The real payoff
+[`stateful_interpreters`](../../basic/stateful_interpreters)). The real payoff
 issue #135 calls out — "load once, tweak, rerun" iteration without
 re-loading a dataset every call — is `python_interpreter`'s statefulness,
-demonstrated on its own in `../stateful_interpreters/interpreters_demo.py`.
+demonstrated on its own in
+[`stateful_interpreters/interpreters_demo.py`](../../basic/stateful_interpreters/interpreters_demo.py).
 This image build is what makes that loop useful for *this* vertical
 specifically: once a researcher's agent has vectorbt/backtrader/TA-Lib/
 QuantLib/quantstats available in a kept-alive interpreter, they can load a
@@ -201,7 +203,8 @@ not musl, so the `manylinux` wheel variant is what actually resolves.
   ```
 
 **Not verified — could not be exercised in this environment, for the same
-disclosed reason [`../claude_code_declarative_builder`](../claude_code_declarative_builder)'s
+disclosed reason
+[`claude_code_declarative_builder`](../../browser-desktop/claude_code_declarative_builder)'s
 README already documents:**
 
 - The actual container **build** (Kaniko running `pip install` against

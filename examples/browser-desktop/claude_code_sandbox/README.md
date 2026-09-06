@@ -2,10 +2,8 @@
 
 Closes the gap `docs/E2B-COMPARISON.md` §4.2 named directly: E2B ships a
 dedicated `claude` sandbox template and docs page; this is boxxkite's
-equivalent quickstart. Full write-up, including why this needs a custom
-image and the security caveat on the API key, lives in
-[`docs/CLAUDE-CODE-SANDBOX-QUICKSTART.md`](../../../docs/CLAUDE-CODE-SANDBOX-QUICKSTART.md)
-— read that first.
+equivalent quickstart. This README covers why the custom image is needed;
+read the [security policy](../../../SECURITY.md) before supplying an API key.
 
 ## What it does
 
