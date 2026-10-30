@@ -9,9 +9,11 @@
 
 ## Summary
 
-The four SDKs classify API failures against one machine-readable taxonomy and
-shared error envelope. The specification and prose documentation are kept
-together, and a parity test detects drift between SDK implementations.
+The four SDKs expose classifications based on one machine-readable taxonomy
+and shared error envelope. The specification and prose documentation are
+kept together. A parity test checks Python behavior and sets a static
+coverage floor for the other SDKs; it does not establish behavioral parity
+across all four implementations.
 
 ## Motivation
 
@@ -29,9 +31,19 @@ as its prose counterpart. The shared envelope includes `code`, `message`,
 defines named classes including quota, egress, capability, read-only
 filesystem, readiness, crash, and service-unavailable failures.
 
-`tests/test_sdk_error_parity.py` checks the Python, JavaScript, Go, and Rust
-SDK classifications against the specification. The documentation also keeps
-known contract gaps explicit rather than presenting them as solved.
+[`tests/test_sdk_error_parity.py`](../tests/test_sdk_error_parity.py) loads
+and exercises the Python classifier against each specified code, suffix
+rule, and the unknown-code 5xx fallback. For JavaScript, Go, and Rust, it
+statically checks that their source mentions every specified code and suffix
+rule and contains a 5xx fallback. Those checks catch missing coverage but do
+not execute those classifiers or prove their behavior matches the
+specification. Existing behavioral SDK tests include
+[`sdk-python/tests/test_taxonomy_errors.py`](../sdk-python/tests/test_taxonomy_errors.py),
+[`sdk-go/errors_test.go`](../sdk-go/errors_test.go), and
+[`sdk-rust/tests/error_taxonomy_test.rs`](../sdk-rust/tests/error_taxonomy_test.rs).
+No dedicated JavaScript error-taxonomy behavioral test is linked here. The
+documentation also keeps known contract gaps explicit rather than presenting
+them as solved.
 
 ## Documented trade-offs
 
