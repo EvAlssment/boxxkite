@@ -261,6 +261,28 @@ def test_helm_template_rejects_fleet_capacity_overflow(tmp_path: Path):
     assert "exceeds warmPool.maxSize" in result.stderr
 
 
+def test_helm_template_rejects_extreme_fleet_capacity_values(tmp_path: Path):
+    result = _run_helm_with_values(
+        tmp_path,
+        """
+        fleet:
+          primaryClusterName: primary
+          clusters:
+            - name: eu-west
+              region: eu-west-1
+              kubeconfigSecretRef: {name: boxxkite-eu-west, key: kubeconfig}
+              warmPool:
+                maxSize: 9223372036854775807
+                targets:
+                  small: 9223372036854775807
+                  medium: 9223372036854775807
+                  large: 9223372036854775807
+        """,
+    )
+    assert result.returncode != 0
+    assert "maximum:" in result.stderr
+
+
 def test_helm_template_rejects_cross_namespace_secret_reference(tmp_path: Path):
     result = _run_helm_with_values(
         tmp_path,

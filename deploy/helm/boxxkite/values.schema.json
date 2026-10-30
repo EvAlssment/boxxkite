@@ -341,6 +341,12 @@
     }
   },
   "definitions": {
+    "fleetCapacity": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000,
+      "description": "Per-cluster capacity values are capped at 10,000; this keeps the sum of three class targets bounded at 30,000 for safe Helm arithmetic and rejects unrealistic capacities."
+    },
     "resourceValues": {
       "type": "object",
       "additionalProperties": false,
@@ -460,8 +466,7 @@
       ],
       "properties": {
         "maxSize": {
-          "type": "integer",
-          "minimum": 0
+          "$ref": "#/definitions/fleetCapacity"
         },
         "targets": {
           "type": "object",
@@ -473,16 +478,13 @@
           ],
           "properties": {
             "small": {
-              "type": "integer",
-              "minimum": 0
+              "$ref": "#/definitions/fleetCapacity"
             },
             "medium": {
-              "type": "integer",
-              "minimum": 0
+              "$ref": "#/definitions/fleetCapacity"
             },
             "large": {
-              "type": "integer",
-              "minimum": 0
+              "$ref": "#/definitions/fleetCapacity"
             }
           }
         }

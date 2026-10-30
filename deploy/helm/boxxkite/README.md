@@ -93,7 +93,9 @@ if that cluster should run boxxkite workloads, and review each cluster's
 RBAC and NetworkPolicy independently. Empty `fleet.clusters` renders no
 registration ConfigMap. Duplicate names, a name matching
 `primaryClusterName`, missing Secret reference fields, and warm-pool target
-overflow fail Helm rendering.
+overflow fail Helm rendering. `maxSize` and each class target must be between
+0 and 10,000; this practical per-cluster cap keeps the template's three-target
+sum at or below 30,000, safely bounded for Helm integer arithmetic.
 
 Before moving between chart releases, inspect the machine-readable
 compatibility matrix:
