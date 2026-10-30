@@ -401,6 +401,31 @@ async def test_create_sandbox_with_foreign_image_id_404s(client: httpx.AsyncClie
     assert resp.status_code == 404
 
 
+async def test_foreign_image_is_rejected_before_signature_admission(
+    client: httpx.AsyncClient, monkeypatch
+):
+    """Tenant scoping happens before any signature verifier sees a ref."""
+    import control_plane.routers.sandboxes as sandboxes_router
+
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_ADMISSION_VERIFY_SIGNATURES", True)
+
+    async def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("foreign image must not reach signature admission")
+
+    monkeypatch.setattr(sandboxes_router, "verify_custom_image", fail_if_called)
+    key_a = await signup_and_get_api_key(client, "images-sandbox-foreign-gate-a@example.com")
+    key_b = await signup_and_get_api_key(client, "images-sandbox-foreign-gate-b@example.com")
+    accepted = await _build_image(client, key_a)
+    await _wait_for_status(client, key_a, accepted["id"])
+
+    resp = await client.post(
+        "/v1/sandboxes",
+        json={"image_id": accepted["id"]},
+        headers={"Authorization": f"Bearer {key_b}"},
+    )
+    assert resp.status_code == 404
+
+
 async def test_create_sandbox_without_image_id_behaves_exactly_as_before(
     client: httpx.AsyncClient, fake_manager: FakeSandboxManager
 ):

@@ -730,6 +730,20 @@ class Settings(BaseSettings):
     # background dispatch task forever.
     BOXXKITE_IMAGE_SCAN_TIMEOUT_SECONDS: float = 300.0
 
+    # Optional admission-time verification for completed custom images. This
+    # is deliberately separate from the builder's vulnerability scan: the
+    # builder can produce an immutable digest, but only this gate checks that
+    # the digest has an operator-approved cosign signature before scheduling.
+    # Disabled by default to preserve existing deployments. When enabled,
+    # both trust-policy fields are required and every cosign failure rejects
+    # the sandbox create; Boxxkite neither provisions signing keys nor passes
+    # registry credentials to cosign.
+    BOXXKITE_IMAGE_ADMISSION_VERIFY_SIGNATURES: bool = False
+    BOXXKITE_IMAGE_ADMISSION_SIGNATURE_IDENTITY_REGEXP: str = ""
+    BOXXKITE_IMAGE_ADMISSION_SIGNATURE_OIDC_ISSUER: str = ""
+    BOXXKITE_IMAGE_ADMISSION_COSIGN_BINARY: str = "cosign"
+    BOXXKITE_IMAGE_ADMISSION_TIMEOUT_SECONDS: float = 30.0
+
     # Digest-pinned image each pre-approved `base` enum value (schemas.py's
     # SandboxImageBuildRequest.base) resolves to -- the FROM line the
     # declarative builder layers python_packages/apt_packages on top of
