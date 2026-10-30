@@ -44,6 +44,9 @@ ERROR_TAXONOMY: dict[str, ErrorMetadata] = {
     "image_admission_unavailable": ErrorMetadata(
         True, "Restore the deployment's image-verification tooling and retry."
     ),
+    "image_admission_configuration_error": ErrorMetadata(
+        False, "Configure the image-signing identity regexp and OIDC issuer before retrying."
+    ),
     "image_admission_failed": ErrorMetadata(
         False, "Use a completed custom image with a valid immutable reference."
     ),

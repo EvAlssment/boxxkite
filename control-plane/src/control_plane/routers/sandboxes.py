@@ -447,7 +447,15 @@ async def _resolve_image_ref_or_404(*, image_id: str | None, account: Account, d
             "image_signature_invalid",
             "Custom sandbox image signature verification failed.",
         ) from exc
-    except (ImageAdmissionConfigurationError, ImageAdmissionUnavailableError) as exc:
+    except ImageAdmissionConfigurationError as exc:
+        logger.error("Custom image admission verification has an incomplete trust policy")
+        raise ApiError(
+            500,
+            "image_admission_configuration_error",
+            "Custom sandbox image verification is misconfigured by the operator.",
+            retryable=False,
+        ) from exc
+    except ImageAdmissionUnavailableError as exc:
         logger.error("Custom image admission verification is unavailable for image %s", image_id)
         raise ApiError(
             503,

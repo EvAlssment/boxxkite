@@ -143,10 +143,13 @@ custom images can additionally set
 `BOXXKITE_IMAGE_ADMISSION_VERIFY_SIGNATURES=true`, an explicit certificate
 identity regexp, and an OIDC issuer. Before a completed custom image is used,
 the control-plane invokes the operator-installed `cosign` binary against that
-exact digest. A missing binary, incomplete trust policy, missing signature,
-invalid signature, or timeout fails the sandbox request closed. The default is
-off for compatibility, and this feature does not provision signing keys,
-registry credentials, or additional pod egress.
+exact digest. A missing binary, missing signature, invalid signature, or
+timeout fails the sandbox request closed. An incomplete trust policy is
+reported separately as the non-retryable
+`image_admission_configuration_error`; a missing cosign binary remains the
+retryable `image_admission_unavailable` dependency error. The default is off
+for compatibility, and this feature does not provision signing keys, registry
+credentials, or additional pod egress.
 
 This is a control-plane admission check, not a cluster-wide Kubernetes
 admission policy. A deployment that needs enforcement for every workload or

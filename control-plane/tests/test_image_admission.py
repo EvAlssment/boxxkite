@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
 
 from control_plane.config import settings
+from control_plane.errors import ApiError, error_metadata
 from control_plane.image_admission import (
     ImageAdmissionConfigurationError,
     ImageAdmissionUnavailableError,
@@ -93,16 +95,162 @@ async def test_missing_or_invalid_signature_fails_closed(monkeypatch, returncode
 
 
 @pytest.mark.asyncio
-async def test_enabled_gate_requires_cosign_and_trust_policy(monkeypatch):
+@pytest.mark.parametrize(
+    "setting,value",
+    [
+        ("BOXXKITE_IMAGE_ADMISSION_SIGNATURE_IDENTITY_REGEXP", ""),
+        ("BOXXKITE_IMAGE_ADMISSION_SIGNATURE_OIDC_ISSUER", "  "),
+    ],
+)
+async def test_enabled_gate_requires_complete_trust_policy(monkeypatch, setting, value):
     _settings(monkeypatch, enabled=True)
-    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_ADMISSION_SIGNATURE_IDENTITY_REGEXP", "")
+    monkeypatch.setattr(settings, setting, value)
     with pytest.raises(ImageAdmissionConfigurationError):
         await verify_custom_image(_ref())
 
-    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_ADMISSION_SIGNATURE_IDENTITY_REGEXP", "^workflow$")
+
+@pytest.mark.asyncio
+async def test_missing_cosign_remains_unavailable(monkeypatch):
+    _settings(monkeypatch, enabled=True)
     monkeypatch.setattr("control_plane.image_admission.shutil.which", lambda _name: None)
     with pytest.raises(ImageAdmissionUnavailableError):
         await verify_custom_image(_ref())
+
+
+@pytest.mark.asyncio
+async def test_cancellation_kills_and_reaps_cosign(monkeypatch):
+    _settings(monkeypatch, enabled=True)
+    monkeypatch.setattr("control_plane.image_admission.shutil.which", lambda _name: "/usr/local/bin/cosign")
+    started = asyncio.Event()
+    killed = False
+    reaped = False
+
+    class Process:
+        returncode = None
+
+        async def communicate(self):
+            started.set()
+            await asyncio.Event().wait()
+
+        def kill(self):
+            nonlocal killed
+            killed = True
+            self.returncode = -9
+
+        async def wait(self):
+            nonlocal reaped
+            reaped = True
+            return self.returncode
+
+    process = Process()
+
+    async def fake_exec(*_args, **_kwargs):
+        return process
+
+    monkeypatch.setattr("control_plane.image_admission.asyncio.create_subprocess_exec", fake_exec)
+    task = asyncio.create_task(verify_custom_image(_ref()))
+    await started.wait()
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert killed
+    assert reaped
+
+
+@pytest.mark.asyncio
+async def test_timeout_kills_and_reaps_cosign(monkeypatch):
+    _settings(monkeypatch, enabled=True)
+    monkeypatch.setattr(settings, "BOXXKITE_IMAGE_ADMISSION_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr("control_plane.image_admission.shutil.which", lambda _name: "/usr/local/bin/cosign")
+    killed = False
+    reaped = False
+
+    class Process:
+        returncode = None
+
+        async def communicate(self):
+            await asyncio.Event().wait()
+
+        def kill(self):
+            nonlocal killed
+            killed = True
+            self.returncode = -9
+
+        async def wait(self):
+            nonlocal reaped
+            reaped = True
+            return self.returncode
+
+    process = Process()
+
+    async def fake_exec(*_args, **_kwargs):
+        return process
+
+    monkeypatch.setattr("control_plane.image_admission.asyncio.create_subprocess_exec", fake_exec)
+    with pytest.raises(ImageAdmissionUnavailableError, match="timed out"):
+        await verify_custom_image(_ref())
+    assert killed
+    assert reaped
+
+
+@pytest.mark.asyncio
+async def test_communicate_error_is_preserved_after_child_cleanup(monkeypatch):
+    _settings(monkeypatch, enabled=True)
+    monkeypatch.setattr("control_plane.image_admission.shutil.which", lambda _name: "/usr/local/bin/cosign")
+    process = SimpleNamespace(returncode=None)
+
+    def kill():
+        raise OSError("kill failed")
+
+    async def communicate():
+        raise RuntimeError("communicate failed")
+
+    async def wait():
+        raise OSError("wait failed")
+
+    process.communicate = communicate
+    process.kill = kill
+    process.wait = wait
+
+    async def fake_exec(*_args, **_kwargs):
+        return process
+
+    monkeypatch.setattr("control_plane.image_admission.asyncio.create_subprocess_exec", fake_exec)
+    with pytest.raises(RuntimeError, match="communicate failed"):
+        await verify_custom_image(_ref())
+
+
+@pytest.mark.asyncio
+async def test_configuration_error_maps_to_nonretryable_api_error(monkeypatch):
+    from control_plane.routers import sandboxes
+
+    class ImageRepository:
+        def __init__(self, _db):
+            pass
+
+        async def get_for_account(self, **_kwargs):
+            return SimpleNamespace(
+                deleted_at=None,
+                status="completed",
+                registry_ref=_ref(),
+                digest="sha256:" + "a" * 64,
+            )
+
+    async def fail_configuration(*_args, **_kwargs):
+        raise ImageAdmissionConfigurationError("incomplete trust policy")
+
+    monkeypatch.setattr(sandboxes, "SandboxImageRepository", ImageRepository)
+    monkeypatch.setattr(sandboxes, "verify_custom_image", fail_configuration)
+    with pytest.raises(ApiError) as captured:
+        await sandboxes._resolve_image_ref_or_404(
+            image_id="image-id", account=SimpleNamespace(id="account-id"), db=object()
+        )
+
+    assert captured.value.status_code == 500
+    assert captured.value.code == "image_admission_configuration_error"
+    assert captured.value.retryable is False
+    assert error_metadata(captured.value.code).retryable is False
 
 
 @pytest.mark.asyncio

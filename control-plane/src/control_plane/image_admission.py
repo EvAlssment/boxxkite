@@ -100,12 +100,33 @@ async def verify_custom_image(
     except OSError as exc:
         raise ImageAdmissionUnavailableError("cosign could not be executed") from exc
 
+    original_error: BaseException | None = None
     try:
-        await asyncio.wait_for(process.communicate(), timeout=settings_obj.BOXXKITE_IMAGE_ADMISSION_TIMEOUT_SECONDS)
-    except asyncio.TimeoutError as exc:
-        process.kill()
-        await process.wait()
-        raise ImageAdmissionUnavailableError("cosign verification timed out") from exc
+        try:
+            await asyncio.wait_for(
+                process.communicate(), timeout=settings_obj.BOXXKITE_IMAGE_ADMISSION_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError as exc:
+            raise ImageAdmissionUnavailableError("cosign verification timed out") from exc
+    except BaseException as exc:
+        original_error = exc
+        raise
+    finally:
+        if process.returncode is None:
+            cleanup_error: BaseException | None = None
+            try:
+                process.kill()
+            except ProcessLookupError:
+                pass
+            except BaseException as exc:
+                cleanup_error = exc
+            try:
+                await process.wait()
+            except BaseException as exc:
+                if cleanup_error is None:
+                    cleanup_error = exc
+            if cleanup_error is not None and original_error is None:
+                raise cleanup_error
 
     if process.returncode != 0:
         raise ImageSignatureRejectedError("cosign did not verify the image signature")
