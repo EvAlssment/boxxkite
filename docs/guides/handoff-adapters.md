@@ -8,6 +8,9 @@ The detailed adapter contract, credential-handling rules, security incident
 write-up, and current adapter table are in the [original handoff reference](../handoff-adapters.md).
 The implementation lives under [`src/boxxkite/handoff/`](../../src/boxxkite/handoff/).
 
+After a hosted handoff, install the [sandbox troubleshooting skill](troubleshoot-sandbox.md)
+if the coding agent needs to investigate the session's runtime state.
+
 In short, an adapter locates the local session files and validated resume
 identifier; the shared orchestrator creates a sandbox, uploads the required
 files, and opens the existing takeover channel. Credentials are uploaded via

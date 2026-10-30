@@ -53,6 +53,10 @@ infrastructure you control.
   multi-tenant API in front of the sandbox instead of embedding it directly
 - **CLI, MCP server, Helm chart, and a one-click Render deploy** for the
   control-plane — see [Self-hosting](#self-hosting)
+- **Coding-agent handoff and diagnostics skills** — move Claude Code, Codex,
+  opencode, or Cursor sessions with [`boxxkite handoff`](docs/guides/handoff-adapters.md),
+  then install the [`troubleshoot-sandbox` skill](docs/guides/troubleshoot-sandbox.md)
+  for read-only hosted-session diagnosis
 - **Nothing held back.** Every piece here — runtime, control-plane, all four
   SDKs, the MCP server — is Apache-2.0-licensed and self-hostable; there's no
   separate closed hosted-only tier
