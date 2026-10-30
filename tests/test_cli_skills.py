@@ -22,6 +22,9 @@ def test_packaged_skill_assets_match_published_source_files() -> None:
     assert package_root.joinpath("troubleshoot-sandbox.mdc").read_text(encoding="utf-8") == (
         REPO_ROOT / ".cursor/rules/troubleshoot-sandbox.mdc"
     ).read_text(encoding="utf-8")
+    assert "not structured diagnostics states" in package_root.joinpath("SKILL.md").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_skills_install_writes_project_local_claude_skill(tmp_path, monkeypatch) -> None:
@@ -35,6 +38,7 @@ def test_skills_install_writes_project_local_claude_skill(tmp_path, monkeypatch)
     assert content.startswith("---\nname: troubleshoot-sandbox")
     assert "Do not ask the user to paste an API" in content
     assert "/v1/sandboxes/<SESSION_ID>/diagnostics/summary" in content
+    assert "pinned certificate" in content
 
 
 def test_skills_install_writes_project_local_cursor_rule(tmp_path, monkeypatch) -> None:
@@ -48,6 +52,7 @@ def test_skills_install_writes_project_local_cursor_rule(tmp_path, monkeypatch) 
     assert content.startswith("---\ndescription:")
     assert "alwaysApply: false" in content
     assert "/v1/sandboxes/<SESSION_ID>/diagnostics/events" in content
+    assert "sidecar authentication rejection" in content
 
 
 def test_skills_install_refuses_to_overwrite_without_force(tmp_path, monkeypatch) -> None:
@@ -88,6 +93,31 @@ def test_skills_install_refuses_symlink_even_with_force(tmp_path, monkeypatch) -
     assert result.exit_code == 1
     assert "symlink" in result.output
     assert outside.read_text(encoding="utf-8") == "keep me\n"
+
+
+def test_skills_install_refuses_symlinked_parent(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (tmp_path / ".cursor").symlink_to(outside, target_is_directory=True)
+
+    result = runner.invoke(app, ["skills", "install", "cursor"])
+
+    assert result.exit_code == 1
+    assert "symlink" in result.output
+    assert not (outside / "rules").exists()
+
+
+def test_skills_install_force_refuses_existing_directory(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    destination = tmp_path / ".cursor/rules/troubleshoot-sandbox.mdc"
+    destination.mkdir(parents=True)
+
+    result = runner.invoke(app, ["skills", "install", "cursor", "--force"])
+
+    assert result.exit_code == 1
+    assert "is a directory" in result.output
+    assert destination.is_dir()
 
 
 def test_skills_install_help_lists_supported_targets() -> None:

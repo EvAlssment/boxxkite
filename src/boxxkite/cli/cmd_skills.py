@@ -37,6 +37,16 @@ def _destination(target: str, root: Path) -> Path:
     return root / _ASSETS[target][1]
 
 
+def _reject_symlinked_parents(destination: Path, root: Path) -> None:
+    relative_parts = destination.parent.relative_to(root).parts
+    for index in range(1, len(relative_parts) + 1):
+        parent = root.joinpath(*relative_parts[:index])
+        if parent.is_symlink():
+            raise CliError(
+                f"{parent} is a symlink; refusing to install outside the project."
+            )
+
+
 def install(
     target: str = typer.Argument(
         ..., help=f"Agent to configure. Choose one of: {', '.join(TARGETS)}."
@@ -53,6 +63,9 @@ def install(
             f"{destination} is a symlink; refusing to overwrite it. "
             "Remove it before installing the skill."
         )
+    _reject_symlinked_parents(destination, Path.cwd())
+    if destination.is_dir():
+        raise CliError(f"{destination} is a directory; refusing to replace it with a file.")
     if destination.exists() and not force:
         raise CliError(
             f"{destination} already exists; refusing to overwrite it. "

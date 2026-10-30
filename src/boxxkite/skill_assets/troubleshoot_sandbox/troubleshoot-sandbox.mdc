@@ -86,6 +86,11 @@ diagnostics are unavailable.
 - `waiting: pod has not been scheduled`: inspect events for the scheduler's
   concrete reason and wait or escalate according to the returned
   `retryable`/`remediation` fields.
+- If logs explicitly show TLS certificate verification/pinning failure or
+  sidecar authentication rejection, report the exact message and its container.
+  These are not structured diagnostics states: do not infer them from a generic
+  connection failure. Ask the operator to verify the selected pod's matching
+  per-pod auth token and pinned certificate; never disable TLS or copy tokens.
 - `running normally` or `completed normally`: distinguish a runtime issue from
   an application or agent issue using the logs and audit entries.
 - An `unavailable` message: report it explicitly. An empty log or event list
