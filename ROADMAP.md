@@ -5,6 +5,8 @@ point of this file is that you can tell those apart before you spend time
 building something we're already doing, or open an issue for something we've
 already decided against.
 
+Design records for major changes live in the [BEP index](beps/README.md).
+
 **Nothing here has a committed date.** boxxkite is a small, indie-run project
 (see [CONTRIBUTING.md](CONTRIBUTING.md)); "Proposed" means there's a written-up
 issue and we think it's the right direction, not that anyone has started or
@@ -121,7 +123,7 @@ a plan.
 
 | Item | Status | Tracking |
 | --- | --- | --- |
-| Enhancement-proposal (BEP) process for major changes | Proposed | [#79](https://github.com/EvAlssment/boxxkite/issues/79) |
+| Enhancement-proposal (BEP) process for major changes | In review | [#79](https://github.com/EvAlssment/boxxkite/issues/79); [BEP index](beps/README.md) |
 | `examples/` reorganized into a discoverable taxonomy | Proposed | [#101](https://github.com/EvAlssment/boxxkite/issues/101) |
 | "Try boxxkite in 60 seconds" single-command trial | Proposed | [#113](https://github.com/EvAlssment/boxxkite/issues/113) |
 | `troubleshoot-sandbox` Skill for Claude Code / Cursor | Proposed | [#89](https://github.com/EvAlssment/boxxkite/issues/89) |
