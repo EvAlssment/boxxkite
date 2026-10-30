@@ -15,6 +15,16 @@ namespace: default
 # self-rotation fails silently. See ../rbac.yaml.
 controlPlaneServiceAccountName: boxxkite-control-plane
 
+# Optional handoff contract for a future multi-cluster provider. This chart
+# records references and capacity metadata only; it never reads, mounts, or
+# renders kubeconfig contents, and it does not create resources in a remote
+# cluster. Keep the referenced Secret in the control-plane namespace and
+# manage it out-of-band (external-secrets, sealed-secrets, or a cloud secret
+# manager).
+fleet:
+  primaryClusterName: default
+  clusters: []
+
 sandboxConfig:
   s3Bucket: boxxkite-sandbox
   awsRegion: us-east-1

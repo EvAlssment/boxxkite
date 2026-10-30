@@ -23,6 +23,25 @@
       "type": "string",
       "minLength": 1
     },
+    "fleet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primaryClusterName",
+        "clusters"
+      ],
+      "properties": {
+        "primaryClusterName": {
+          "$ref": "#/definitions/clusterName"
+        },
+        "clusters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fleetCluster"
+          }
+        }
+      }
+    },
     "sandboxConfig": {
       "type": "object",
       "additionalProperties": false,
@@ -322,6 +341,12 @@
     }
   },
   "definitions": {
+    "fleetCapacity": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000,
+      "description": "Per-cluster capacity values are capped at 10,000; this keeps the sum of three class targets bounded at 30,000 for safe Helm arithmetic and rejects unrealistic capacities."
+    },
     "resourceValues": {
       "type": "object",
       "additionalProperties": false,
@@ -361,6 +386,146 @@
           ]
         }
       }
+    },
+    "fleetCluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "region",
+        "kubeconfigSecretRef",
+        "warmPool"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/clusterName"
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kubeconfigSecretRef": {
+          "$ref": "#/definitions/kubeconfigSecretRef"
+        },
+        "warmPool": {
+          "$ref": "#/definitions/warmPool"
+        },
+        "images": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sandbox": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sidecar": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "nodeSelector": {
+          "$ref": "#/definitions/stringMap"
+        },
+        "tolerations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/toleration"
+          }
+        }
+      }
+    },
+    "kubeconfigSecretRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "key"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 63,
+          "pattern": "^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$"
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 253,
+          "pattern": "^[-._a-zA-Z0-9]+$"
+        }
+      }
+    },
+    "warmPool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxSize",
+        "targets"
+      ],
+      "properties": {
+        "maxSize": {
+          "$ref": "#/definitions/fleetCapacity"
+        },
+        "targets": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "small",
+            "medium",
+            "large"
+          ],
+          "properties": {
+            "small": {
+              "$ref": "#/definitions/fleetCapacity"
+            },
+            "medium": {
+              "$ref": "#/definitions/fleetCapacity"
+            },
+            "large": {
+              "$ref": "#/definitions/fleetCapacity"
+            }
+          }
+        }
+      }
+    },
+    "toleration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "operator": {
+          "type": "string",
+          "enum": [
+            "Equal",
+            "Exists"
+          ]
+        },
+        "value": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string",
+          "enum": [
+            "NoSchedule",
+            "PreferNoSchedule",
+            "NoExecute"
+          ]
+        },
+        "tolerationSeconds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "clusterName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$"
     },
     "stringMap": {
       "type": "object",

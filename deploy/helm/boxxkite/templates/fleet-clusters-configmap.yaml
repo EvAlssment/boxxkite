@@ -1,0 +1,54 @@
+{{- if .Values.fleet.clusters }}
+{{- $seen := dict }}
+{{- range $index, $cluster := .Values.fleet.clusters }}
+{{- if hasKey $seen $cluster.name }}
+{{- fail (printf "fleet.clusters[%d].name duplicates an earlier cluster name: %s" $index $cluster.name) }}
+{{- end }}
+{{- $_ := set $seen $cluster.name true }}
+{{- if eq $cluster.name $.Values.fleet.primaryClusterName }}
+{{- fail (printf "fleet.clusters[%d].name must not equal fleet.primaryClusterName (%s)" $index $.Values.fleet.primaryClusterName) }}
+{{- end }}
+{{- $targetTotal := add $cluster.warmPool.targets.small $cluster.warmPool.targets.medium $cluster.warmPool.targets.large }}
+{{- if gt (int $targetTotal) (int $cluster.warmPool.maxSize) }}
+{{- fail (printf "fleet.clusters[%d].warmPool.targets total (%d) exceeds warmPool.maxSize (%d)" $index $targetTotal $cluster.warmPool.maxSize) }}
+{{- end }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: boxxkite-fleet-clusters
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "boxxkite.labels" . | nindent 4 }}
+data:
+  clusters.yaml: |
+    apiVersion: boxxkite.dev/v1alpha1
+    kind: FleetRegistration
+    primaryClusterName: {{ .Values.fleet.primaryClusterName | quote }}
+    clusters:
+    {{- range .Values.fleet.clusters }}
+      - name: {{ .name | quote }}
+        region: {{ .region | quote }}
+        kubeconfigSecretRef:
+          name: {{ .kubeconfigSecretRef.name | quote }}
+          key: {{ .kubeconfigSecretRef.key | quote }}
+        warmPool:
+          maxSize: {{ .warmPool.maxSize }}
+          targets:
+            small: {{ .warmPool.targets.small }}
+            medium: {{ .warmPool.targets.medium }}
+            large: {{ .warmPool.targets.large }}
+      {{- with .images }}
+        images:
+{{ toYaml . | nindent 10 }}
+      {{- end }}
+      {{- with .nodeSelector }}
+        nodeSelector:
+{{ toYaml . | nindent 10 }}
+      {{- end }}
+      {{- with .tolerations }}
+        tolerations:
+{{ toYaml . | nindent 10 }}
+      {{- end }}
+    {{- end }}
+{{- end }}
