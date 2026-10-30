@@ -22,6 +22,11 @@ ARG PYTHON_VERSION
 ARG UV_VERSION
 ARG PANDOC_VERSION
 ARG CHROME_FOR_TESTING_VERSION
+ARG TARGETARCH
+
+LABEL com.boxxkite.supported-platforms="linux/amd64"
+
+RUN test "$TARGETARCH" = amd64 || (echo "boxxkite-sandbox supports linux/amd64 only; target was $TARGETARCH" >&2 && exit 1)
 
 # libreoffice-26.2 is intentionally pinned for the current Snyk-clean Wolfi package set;
 # revisit this pin when Wolfi rolls LibreOffice to a newer fixed minor.

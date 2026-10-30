@@ -15,6 +15,12 @@
 ARG PYTHON_VERSION=3.11
 
 FROM python:${PYTHON_VERSION}-slim AS builder
+ARG TARGETARCH
+
+RUN case "$TARGETARCH" in \
+        amd64|arm64) ;; \
+        *) echo "Unsupported target architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -34,6 +40,14 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN cd control-plane && pip install --no-cache-dir -r requirements.txt
 
 FROM python:${PYTHON_VERSION}-slim
+ARG TARGETARCH
+
+LABEL com.boxxkite.supported-platforms="linux/amd64,linux/arm64"
+
+RUN case "$TARGETARCH" in \
+        amd64|arm64) ;; \
+        *) echo "Unsupported target architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
