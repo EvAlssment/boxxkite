@@ -242,6 +242,7 @@ async def file_create(req: main.FileCreateRequest):
         # Mark writeable namespaces for storage sync.
         if main._storage_bucket_for_virtual_path(virtual_path) is not None:
             main.pending_sync_files.add(virtual_path)
+        main.invalidate_semantic_search_path(full_path)
 
         return main.FileCreateResponse(
             path=virtual_path,
@@ -615,6 +616,7 @@ async def str_replace(req: main.StrReplaceRequest):
 
         if main._storage_bucket_for_virtual_path(virtual_path) is not None:
             main.pending_sync_files.add(virtual_path)
+        main.invalidate_semantic_search_path(full_path)
 
         return main.StrReplaceResponse(path=virtual_path, replaced=True, occurrences=replaced_count)
 

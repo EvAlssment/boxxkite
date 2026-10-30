@@ -58,6 +58,7 @@ from .search_tools import (
     create_ls_tool_spec,
     create_glob_tool_spec,
     create_grep_tool_spec,
+    create_semantic_search_tool_spec,
     create_watch_directory_tool_spec,
 )
 from .types import ToolSpec
@@ -105,6 +106,8 @@ def create_sandbox_tool_specs(
     - ls: List direct children of a directory
     - glob: Find files by name pattern
     - grep: Search file contents by regex
+    - semantic_search: Rank relevant file:line spans with a deterministic
+      sandbox-local lexical index (no model download or network call)
     - (opt-in, see enable_git_tools) git_clone/git_status/git_add/
       git_commit/git_push/git_pull/git_branch/git_checkout
     - start_process: Start a tracked background process (dev server, watcher, REPL)
@@ -410,7 +413,14 @@ def create_sandbox_tool_specs(
             lazy_runtime=lazy_runtime,
         ),
 
-        # 10. Start a tracked background process
+        # 10. Natural-language file search with bounded local ranking
+        create_semantic_search_tool_spec(
+            sandbox_manager=sandbox_manager,
+            session_id=effective_session_id,
+            lazy_runtime=lazy_runtime,
+        ),
+
+        # 11. Start a tracked background process
         create_start_process_tool_spec(
             sandbox_manager=sandbox_manager,
             session_id=effective_session_id,
@@ -418,42 +428,42 @@ def create_sandbox_tool_specs(
             allowed_commands=allowed_commands,
         ),
 
-        # 11. Poll a background process's output
+        # 12. Poll a background process's output
         create_get_process_output_tool_spec(
             sandbox_manager=sandbox_manager,
             session_id=effective_session_id,
             lazy_runtime=lazy_runtime,
         ),
 
-        # 12. Write to a background process's stdin
+        # 13. Write to a background process's stdin
         create_send_process_input_tool_spec(
             sandbox_manager=sandbox_manager,
             session_id=effective_session_id,
             lazy_runtime=lazy_runtime,
         ),
 
-        # 13. Stop a background process
+        # 14. Stop a background process
         create_stop_process_tool_spec(
             sandbox_manager=sandbox_manager,
             session_id=effective_session_id,
             lazy_runtime=lazy_runtime,
         ),
 
-        # 14. List tracked background processes
+        # 15. List tracked background processes
         create_list_processes_tool_spec(
             sandbox_manager=sandbox_manager,
             session_id=effective_session_id,
             lazy_runtime=lazy_runtime,
         ),
 
-        # 15. Group tracked processes by originating execution context
+        # 16. Group tracked processes by originating execution context
         create_process_tree_tool_spec(
             sandbox_manager=sandbox_manager,
             session_id=effective_session_id,
             lazy_runtime=lazy_runtime,
         ),
 
-        # 16. Long-poll for a filesystem change (read-only, docs/FILE-WATCHER-DESIGN.md)
+        # 17. Long-poll for a filesystem change (read-only, docs/FILE-WATCHER-DESIGN.md)
         create_watch_directory_tool_spec(
             sandbox_manager=sandbox_manager,
             session_id=effective_session_id,
