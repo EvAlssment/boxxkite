@@ -34,12 +34,10 @@ The isolation model is the product, so this section moves the most carefully.
 
 | Item | Status | Tracking |
 | --- | --- | --- |
-| Cluster preflight checker (`boxxkite doctor`) — verify a cluster can actually enforce NetworkPolicy/PSA/seccomp before install | In review | [#119](https://github.com/EvAlssment/boxxkite/issues/119) |
-| Content-hash pinning / cosign-verify admission gate for custom sandbox images | Proposed | [#92](https://github.com/EvAlssment/boxxkite/issues/92) |
-| Signed, attested GHCR releases (finish the cosign/SBOM pipeline) | Proposed | [#76](https://github.com/EvAlssment/boxxkite/issues/76), [#117](https://github.com/EvAlssment/boxxkite/issues/117) |
+| Content-hash pinning / cosign-verify admission gate for custom sandbox images | In review | [#92](https://github.com/EvAlssment/boxxkite/issues/92); [PR #162](https://github.com/EvAlssment/boxxkite/pull/162) |
+| Signed, attested GHCR releases (finish the cosign/SBOM pipeline) | Proposed | [#76](https://github.com/EvAlssment/boxxkite/issues/76) |
 | Snapshot immutability enforced at the storage layer, not just app-level | Proposed | [#28](https://github.com/EvAlssment/boxxkite/issues/28) |
 | Multi-arch (arm64) image builds | Proposed | [#50](https://github.com/EvAlssment/boxxkite/issues/50) |
-| Explicit multi-tenancy isolation boundary for self-hosted installs | Proposed | [#102](https://github.com/EvAlssment/boxxkite/issues/102) |
 
 ## Agent-facing tool surface
 
@@ -48,11 +46,7 @@ agent that doesn't need one doesn't pay for it in context.
 
 | Item | Status | Tracking |
 | --- | --- | --- |
-| `scratch_memory` — session-scoped bookkeeping that isn't the workspace filesystem | In review | [#74](https://github.com/EvAlssment/boxxkite/issues/74) |
-| `explain_last_failure` — last failed command, full stderr, and the files it touched, in one call | Proposed | [#77](https://github.com/EvAlssment/boxxkite/issues/77) |
-| `workspace_diff` — structured file-tree/content delta since the last checkpoint | Proposed | [#71](https://github.com/EvAlssment/boxxkite/issues/71) |
-| `process_tree` — running processes correlated to what spawned them | Proposed | [#73](https://github.com/EvAlssment/boxxkite/issues/73) |
-| `semantic_search` over an embeddings index of the sandbox filesystem | Proposed | [#72](https://github.com/EvAlssment/boxxkite/issues/72) |
+| `semantic_search` over an embeddings index of the sandbox filesystem | In review | [#72](https://github.com/EvAlssment/boxxkite/issues/72); [PR #160](https://github.com/EvAlssment/boxxkite/pull/160) |
 | Streaming output for exec and code execution instead of synchronous request/response | Proposed | [#67](https://github.com/EvAlssment/boxxkite/issues/67) |
 | Persistent, variable-preserving execution context (stateful kernel) | Proposed | [#70](https://github.com/EvAlssment/boxxkite/issues/70) |
 | That context over the real Jupyter kernel wire protocol | Proposed | [#69](https://github.com/EvAlssment/boxxkite/issues/69) |
@@ -61,20 +55,17 @@ agent that doesn't need one doesn't pay for it in context.
 ## SDKs & adapters
 
 Four SDKs today (Python/JS/Go/Rust), hand-written against the REST API with no
-codegen — which is exactly why parity enforcement is on this list.
+codegen — broader feature parity remains an ongoing concern.
 
 | Item | Status | Tracking |
 | --- | --- | --- |
-| Cross-SDK parity/consistency CI check | Proposed | [#99](https://github.com/EvAlssment/boxxkite/issues/99) |
-| Actionable error taxonomy standardized across SDKs | Proposed | [#94](https://github.com/EvAlssment/boxxkite/issues/94) |
 | Java SDK | Proposed | [#57](https://github.com/EvAlssment/boxxkite/issues/57), [#81](https://github.com/EvAlssment/boxxkite/issues/81) |
 | Kotlin SDK (coroutine wrapper over Java) | Proposed | [#58](https://github.com/EvAlssment/boxxkite/issues/58) |
 | C#/.NET SDK | Proposed | [#59](https://github.com/EvAlssment/boxxkite/issues/59), [#82](https://github.com/EvAlssment/boxxkite/issues/82) |
 | Maven Central + NuGet publishing for the above | Proposed | [#64](https://github.com/EvAlssment/boxxkite/issues/64) |
-| LangGraph / Vercel AI SDK / Google ADK adapters | Proposed | [#66](https://github.com/EvAlssment/boxxkite/issues/66), [#84](https://github.com/EvAlssment/boxxkite/issues/84) |
+| LangGraph / Vercel AI SDK / Google ADK adapters | Proposed | [#66](https://github.com/EvAlssment/boxxkite/issues/66) |
 | Snapshot create/restore exposed in the SDKs and CLI | Proposed | [#25](https://github.com/EvAlssment/boxxkite/issues/25) |
 | Dedicated code-interpreter SDK package | Proposed | [#63](https://github.com/EvAlssment/boxxkite/issues/63), [#83](https://github.com/EvAlssment/boxxkite/issues/83) |
-| `create-boxxkite-app` scaffolding command | Proposed | [#93](https://github.com/EvAlssment/boxxkite/issues/93) |
 
 ## Evals, RL & telemetry
 
@@ -99,34 +90,24 @@ a plan.
 
 | Item | Status | Tracking |
 | --- | --- | --- |
-| Production-hardened docker-compose profile | Proposed | [#115](https://github.com/EvAlssment/boxxkite/issues/115) |
-| Helm values JSON schema + CI lint/dry-run gate | Proposed | [#114](https://github.com/EvAlssment/boxxkite/issues/114) |
-| Helm upgrade compatibility matrix / breaking-change checker | Proposed | [#116](https://github.com/EvAlssment/boxxkite/issues/116) |
 | In-place upgrade/migration CLI | Proposed | [#110](https://github.com/EvAlssment/boxxkite/issues/110) |
 | Backup/restore CLI for self-hosted Postgres and volumes | Proposed | [#118](https://github.com/EvAlssment/boxxkite/issues/118) |
-| Kustomize/GitOps overlays (ArgoCD, Flux) | Proposed | [#52](https://github.com/EvAlssment/boxxkite/issues/52) |
 | Terraform module for one-command cloud provisioning | Proposed | [#103](https://github.com/EvAlssment/boxxkite/issues/103) |
 | Air-gapped bundle generator + offline registry mirror | Proposed | [#112](https://github.com/EvAlssment/boxxkite/issues/112) |
 | Self-hosted admin UI for cluster/fleet health | Proposed | [#111](https://github.com/EvAlssment/boxxkite/issues/111) |
-| Resource-sizing presets and a cost-estimation guide | Proposed | [#54](https://github.com/EvAlssment/boxxkite/issues/54) |
 
 ## Fleet & scale
 
 | Item | Status | Tracking |
 | --- | --- | --- |
-| Fleet-level declarative capacity config | Proposed | [#55](https://github.com/EvAlssment/boxxkite/issues/55) |
-| Bin-packing / pool-utilization reporting for stranded warm capacity | Proposed | [#56](https://github.com/EvAlssment/boxxkite/issues/56) |
-| Fleet-status admin/CLI view | Proposed | [#78](https://github.com/EvAlssment/boxxkite/issues/78) |
-| Helm support for registering additional clusters | Proposed | [#68](https://github.com/EvAlssment/boxxkite/issues/68) |
+| Helm support for registering additional clusters | In review | [#68](https://github.com/EvAlssment/boxxkite/issues/68); [PR #158](https://github.com/EvAlssment/boxxkite/pull/158) |
 
 ## Docs, distribution & process
 
 | Item | Status | Tracking |
 | --- | --- | --- |
-| Enhancement-proposal (BEP) process for major changes | In review | [#79](https://github.com/EvAlssment/boxxkite/issues/79); [BEP index](beps/README.md) |
-| `examples/` reorganized into a discoverable taxonomy | Proposed | [#101](https://github.com/EvAlssment/boxxkite/issues/101) |
 | "Try boxxkite in 60 seconds" single-command trial | Proposed | [#113](https://github.com/EvAlssment/boxxkite/issues/113) |
-| `troubleshoot-sandbox` Skill for Claude Code / Cursor | Proposed | [#89](https://github.com/EvAlssment/boxxkite/issues/89) |
+| `troubleshoot-sandbox` Skill for Claude Code / Cursor | In review | [#89](https://github.com/EvAlssment/boxxkite/issues/89); [PR #159](https://github.com/EvAlssment/boxxkite/pull/159) |
 | One-click deploys beyond the existing Render button (Fly.io, Railway) | Proposed | [#104](https://github.com/EvAlssment/boxxkite/issues/104), [#105](https://github.com/EvAlssment/boxxkite/issues/105) |
 | Cloud marketplace listings (AWS, GCP, Azure, DigitalOcean) | Proposed | [#106](https://github.com/EvAlssment/boxxkite/issues/106)–[#109](https://github.com/EvAlssment/boxxkite/issues/109) |
 
