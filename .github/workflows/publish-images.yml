@@ -340,9 +340,29 @@ jobs:
           EXPECTED_PLATFORMS: ${{ matrix.platforms }}
         run: |
           manifest="$(docker buildx imagetools inspect "$IMAGE")"
-          for platform in ${EXPECTED_PLATFORMS//,/ }; do
-            grep -E "Platform:[[:space:]]+$platform" <<<"$manifest" >/dev/null || {
+          published_platforms="$(
+            awk '/^[[:space:]]*Platform:[[:space:]]*/ {
+              sub(/^[^:]*:[[:space:]]*/, "")
+              gsub(/[[:space:]]/, "")
+              sub(/\/v[0-9]+$/, "")
+              # Ignore Buildx provenance attestation descriptors, not runnable platforms.
+              if ($0 != "" && $0 != "unknown/unknown") print
+            }' <<<"$manifest" | sort -u
+          )"
+          expected_platforms="$(
+            tr ',' '\n' <<<"$EXPECTED_PLATFORMS" |
+              sed -E 's/[[:space:]]//g; s#/v[0-9]+$##' | sort -u
+          )"
+
+          for platform in $expected_platforms; do
+            grep -Fx "$platform" <<<"$published_platforms" >/dev/null || {
               echo "missing $platform in $IMAGE" >&2
               exit 1
             }
           done
+
+          if [[ "$published_platforms" != "$expected_platforms" ]]; then
+            echo "published platforms for $IMAGE do not match the expected set" >&2
+            diff -u <(printf '%s\n' "$expected_platforms") <(printf '%s\n' "$published_platforms") >&2 || true
+            exit 1
+          fi

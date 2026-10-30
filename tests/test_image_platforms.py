@@ -83,6 +83,24 @@ def test_manifest_verification_matrix_matches_the_platform_contract():
     assert actual == expected
 
 
+def test_manifest_verification_rejects_unexpected_platforms():
+    workflow = _workflow()
+    job = workflow["jobs"]["verify"]
+    step = next(
+        step
+        for step in job["steps"]
+        if step.get("name") == "Verify published platform manifest"
+    )
+    script = step["run"]
+
+    assert "published_platforms" in script
+    assert "expected_platforms" in script
+    assert 'grep -Fx "$platform"' in script
+    assert '[[ "$published_platforms" != "$expected_platforms" ]]' in script
+    assert "sort -u" in script
+    assert 'sub(/\\/v[0-9]+$/, "")' in script
+
+
 def test_chart_is_architecture_neutral_and_has_no_dead_workload_defaults():
     chart = yaml.safe_load((CHART_PATH / "Chart.yaml").read_text())
     assert chart["annotations"]["boxxkite.dev/supported-platforms"] == (
