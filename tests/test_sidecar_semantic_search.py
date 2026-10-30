@@ -119,6 +119,53 @@ def test_semantic_search_skips_symlinks_that_escape_allowed_roots(tmp_path, monk
     assert "must-not-leak" not in response.text
 
 
+def test_semantic_search_does_not_follow_symlink_swapped_in_before_open(
+    tmp_path, monkeypatch
+):
+    workspace = _setup_workspace(tmp_path, monkeypatch)
+    candidate = workspace / "secret.txt"
+    candidate.write_text("ordinary workspace content")
+    outside = tmp_path / "outside-secret.txt"
+    outside.write_text("AWS_SECRET_ACCESS_KEY=must-not-leak")
+    real_open = os.open
+    swapped = False
+
+    def swap_before_file_open(path, flags, *args, **kwargs):
+        nonlocal swapped
+        if path == candidate.name and kwargs.get("dir_fd") is not None and not swapped:
+            candidate.unlink()
+            os.symlink(outside, candidate)
+            swapped = True
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(sidecar_semantic_search.os, "open", swap_before_file_open)
+    response = _client().post(
+        "/semantic-search",
+        json={"query": "AWS secret access key"},
+        headers=_headers(),
+    )
+
+    assert swapped
+    assert response.status_code == 200
+    assert response.json()["matches"] == []
+    assert "must-not-leak" not in response.text
+
+
+def test_semantic_search_skips_fifo_without_blocking(tmp_path, monkeypatch):
+    workspace = _setup_workspace(tmp_path, monkeypatch)
+    os.mkfifo(workspace / "waiting.fifo")
+
+    response = _client().post(
+        "/semantic-search",
+        json={"query": "waiting fifo"},
+        headers=_headers(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["matches"] == []
+    assert response.json()["indexed_files"] == 0
+
+
 def test_semantic_search_enforces_index_size_bounds(tmp_path, monkeypatch):
     workspace = _setup_workspace(tmp_path, monkeypatch)
     (workspace / "a.py").write_text("retry handler\n")
@@ -136,6 +183,23 @@ def test_semantic_search_enforces_index_size_bounds(tmp_path, monkeypatch):
     assert body["indexed_files"] == 1
     assert body["truncated"] is True
     assert len(body["matches"]) == 1
+
+
+def test_semantic_search_retains_only_top_ranked_results(tmp_path, monkeypatch):
+    workspace = _setup_workspace(tmp_path, monkeypatch)
+    (workspace / "many.py").write_text("".join("needle\n" for _ in range(5000)))
+
+    response = _client().post(
+        "/semantic-search",
+        json={"query": "needle", "max_results": 1},
+        headers=_headers(),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["matches"]) == 1
+    assert body["matches"][0]["line"] == 1
+    assert body["truncated"] is True
 
 
 def test_semantic_search_index_can_be_cleared_for_session_recycling(tmp_path, monkeypatch):

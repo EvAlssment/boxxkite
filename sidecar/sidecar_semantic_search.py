@@ -10,10 +10,12 @@ and cleared when a warm pod is configured for a new session.
 from __future__ import annotations
 
 import asyncio
+import bisect
 import logging
 import math
 import os
 import re
+import stat
 import threading
 from collections import Counter
 from dataclasses import dataclass
@@ -135,13 +137,54 @@ class _SemanticSearchIndex:
         return sorted(set(candidates))[: MAX_INDEXED_FILES + 1], truncated
 
     @staticmethod
-    def _read_file(path: str, stat_result: os.stat_result) -> Optional[_IndexedFile]:
+    def _open_contained_file(path: str, roots: list[str]) -> Optional[tuple[int, os.stat_result]]:
+        if not all(hasattr(os, flag) for flag in ("O_NOFOLLOW", "O_DIRECTORY", "O_NONBLOCK")):
+            return None
+
+        resolved = os.path.realpath(path)
+        root = next((root for root in roots if main._is_under_root(resolved, root)), None)
+        if root is None:
+            return None
+        relative_path = os.path.relpath(resolved, root)
+        parts = relative_path.split(os.sep)
+        if any(part in {"", ".", ".."} for part in parts):
+            return None
+
+        directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+        directory_fds: list[int] = []
+        file_fd = -1
+        try:
+            directory_fd = os.open(root, directory_flags)
+            directory_fds.append(directory_fd)
+            for component in parts[:-1]:
+                directory_fd = os.open(component, directory_flags, dir_fd=directory_fd)
+                directory_fds.append(directory_fd)
+            file_fd = os.open(parts[-1], file_flags, dir_fd=directory_fd)
+            stat_result = os.fstat(file_fd)
+            if not stat.S_ISREG(stat_result.st_mode):
+                os.close(file_fd)
+                return None
+            return file_fd, stat_result
+        except OSError:
+            if file_fd >= 0:
+                os.close(file_fd)
+            return None
+        finally:
+            for directory_fd in directory_fds:
+                os.close(directory_fd)
+
+    @staticmethod
+    def _read_file(
+        path: str, file_fd: int, stat_result: os.stat_result
+    ) -> Optional[_IndexedFile]:
         if stat_result.st_size > MAX_FILE_BYTES:
+            os.close(file_fd)
             return None
         try:
-            with open(path, "rb") as handle:
+            with os.fdopen(file_fd, "rb") as handle:
                 raw = handle.read(MAX_FILE_BYTES + 1)
-        except (OSError, PermissionError):
+        except OSError:
             return None
         if len(raw) > MAX_FILE_BYTES or b"\x00" in raw:
             return None
@@ -167,13 +210,12 @@ class _SemanticSearchIndex:
             if len(documents) >= MAX_INDEXED_FILES:
                 truncated = True
                 break
-            if not main._is_path_contained(path, main._typed_allowed_roots()):
+            opened = self._open_contained_file(path, main._typed_allowed_roots())
+            if opened is None:
                 continue
-            try:
-                stat_result = os.stat(path)
-            except (OSError, PermissionError):
-                continue
+            file_fd, stat_result = opened
             if stat_result.st_size > MAX_FILE_BYTES:
+                os.close(file_fd)
                 truncated = True
                 continue
 
@@ -181,8 +223,9 @@ class _SemanticSearchIndex:
             previous = self._documents.get(path)
             if previous is not None and previous.signature == signature:
                 document = previous
+                os.close(file_fd)
             else:
-                document = self._read_file(path, stat_result)
+                document = self._read_file(path, file_fd, stat_result)
             if document is None:
                 continue
             if indexed_bytes + document.size_bytes > MAX_INDEXED_BYTES:
@@ -209,7 +252,7 @@ class _SemanticSearchIndex:
                 token for _, document in documents for token in document.tokens
             )
             query_set = set(query_tokens)
-            matches: list[dict] = []
+            ranked_matches: list[tuple[tuple[float, str, int], dict]] = []
             for path, document in documents:
                 filename_overlap = query_set.intersection(document.filename_tokens)
                 filename_bonus = 0.35 * len(filename_overlap)
@@ -226,19 +269,19 @@ class _SemanticSearchIndex:
                         score += idf * min(counts[token], 3)
                     if query_set.issubset(set(line_tokens)):
                         score += 0.5
-                    matches.append(
-                        {
-                            "path": path,
-                            "line": line_number,
-                            "text": line[:MAX_LINE_CHARS],
-                            "score": round(score, 6),
-                        }
-                    )
+                    match = {
+                        "path": path,
+                        "line": line_number,
+                        "text": line[:MAX_LINE_CHARS],
+                        "score": round(score, 6),
+                    }
+                    sort_key = (-match["score"], path, line_number)
+                    bisect.insort(ranked_matches, (sort_key, match))
+                    if len(ranked_matches) > max_results:
+                        ranked_matches.pop()
+                        truncated = True
 
-            matches.sort(key=lambda item: (-item["score"], item["path"], item["line"]))
-            if len(matches) > max_results:
-                truncated = True
-                matches = matches[:max_results]
+            matches = [match for _, match in ranked_matches]
             return {
                 "matches": matches,
                 "truncated": truncated,
