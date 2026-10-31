@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Boxxkite.Client", "Boxxkite.Client\Boxxkite.Client.csproj", "{9EAC4A0F-CA36-42B0-9D3F-6FBAE76CA1E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Boxxkite.Client.Tests", "Boxxkite.Client.Tests\Boxxkite.Client.Tests.csproj", "{D17C4F91-AD5A-4A39-9E39-E112A2EF1E45}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9EAC4A0F-CA36-42B0-9D3F-6FBAE76CA1E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9EAC4A0F-CA36-42B0-9D3F-6FBAE76CA1E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9EAC4A0F-CA36-42B0-9D3F-6FBAE76CA1E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9EAC4A0F-CA36-42B0-9D3F-6FBAE76CA1E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D17C4F91-AD5A-4A39-9E39-E112A2EF1E45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D17C4F91-AD5A-4A39-9E39-E112A2EF1E45}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D17C4F91-AD5A-4A39-9E39-E112A2EF1E45}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D17C4F91-AD5A-4A39-9E39-E112A2EF1E45}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
