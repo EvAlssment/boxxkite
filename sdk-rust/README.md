@@ -89,6 +89,13 @@ command allowlist (`get_allowed_commands`/`set_allowed_commands`/
 `clear_allowed_commands`), the `SandboxSession`/`with_sandbox` convenience
 helper, and CRUD for images/volumes/outbound-MCP connections/webhooks/secrets.
 
+Filesystem snapshots are available with `create_snapshot` and
+`list_snapshots` on a source session, and `get_snapshot`, `restore_snapshot`,
+and `delete_snapshot` by snapshot id. Snapshot create/restore synchronously
+copy filesystem data and use a 10-minute request timeout. A snapshot preserves
+workspace/output files, not running processes or in-memory state. See
+[`examples/snapshots.rs`](examples/snapshots.rs).
+
 Automatic retry with exponential backoff + jitter (honoring `Retry-After`) is
 **opt-in** via `Client::builder().max_retries(n)` or `.retry(RetryConfig {..})`
 — off by default. Only `429` (any method) and `5xx`/transport errors on
@@ -107,10 +114,6 @@ retried on a `5xx`, since it may have already applied server-side.
   `tokio`-first by convention; this crate follows that rather than
   maintaining a redundant blocking wrapper. If you need one, wrap calls in
   `tokio::runtime::Runtime::block_on` yourself.
-- **A route `sdk-python`/`sdk-js` themselves don't wrap yet**, even though
-  it exists on the control-plane: filesystem snapshots (`/snapshots/*`).
-  This crate mirrors its two reference SDKs' actual method sets rather
-  than inventing new surface area ahead of them.
 - **Typed error structs per failure class.** Rust classifies instead:
   `BoxxkiteError::Api` carries an `ApiErrorKind` (`QuotaExceeded`,
   `EgressDenied`, `CapabilityDenied`, `ReadonlyFilesystem`,
