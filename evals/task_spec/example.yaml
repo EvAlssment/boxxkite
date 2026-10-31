@@ -1,0 +1,10 @@
+spec_version: 1
+name: sample-task
+setup: ["python", "-m", "pip", "install", "-r", "requirements.txt"]
+entrypoint: ["python", "agent.py"]
+verifier: ["python", "verify.py"]
+timeout_seconds: 600
+resources:
+  cpu_millis: 2000
+  memory_mb: 4096
+reward_range: [0, 1]
