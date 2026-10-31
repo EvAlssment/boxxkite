@@ -60,6 +60,7 @@ async def test_start_process_posts_expected_payload(monkeypatch):
             "description": "dev server",
             "max_runtime_seconds": 3600,
             "expose_port": None,
+            "context_id": None,
         },
     )
 
@@ -92,6 +93,7 @@ async def test_start_process_forwards_expose_port(monkeypatch):
             "description": None,
             "max_runtime_seconds": 3600,
             "expose_port": 3000,
+            "context_id": None,
         },
     )
 
