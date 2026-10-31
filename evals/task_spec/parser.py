@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,14 @@ def parse_task_spec(data: Any) -> TaskSpec:
         or reward[0] > reward[1]
     ):
         raise TaskSpecError("reward_range must contain two ordered numbers")
+    try:
+        reward_range = tuple(float(value) for value in reward)
+    except (OverflowError, ValueError) as exc:
+        raise TaskSpecError("reward_range endpoints must be finite numbers") from exc
+    if not all(math.isfinite(value) for value in reward_range):
+        raise TaskSpecError("reward_range endpoints must be finite numbers")
+    if reward_range[0] > reward_range[1]:
+        raise TaskSpecError("reward_range must contain two ordered numbers")
     return TaskSpec(
         spec_version=1,
         name=root["name"].strip(),
@@ -108,7 +117,7 @@ def parse_task_spec(data: Any) -> TaskSpec:
             cpu_millis=_positive_int(resources["cpu_millis"], "resources.cpu_millis"),
             memory_mb=_positive_int(resources["memory_mb"], "resources.memory_mb"),
         ),
-        reward_range=(float(reward[0]), float(reward[1])),
+        reward_range=reward_range,
     )
 
 

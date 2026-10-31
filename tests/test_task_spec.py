@@ -38,6 +38,9 @@ def test_parse_v1_task_spec():
         {"entrypoint": ["python", ""]},
         {"resources": {"cpu_millis": 0, "memory_mb": 512}},
         {"reward_range": [1, 0]},
+        {"reward_range": [float("nan"), 1]},
+        {"reward_range": [0, float("inf")]},
+        {"reward_range": [float("-inf"), 1]},
         {"unexpected": "field"},
     ],
 )
@@ -56,4 +59,22 @@ def test_yaml_loader_rejects_duplicate_keys(tmp_path):
     path = tmp_path / "bad.yaml"
     path.write_text("spec_version: 1\nspec_version: 1\n", encoding="utf-8")
     with pytest.raises(TaskSpecError):
+        load_task_spec(path)
+
+
+@pytest.mark.parametrize("reward_range", ["[.nan, 1]", "[0, .inf]", "[-.inf, 1]"])
+def test_yaml_loader_rejects_non_finite_reward_endpoints(tmp_path, reward_range):
+    path = tmp_path / "non-finite.yaml"
+    path.write_text(
+        "spec_version: 1\n"
+        "name: sample\n"
+        "setup: [sh, setup.sh]\n"
+        "entrypoint: [python, agent.py]\n"
+        "verifier: [python, verify.py]\n"
+        "timeout_seconds: 60\n"
+        "resources: {cpu_millis: 500, memory_mb: 512}\n"
+        f"reward_range: {reward_range}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(TaskSpecError, match="finite"):
         load_task_spec(path)
