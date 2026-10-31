@@ -26,6 +26,7 @@ use crate::processes::{
     ProcessStopResult, StartProcessOptions,
 };
 use crate::sandboxes::CreateSandboxOptions;
+use crate::snapshots::{Snapshot, SnapshotOptions};
 use crate::takeover::TakeoverStream;
 
 /// A [`Client`] bound to one sandbox session id -- obtained from
@@ -221,6 +222,19 @@ impl SandboxSession {
 
     pub async fn lsp_stop(&self, lsp_id: &str) -> Result<LspStopResult, BoxxkiteError> {
         self.client.lsp_stop(&self.id, lsp_id).await
+    }
+
+    /// Create a filesystem snapshot of this session.
+    pub async fn create_snapshot(
+        &self,
+        options: SnapshotOptions,
+    ) -> Result<Snapshot, BoxxkiteError> {
+        self.client.create_snapshot(&self.id, options).await
+    }
+
+    /// List filesystem snapshots taken from this session.
+    pub async fn list_snapshots(&self) -> Result<Vec<Snapshot>, BoxxkiteError> {
+        self.client.list_snapshots(&self.id).await
     }
 }
 
