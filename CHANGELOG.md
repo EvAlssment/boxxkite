@@ -11,8 +11,6 @@ All notable changes to boxxkite are documented here. Format loosely follows
   `restore_snapshot`/`delete_snapshot` on both the sync and async clients)
   and the `boxxkite snapshots` CLI subcommand -- previously only reachable
   via the raw HTTP API.
-- The Rust SDK now exposes typed filesystem snapshot create/list/get/restore/
-  delete methods, with a 10-minute timeout for synchronous create/restore.
 
 ### Changed
 - **Project renamed from "boxkite" to "boxxkite"** (new domain: boxxkite.com).
