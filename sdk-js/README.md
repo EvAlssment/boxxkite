@@ -44,10 +44,38 @@ signed preview URLs for exposing a port, an audit-log feed
 desktop (GUI) takeover over the same raw-WebSocket pattern, secret
 management (`createSecret`/`listSecrets`/`deleteSecret`, for use via
 `createSandbox({ secretNames: [...] })`), and
+filesystem snapshots (`createSnapshot`/`listSnapshots`/`getSnapshot`/
+`restoreSnapshot`/`deleteSnapshot`), plus
 `createSandboxTools()` factories for LangChain.js (`boxxkite-client/langchain`)
 and the Vercel AI SDK (`boxxkite-client/vercel-ai`). Full reference with
 examples for all of these:
 [`docs/API.md`](https://github.com/EvAlssment/boxxkite/blob/main/docs/API.md).
+
+## Filesystem snapshots
+
+Snapshots preserve a point-in-time copy of a sandbox's workspace/output
+filesystem, not running processes or in-memory state. Create snapshots from a
+live sandbox, list them by source session ID, and use the snapshot ID to get,
+restore, or delete one. Snapshots outlive their source session. Create and
+restore allow up to ten minutes for synchronous storage copies.
+
+```typescript
+const source = await client.createSandbox({ label: "before-upgrade" });
+try {
+  const snapshot = await client.createSnapshot(source.id, { label: "checkpoint" });
+  const snapshots = await client.listSnapshots(source.id);
+  console.log(`${snapshots.length} snapshots; latest is ${snapshot.status}`);
+
+  const details = await client.getSnapshot(snapshot.id);
+  if (details.status === "completed") {
+    const restored = await client.restoreSnapshot(snapshot.id, { label: "restored-copy" });
+    await client.destroySandbox(restored.id);
+  }
+  await client.deleteSnapshot(snapshot.id);
+} finally {
+  await client.destroySandbox(source.id);
+}
+```
 
 ## Error handling
 

@@ -59,6 +59,18 @@ export interface Sandbox {
   usage?: Usage;
 }
 
+/** One filesystem snapshot returned by the snapshot endpoints. */
+export interface Snapshot {
+  id: string;
+  session_id: string | null;
+  label: string | null;
+  status: "pending" | "completed" | "failed";
+  storage_key_prefix: string;
+  size_bytes: number;
+  created_at: string;
+  deleted_at: string | null;
+}
+
 /** POST /v1/sandboxes/{id}/exec. */
 export interface ExecResult {
   exit_code: number;
