@@ -60,10 +60,20 @@ public final class Client {
     }
 
     public Sandbox createSandbox(CreateSandboxRequest request) {
-        return send("POST", "/v1/sandboxes", Objects.requireNonNull(request, "request"), Sandbox.class);
+        return send("POST", "/v1/sandboxes", requireSingle(request), Sandbox.class);
     }
     public CompletableFuture<Sandbox> createSandboxAsync(CreateSandboxRequest request) {
-        return sendAsync("POST", "/v1/sandboxes", Objects.requireNonNull(request, "request"), Sandbox.class);
+        return sendAsync("POST", "/v1/sandboxes", requireSingle(request), Sandbox.class);
+    }
+
+    /** Create multiple sandboxes. The request count must be greater than one. */
+    public Sandbox[] createSandboxBatch(CreateSandboxRequest request) {
+        return send("POST", "/v1/sandboxes", requireBatch(request), Sandbox[].class);
+    }
+
+    /** Async batch form; the request count must be greater than one. */
+    public CompletableFuture<Sandbox[]> createSandboxBatchAsync(CreateSandboxRequest request) {
+        return sendAsync("POST", "/v1/sandboxes", requireBatch(request), Sandbox[].class);
     }
 
     public Sandbox getSandbox(String sessionId) { return send("GET", sessionPath(sessionId), null, Sandbox.class); }
@@ -241,6 +251,22 @@ public final class Client {
         if (timeoutSeconds == null) return timeout;
         if (timeoutSeconds < 1) throw new IllegalArgumentException("timeoutSeconds must be at least 1");
         return Duration.ofSeconds(timeoutSeconds.longValue() + 15);
+    }
+
+    private static CreateSandboxRequest requireBatch(CreateSandboxRequest request) {
+        Objects.requireNonNull(request, "request");
+        if (request.count == null || request.count <= 1) {
+            throw new IllegalArgumentException("batch creation requires request.count greater than 1");
+        }
+        return request;
+    }
+
+    private static CreateSandboxRequest requireSingle(CreateSandboxRequest request) {
+        Objects.requireNonNull(request, "request");
+        if (request.count != null && request.count != 1) {
+            throw new IllegalArgumentException("single sandbox creation requires request.count to be omitted or 1; use createSandboxBatch for count greater than 1");
+        }
+        return request;
     }
 
     private static <T> T decode(int status, String body, Class<T> type) {

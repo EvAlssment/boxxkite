@@ -142,6 +142,34 @@ class ClientTest {
         assertEquals("HTTP 502", error.getMessage());
     }
 
+    @Test void batchCreationDecodesArrayForSyncAndAsyncCalls() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        server = server(exchange -> {
+            assertEquals("POST", exchange.getRequestMethod());
+            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            assertTrue(body.contains("\"count\":2"));
+            calls.incrementAndGet();
+            respond(exchange, 200, "[{\"id\":\"s1\",\"status\":\"active\"},{\"id\":\"s2\",\"status\":\"active\"}]");
+        });
+        Client client = client();
+        CreateSandboxRequest request = new CreateSandboxRequest("batch");
+        request.count = 2;
+        assertArrayEquals(new String[]{"s1", "s2"}, ids(client.createSandboxBatch(request)));
+        assertArrayEquals(new String[]{"s1", "s2"}, ids(client.createSandboxBatchAsync(request).join()));
+        assertEquals(2, calls.get());
+
+        request.count = 1;
+        assertThrows(IllegalArgumentException.class, () -> client.createSandboxBatch(request));
+        request.count = 2;
+        assertThrows(IllegalArgumentException.class, () -> client.createSandbox(request));
+        assertThrows(IllegalArgumentException.class, () -> client.createSandboxAsync(request));
+        assertEquals(2, calls.get());
+    }
+
+    private static String[] ids(Sandbox[] sandboxes) {
+        return java.util.Arrays.stream(sandboxes).map(sandbox -> sandbox.id).toArray(String[]::new);
+    }
+
     private Client client() { return new Client(url(), "test-key"); }
     private String url() { return "http://localhost:" + server.getAddress().getPort(); }
 

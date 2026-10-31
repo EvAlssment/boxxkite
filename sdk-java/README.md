@@ -45,12 +45,15 @@ client.execAsync(sandbox.id, "echo hello")
 
 ## Supported operations
 
-Sandbox create/get/list/destroy; synchronous command execution; file create,
+Sandbox create/batch-create/get/list/destroy; synchronous command execution; file create,
 view, replace, directory listing, glob, and grep; and background process
 start/list/output/input/stop. Each has a synchronous method and an async
 `CompletableFuture` variant. `Client` methods take an explicit session ID;
 `client.session(id)` provides a small convenience facade without creating or
-destroying the session implicitly.
+destroying the session implicitly. `createSandboxBatch` and its async variant
+require `CreateSandboxRequest.count > 1`, because the API returns a JSON array
+only for multi-sandbox requests. `createSandbox` accepts only an omitted count
+or `count == 1` and rejects other values before sending a request.
 
 The route and JSON shapes match the existing Go/Rust clients. This initial
 SDK does not claim parity for WebSockets, streaming, previews, LSP, or account-
