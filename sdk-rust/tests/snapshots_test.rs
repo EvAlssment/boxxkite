@@ -1,6 +1,6 @@
 mod common;
 
-use boxxkite_client::{SnapshotOptions, SnapshotStatus};
+use boxxkite_client::{CreateSandboxOptions, SandboxSession, SnapshotOptions, SnapshotStatus};
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -139,4 +139,92 @@ async fn delete_snapshot_sends_delete() {
         .delete_snapshot("snap_1")
         .await
         .expect("delete_snapshot should succeed");
+}
+
+#[tokio::test]
+async fn sandbox_session_create_snapshot_binds_its_session_id() {
+    let server = common::mock_server().await;
+    let client = common::client_for(&server);
+    Mock::given(method("POST"))
+        .and(path("/v1/sandboxes"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({
+            "id": "sess_1",
+            "status": "active",
+            "label": "demo",
+            "created_at": "2026-10-30T12:00:00Z",
+            "destroyed_at": null,
+            "expires_at": null,
+            "connect": null,
+            "usage": null
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/v1/sandboxes/sess_1/snapshots"))
+        .and(body_json(json!({"label": "before-change"})))
+        .respond_with(
+            ResponseTemplate::new(201).set_body_json(snapshot(json!("sess_1"), "completed")),
+        )
+        .mount(&server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path("/v1/sandboxes/sess_1"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let created = client
+        .with_sandbox(
+            CreateSandboxOptions::new(),
+            |session: SandboxSession| async move {
+                session
+                    .create_snapshot(SnapshotOptions::new().label("before-change"))
+                    .await
+            },
+        )
+        .await
+        .expect("session create_snapshot should succeed");
+    assert_eq!(created.session_id.as_deref(), Some("sess_1"));
+}
+
+#[tokio::test]
+async fn sandbox_session_list_snapshots_binds_its_session_id() {
+    let server = common::mock_server().await;
+    let client = common::client_for(&server);
+    Mock::given(method("POST"))
+        .and(path("/v1/sandboxes"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({
+            "id": "sess_2",
+            "status": "active",
+            "label": "demo",
+            "created_at": "2026-10-30T12:00:00Z",
+            "destroyed_at": null,
+            "expires_at": null,
+            "connect": null,
+            "usage": null
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/sandboxes/sess_2/snapshots"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(json!([snapshot(json!("sess_2"), "completed")])),
+        )
+        .mount(&server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path("/v1/sandboxes/sess_2"))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(&server)
+        .await;
+
+    let listed = client
+        .with_sandbox(CreateSandboxOptions::new(), |session| async move {
+            session.list_snapshots().await
+        })
+        .await
+        .expect("session list_snapshots should succeed");
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].session_id.as_deref(), Some("sess_2"));
 }
