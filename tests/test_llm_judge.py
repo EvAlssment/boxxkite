@@ -73,3 +73,6 @@ def test_invalid_configuration_is_rejected():
         LLMJudge(" ", client, model="test")
     with pytest.raises(ValueError):
         LLMJudge("rubric", client, model="test", max_score=0)
+    for max_score in (float("nan"), float("inf"), float("-inf")):
+        with pytest.raises(ValueError, match="finite positive"):
+            LLMJudge("rubric", client, model="test", max_score=max_score)

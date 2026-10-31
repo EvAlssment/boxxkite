@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import math
 from collections.abc import Awaitable, Callable, MutableMapping
 from dataclasses import dataclass
 from typing import Any
@@ -45,8 +46,13 @@ class LLMJudge:
             raise ValueError("rubric must be a non-empty string")
         if not isinstance(model, str) or not model.strip():
             raise ValueError("model must be a non-empty cache namespace")
-        if isinstance(max_score, bool) or not isinstance(max_score, (int, float)) or max_score <= 0:
-            raise ValueError("max_score must be a positive number")
+        if (
+            isinstance(max_score, bool)
+            or not isinstance(max_score, (int, float))
+            or not math.isfinite(max_score)
+            or max_score <= 0
+        ):
+            raise ValueError("max_score must be a finite positive number")
         if not callable(client):
             raise ValueError("client must be callable")
         self.rubric = rubric.strip()
