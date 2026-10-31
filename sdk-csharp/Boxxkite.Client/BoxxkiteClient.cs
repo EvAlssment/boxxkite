@@ -132,7 +132,15 @@ public sealed class BoxxkiteClient : IDisposable
 
         using (response)
         {
-            var payload = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            string payload;
+            try
+            {
+                payload = await response.Content.ReadAsStringAsync(timeoutSource.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new BoxxkiteConnectionException("The Boxxkite request timed out.", new TimeoutException());
+            }
             if (!response.IsSuccessStatusCode)
             {
                 throw CreateApiException(response.StatusCode, payload);
