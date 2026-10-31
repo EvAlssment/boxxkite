@@ -79,8 +79,40 @@ signed preview URLs for exposing a port (`CreatePreviewURL`/
 human takeover over a raw WebSocket (`Takeover`), desktop (GUI) takeover
 over the same raw-WebSocket pattern (`DesktopTakeover`), and CRUD for images,
 volumes, webhooks, outbound-MCP connections, and secrets (`CreateSecret`/
-`ListSecrets`/`DeleteSecret`). Full reference with examples for all of
+`ListSecrets`/`DeleteSecret`), plus filesystem snapshots. `CreateSnapshot`
+and `RestoreSnapshot` use a 10-minute HTTP timeout because the control-plane
+performs synchronous storage copies; a shorter caller context deadline still
+applies. Full reference with examples for all of
 these: [`docs/API.md`](https://github.com/EvAlssment/boxxkite/blob/main/docs/API.md).
+
+## Filesystem snapshots
+
+Snapshots copy a session's workspace/output filesystem. They do not preserve
+running processes or in-memory state. `CreateSnapshot` and `ListSnapshots`
+are also available on a `Session`; get, restore, and delete are account-level
+operations because a snapshot can outlive its source session.
+
+```go
+snapshot, err := client.CreateSnapshot(ctx, sessionID, boxxkite.CreateSnapshotRequest{
+	Label: boxxkite.Ptr("before-refactor"),
+})
+if err != nil {
+	return err
+}
+
+restored, err := client.RestoreSnapshot(ctx, snapshot.ID, boxxkite.RestoreSnapshotRequest{
+	Label: boxxkite.Ptr("after-refactor"),
+})
+if err != nil {
+	return err
+}
+fmt.Printf("Restored session %s\n", restored.ID)
+```
+
+The response's `Status` is one of `SnapshotStatusPending`,
+`SnapshotStatusCompleted`, or `SnapshotStatusFailed`. `SessionID` is nil if
+the original session has been destroyed. A runnable create/list/get/restore/
+delete example is in [`examples/snapshots.go`](examples/snapshots.go).
 
 ## Webhooks
 

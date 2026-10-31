@@ -102,6 +102,14 @@ func (s *Session) DesktopTakeover(ctx context.Context) (*websocket.Conn, error) 
 	return s.client.DesktopTakeover(ctx, s.ID)
 }
 
+func (s *Session) CreateSnapshot(ctx context.Context, req CreateSnapshotRequest) (*Snapshot, error) {
+	return s.client.CreateSnapshot(ctx, s.ID, req)
+}
+
+func (s *Session) ListSnapshots(ctx context.Context) ([]Snapshot, error) {
+	return s.client.ListSnapshots(ctx, s.ID)
+}
+
 func (s *Session) CreatePreviewURL(ctx context.Context, port int, ttlSeconds *int) (*PreviewURL, error) {
 	return s.client.CreatePreviewURL(ctx, s.ID, port, ttlSeconds)
 }
