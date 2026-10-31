@@ -62,6 +62,8 @@ Repository = "https://github.com/EvAlssment/boxxkite"
 Issues = "https://github.com/EvAlssment/boxxkite/issues"
 
 [project.optional-dependencies]
+# Install this extra to annotate caller-supplied screenshot targets.
+screenshot-marks = ["Pillow>=10,<13"]
 # The sandbox tool surface (src/boxxkite/tools/) is framework-agnostic by
 # default (see boxxkite.tools.create_sandbox_tool_specs) and has no
 # LangChain/LangGraph dependency at all. Install this extra only if you
