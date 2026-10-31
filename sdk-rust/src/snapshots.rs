@@ -80,7 +80,9 @@ impl Client {
             Method::GET,
             &format!("/v1/sandboxes/{session_id}/snapshots"),
         );
-        self.send_or_default(builder).await
+        self.send_or_default::<Option<Vec<Snapshot>>>(builder)
+            .await
+            .map(Option::unwrap_or_default)
     }
 
     /// `GET /v1/snapshots/{snapshot_id}` -- fetch a snapshot by id.

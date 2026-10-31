@@ -80,6 +80,19 @@ async fn list_snapshots_accepts_empty_response() {
 }
 
 #[tokio::test]
+async fn list_snapshots_accepts_null_response() {
+    let server = common::mock_server().await;
+    let client = common::client_for(&server);
+    Mock::given(method("GET"))
+        .and(path("/v1/sandboxes/sess_1/snapshots"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::Value::Null))
+        .mount(&server)
+        .await;
+
+    assert!(client.list_snapshots("sess_1").await.unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn get_snapshot_fetches_by_id() {
     let server = common::mock_server().await;
     let client = common::client_for(&server);
