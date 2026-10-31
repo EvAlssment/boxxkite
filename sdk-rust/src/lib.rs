@@ -48,15 +48,14 @@
 //! reset/verify/resend/refresh/logout), the per-account command allowlist
 //! (`get_allowed_commands`/`set_allowed_commands`/`clear_allowed_commands`),
 //! the [`SandboxSession`]/[`Client::with_sandbox`] convenience helper, and
-//! CRUD for images/volumes/outbound-MCP connections/webhooks/secrets.
+//! CRUD for images/volumes/outbound-MCP connections/webhooks/secrets, and
+//! filesystem snapshot create/list/get/restore/delete.
 //!
 //! Deliberately **not** included (see `sdk-rust/README.md`'s "Scope"
 //! section for the full disclosure): a LangChain-style tool-factory wrapper
 //! (no dominant Rust agent-framework tool-spec convention exists yet to
-//! mirror), a synchronous/blocking client variant (this crate is
-//! async-first via `tokio`, matching Rust's ecosystem convention), and the
-//! control-plane's filesystem-snapshot routes (a real endpoint, but not
-//! wrapped by `sdk-python`/`sdk-js`/`sdk-go` either as of this writing).
+//! mirror), and a synchronous/blocking client variant (this crate is
+//! async-first via `tokio`, matching Rust's ecosystem convention).
 //!
 //! # Retries
 //!
@@ -80,6 +79,7 @@ mod processes;
 mod sandboxes;
 mod secrets;
 mod session;
+mod snapshots;
 mod takeover;
 mod volumes;
 mod webhooks;
@@ -100,9 +100,9 @@ pub use images::{CreateImageOptions, Image, ImageBase};
 pub use lsp::{LspCompletionResult, LspOpenResult, LspStartResult, LspStopResult};
 pub use mcp_connections::{McpCatalogId, McpConnection};
 pub use memory::{
-    IngestMemoryOptions, ListMemoriesOptions, Memory, MemoryIngestResponse,
-    MemoryProfileResponse, MemoryRelation, MemoryRelationsResponse, MemorySearchHit,
-    MemorySearchResponse, RememberOptions,
+    IngestMemoryOptions, ListMemoriesOptions, Memory, MemoryIngestResponse, MemoryProfileResponse,
+    MemoryRelation, MemoryRelationsResponse, MemorySearchHit, MemorySearchResponse,
+    RememberOptions,
 };
 pub use preview::{PreviewRevokeResult, PreviewUrl};
 pub use processes::{
@@ -112,6 +112,7 @@ pub use processes::{
 pub use sandboxes::{CreateSandboxOptions, Sandbox, SandboxConnectInfo, SandboxSize, UsageSummary};
 pub use secrets::{CreateSecretOptions, Secret};
 pub use session::SandboxSession;
+pub use snapshots::{Snapshot, SnapshotOptions, SnapshotStatus};
 pub use takeover::TakeoverStream;
 pub use volumes::{CreateVolumeOptions, Volume};
 pub use webhooks::{
