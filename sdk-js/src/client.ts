@@ -53,6 +53,7 @@ import type {
   ProcessStreamEvent,
   Sandbox,
   Secret,
+  Snapshot,
   StrReplaceResult,
   TokenPair,
   Usage,
@@ -63,6 +64,7 @@ import type {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const EXEC_TIMEOUT_HEADROOM_MS = 15_000;
+const SNAPSHOT_TIMEOUT_MS = 10 * 60_000;
 const LOCALHOST_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 /**
@@ -630,6 +632,37 @@ export class BoxxkiteClient {
 
   async destroySandbox(sessionId: string): Promise<void> {
     await this.request("DELETE", `/v1/sandboxes/${sessionId}`);
+  }
+
+  createSnapshot(sessionId: string, options?: { label?: string }): Promise<Snapshot> {
+    const body: Record<string, unknown> = {};
+    if (options?.label !== undefined) body.label = options.label;
+    return this.request(
+      "POST",
+      `/v1/sandboxes/${sessionId}/snapshots`,
+      body,
+      undefined,
+      SNAPSHOT_TIMEOUT_MS,
+    );
+  }
+
+  async listSnapshots(sessionId: string): Promise<Snapshot[]> {
+    const result = await this.request("GET", `/v1/sandboxes/${sessionId}/snapshots`);
+    return result ?? [];
+  }
+
+  getSnapshot(snapshotId: string): Promise<Snapshot> {
+    return this.request("GET", `/v1/snapshots/${snapshotId}`);
+  }
+
+  restoreSnapshot(snapshotId: string, options?: { label?: string }): Promise<Sandbox> {
+    const body: Record<string, unknown> = {};
+    if (options?.label !== undefined) body.label = options.label;
+    return this.request("POST", `/v1/snapshots/${snapshotId}/restore`, body, undefined, SNAPSHOT_TIMEOUT_MS);
+  }
+
+  async deleteSnapshot(snapshotId: string): Promise<void> {
+    await this.request("DELETE", `/v1/snapshots/${snapshotId}`);
   }
 
   exec(sessionId: string, command: string, options?: ExecOptions): Promise<ExecResult> {

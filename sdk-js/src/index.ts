@@ -30,6 +30,7 @@ export type {
   TokenPair,
   SandboxConnectInfo,
   Sandbox,
+  Snapshot,
   ExecResult,
   HttpRequestResult,
   FileCreateResult,

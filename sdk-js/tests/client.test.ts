@@ -9,13 +9,20 @@ type Handler = (req: {
   url: string;
   body: unknown;
   headers: Record<string, string>;
-}) => Response;
+  signal?: AbortSignal;
+}) => Response | Promise<Response>;
 
 function fakeFetch(handler: Handler): typeof fetch {
   return (async (input: any, init?: any) => {
     const url = typeof input === "string" ? input : input.toString();
     const body = init?.body ? JSON.parse(init.body as string) : undefined;
-    return handler({ method: init?.method ?? "GET", url, body, headers: init?.headers ?? {} });
+    return handler({
+      method: init?.method ?? "GET",
+      url,
+      body,
+      headers: init?.headers ?? {},
+      signal: init?.signal,
+    });
   }) as typeof fetch;
 }
 
@@ -240,6 +247,71 @@ test("createSandbox omits gpuCount when not given", async () => {
   });
 
   await client.createSandbox();
+});
+
+test("snapshot methods use the expected endpoints and preserve nullable/status fields", async () => {
+  const snapshot = {
+    id: "snap-1",
+    session_id: null,
+    label: "checkpoint",
+    status: "completed",
+    storage_key_prefix: "snapshots/acct-1/snap-1",
+    size_bytes: 42,
+    created_at: "2026-10-31T00:00:00Z",
+    deleted_at: null,
+  };
+  const client = clientWith(({ method, url, body }) => {
+    const path = new URL(url).pathname;
+    if (method === "POST" && path === "/v1/sandboxes/sess-1/snapshots") {
+      assert.deepEqual(body, { label: "checkpoint" });
+      return new Response(JSON.stringify(snapshot), { status: 201 });
+    }
+    if (method === "GET" && path === "/v1/sandboxes/sess-1/snapshots") {
+      return new Response(JSON.stringify([snapshot]), { status: 200 });
+    }
+    if (method === "GET" && path === "/v1/snapshots/snap-1") {
+      return new Response(JSON.stringify({ ...snapshot, status: "pending" }), { status: 200 });
+    }
+    if (method === "GET" && path === "/v1/snapshots/snap-failed") {
+      return new Response(JSON.stringify({ ...snapshot, status: "failed" }), { status: 200 });
+    }
+    if (method === "POST" && path === "/v1/snapshots/snap-1/restore") {
+      assert.deepEqual(body, { label: "restored-copy" });
+      return new Response(JSON.stringify({ id: "sess-2", status: "active" }), { status: 201 });
+    }
+    if (method === "DELETE" && path === "/v1/snapshots/snap-1") {
+      return new Response(null, { status: 204 });
+    }
+    throw new Error(`Unexpected request: ${method} ${path}`);
+  });
+
+  const created = await client.createSnapshot("sess-1", { label: "checkpoint" });
+  assert.equal(created.session_id, null);
+  assert.equal(created.status, "completed");
+  assert.deepEqual(await client.listSnapshots("sess-1"), [snapshot]);
+  assert.equal((await client.getSnapshot("snap-1")).status, "pending");
+  assert.equal((await client.getSnapshot("snap-failed")).status, "failed");
+  assert.equal((await client.restoreSnapshot("snap-1", { label: "restored-copy" })).id, "sess-2");
+  await client.deleteSnapshot("snap-1");
+});
+
+test("snapshot create and restore use a generous timeout instead of the client default", async () => {
+  let requests = 0;
+  const client = new BoxxkiteClient({
+    baseUrl: "https://cp.example.com",
+    apiKey: "bxk_live_test",
+    timeoutMs: 1,
+    fetchImpl: fakeFetch(async ({ signal }) => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      assert.equal(signal?.aborted, false);
+      requests++;
+      return new Response(JSON.stringify({ id: `result-${requests}`, status: "active" }), { status: 201 });
+    }),
+  });
+
+  await client.createSnapshot("sess-1");
+  await client.restoreSnapshot("snap-1");
+  assert.equal(requests, 2);
 });
 
 test("createImage sends label, base, pythonPackages, and aptPackages", async () => {
