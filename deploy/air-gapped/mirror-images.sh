@@ -46,23 +46,10 @@ time gzip -f "$TARBALL"
 TARBALL="$TARBALL.gz"
 
 MANIFEST="$OUT_DIR/bundle-manifest.json"
-python3 - "$MANIFEST" "$SANDBOX_TAG" "$SIDECAR_TAG" "$MINIO_TAG" "$MC_TAG" "$VAULT_TAG" <<'PYEOF'
-import json
-import subprocess
-import sys
-
-manifest_path = sys.argv[1]
-tags = sys.argv[2:]
-images = []
-for tag in tags:
-    image_id = subprocess.check_output(["docker", "inspect", "--format", "{{.Id}}", tag]).decode().strip()
-    size = subprocess.check_output(["docker", "inspect", "--format", "{{.Size}}", tag]).decode().strip()
-    images.append({"tag": tag, "image_id": image_id, "size_bytes": int(size)})
-
-with open(manifest_path, "w") as fh:
-    json.dump({"images": images}, fh, indent=2)
-    fh.write("\n")
-PYEOF
+python3 "$REPO_ROOT/deploy/air-gapped/bundle_integrity.py" create \
+  --archive "$TARBALL" \
+  --manifest "$MANIFEST" \
+  "$SANDBOX_TAG" "$SIDECAR_TAG" "$MINIO_TAG" "$MC_TAG" "$VAULT_TAG"
 
 echo
 echo "Bundle:   $TARBALL"

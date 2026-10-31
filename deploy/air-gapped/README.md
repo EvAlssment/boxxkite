@@ -6,16 +6,18 @@ any air-gapped customer date. It covers **only** the self-host Docker
 Compose path (`../docker-compose.yml`) — see "What this does NOT cover"
 below for everything still open.
 
-**Status: a real, executed, torn-down-and-reloaded round trip on 2026-07-15
-against this exact working tree.** All commands below were actually run
-(not hypothetical); real timings and sizes are recorded, not estimated.
+**Baseline: a real, executed, torn-down-and-reloaded round trip on 2026-07-15.**
+The timings and sizes below are from that run. The archive-integrity checks
+documented here were added afterward and are covered by deterministic tests;
+they have not been rerun through a live Docker round trip.
 
 ## What's in this directory
 
 | File | Purpose |
 |---|---|
 | `mirror-images.sh` | Run **with internet access**. Builds/pulls every image the stack needs and saves them into one tarball. |
-| `load-images.sh` | Run **on the air-gapped side, zero network calls**. Loads that tarball into the local Docker image cache. |
+| `bundle-manifest.json` | Written beside the tarball; records its SHA-256 plus each expected image tag, Docker image ID, and uncompressed size. Carry both files together. |
+| `load-images.sh` | Run **on the air-gapped side, zero network calls**. Checks the archive against its colocated manifest before loading, then checks loaded image IDs. |
 | `docker-compose.airgapped.yml` | A variant of `../docker-compose.yml` using `image:` + `pull_policy: never` instead of `build:`, so bringing the stack up never touches a registry or a package manager. |
 | `.env` (gitignored, not committed) | Holds `SIDECAR_AUTH_TOKEN` — generate your own with `openssl rand -hex 32`. |
 | `bundle/` (gitignored, not committed) | Where `mirror-images.sh` writes the tarball + manifest. Regenerate it yourself; it's not a repo artifact. |
@@ -118,19 +120,33 @@ Bundle:   deploy/air-gapped/bundle/boxxkite-airgapped-bundle.tar.gz
 -rw-------  433M  boxxkite-airgapped-bundle.tar.gz
 ```
 
-`bundle-manifest.json` (image IDs + uncompressed sizes):
+`bundle-manifest.json` (archive checksum, image IDs + uncompressed sizes):
 
 ```json
 {
+  "version": 1,
+  "archive": {
+    "filename": "boxxkite-airgapped-bundle.tar.gz",
+    "sha256": "<64-character SHA-256 of the compressed archive>"
+  },
   "images": [
-    {"tag": "boxxkite-sandbox-minimal:bundle", "size_bytes": 106190617},
-    {"tag": "boxxkite-sidecar:bundle",         "size_bytes": 120233313},
-    {"tag": "minio/minio:latest",             "size_bytes": 57548825},
-    {"tag": "minio/mc:latest",                "size_bytes": 27371684},
-    {"tag": "hashicorp/vault:1.16",           "size_bytes": 143004011}
+    {"tag": "boxxkite-sandbox-minimal:bundle", "image_id": "sha256:<image-id>", "size_bytes": 106190617},
+    {"tag": "boxxkite-sidecar:bundle",         "image_id": "sha256:<image-id>", "size_bytes": 120233313},
+    {"tag": "minio/minio:latest",             "image_id": "sha256:<image-id>", "size_bytes": 57548825},
+    {"tag": "minio/mc:latest",                "image_id": "sha256:<image-id>", "size_bytes": 27371684},
+    {"tag": "hashicorp/vault:1.16",           "image_id": "sha256:<image-id>", "size_bytes": 143004011}
   ]
 }
 ```
+
+The loader rejects a missing/invalid manifest, an archive filename or SHA-256
+mismatch, an incomplete expected-tag list, and any loaded image whose local
+Docker image ID differs from the manifest. The checksum detects accidental
+corruption or a partial transfer; it is **not cryptographic authenticity**.
+The manifest is colocated and unsigned, so an attacker able to replace both
+files can replace the recorded checksum too. This slice adds no signature
+verification, registry push, or release-bound provenance. Transfer both
+generated files together.
 
 Sum of uncompressed image sizes: ~454 MB. Compressed tarball actually
 carried across the air gap: **433 MB** (`gzip` gets real compression here
@@ -293,7 +309,8 @@ variant was taken here (see above).
 cd deploy/air-gapped
 cp .env.example .env   # or: echo "SIDECAR_AUTH_TOKEN=$(openssl rand -hex 32)" > .env
 ./mirror-images.sh                      # needs internet access
-# --- simulate carrying bundle/boxxkite-airgapped-bundle.tar.gz across the gap ---
+# --- carry both bundle/boxxkite-airgapped-bundle.tar.gz and
+#     bundle/bundle-manifest.json across the gap ---
 ./load-images.sh                        # zero network calls
 docker compose -f docker-compose.airgapped.yml -p boxxkite-airgapped up -d
 curl -sf http://localhost:8080/health
