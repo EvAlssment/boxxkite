@@ -76,6 +76,20 @@ def test_release_build_jobs_match_the_platform_contract():
         assert has_qemu is (len(metadata["platforms"]) > 1), image
 
 
+def test_ci_docker_build_matrix_covers_each_published_platform():
+    workflow = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    matrix = workflow["jobs"]["docker-build"]["strategy"]["matrix"]["include"]
+    by_dockerfile = {entry["dockerfile"]: entry for entry in matrix}
+    for metadata in _contract()["images"].values():
+        entry = by_dockerfile[metadata["dockerfile"]]
+        assert entry.get("platforms", "linux/amd64").split(",") == metadata["platforms"]
+    docker_build_job = workflow["jobs"]["docker-build"]
+    assert any(
+        step.get("uses", "").startswith("docker/setup-qemu-action@")
+        for step in docker_build_job["steps"]
+    )
+
+
 def test_manifest_verification_matrix_matches_the_platform_contract():
     matrix = _workflow()["jobs"]["verify"]["strategy"]["matrix"]["include"]
     actual = {entry["image"]: entry["platforms"].split(",") for entry in matrix}

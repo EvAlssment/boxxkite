@@ -15,9 +15,9 @@
 ARG PYTHON_VERSION=3.11
 ARG UV_VERSION=0.11.2
 ARG PANDOC_VERSION=3.9.0.2
-ARG CHROME_FOR_TESTING_VERSION=148.0.7778.179
+ARG CHROME_FOR_TESTING_VERSION=156.0.8078.80
 
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:02dab76bd852a70556b5b2002195c8a5fdab77d323c433bf6642aab080489795
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:88a20e2d017bd20cdc0cb3910de603e7bea9512a6c351a8dd3c9df212ab03d73
 ARG PYTHON_VERSION
 ARG UV_VERSION
 ARG PANDOC_VERSION
@@ -26,7 +26,7 @@ ARG TARGETARCH
 
 LABEL com.boxxkite.supported-platforms="linux/amd64"
 
-RUN test "$TARGETARCH" = amd64 || (echo "boxxkite-sandbox supports linux/amd64 only; target was $TARGETARCH" >&2 && exit 1)
+RUN test "$TARGETARCH" = amd64 || (echo "boxxkite-sandbox arm64 support is not enabled until the full image builds and passes runtime smoke tests" >&2 && exit 1)
 
 # libreoffice-26.2 is intentionally pinned for the current Snyk-clean Wolfi package set;
 # revisit this pin when Wolfi rolls LibreOffice to a newer fixed minor.
@@ -119,8 +119,7 @@ RUN set -eux; \
 # Install Playwright first for its expected browser layout, then replace the
 # bundled Chromium/headless shell with a Chrome-for-Testing build that clears
 # the scanner findings against Playwright's older browser binary. Chrome for
-# Testing publishes linux64 artifacts only, so arm64 fails rather than shipping
-# the older bundled browser. Chrome for Testing does not publish a checksum of
+# Testing publishes linux64 and linux-arm64 artifacts. Chrome for Testing does not publish a checksum of
 # any kind in its own version manifests (confirmed by inspecting both
 # known-good-versions-with-downloads.json and
 # last-known-good-versions-with-downloads.json -- neither contains a
@@ -144,9 +143,11 @@ RUN --mount=type=cache,id=npm-sandbox,target=/root/.npm \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright /usr/local/bin/playwright install chromium; \
     case "$(uname -m)" in \
         x86_64) chrome_platform="linux64"; chrome_dir="chrome-linux64"; headless_dir="chrome-headless-shell-linux64"; \
-            chrome_sha256="808f79e139425ebccd8077e599bfcfbae4c54698ddea577c47254acb1971241c"; \
-            headless_sha256="43b19e1e6dca93c87c74ed52e8fa046739e59c0e65b5397b100930415c556491" ;; \
-        aarch64|arm64) echo "Chrome for Testing does not publish Linux arm64 artifacts for ${CHROME_FOR_TESTING_VERSION}; build linux/amd64 or update Playwright when a remediated arm64 browser is available." >&2; exit 1 ;; \
+            chrome_sha256="b711c720f774be355197f32edf37e0651418ba036d92446ee2da19ac017540a7"; \
+            headless_sha256="547dcd374e02961bf998f6046a267644f8502225c36bb78ca307dab32a0b3eb4" ;; \
+        aarch64|arm64) chrome_platform="linux-arm64"; chrome_dir="chrome-linux-arm64"; headless_dir="chrome-headless-shell-linux-arm64"; \
+            chrome_sha256="1f496a826c9ba4d6a5f5bf2de686145fe718528c2cc3dbeb96b5893b89653724"; \
+            headless_sha256="5bb6a00a4285c13303d3f72c5afdb70f144ea7a93eed462365a52b69631c9607" ;; \
         *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;; \
     esac; \
     if [ -n "$chrome_platform" ]; then \

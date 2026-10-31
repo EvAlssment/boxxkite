@@ -4,17 +4,15 @@
     "boxxkite-sandbox": {
       "dockerfile": "deploy/sandbox.Dockerfile",
       "platforms": ["linux/amd64"],
-      "reason": "The pinned Chrome-for-Testing release has no Linux arm64 artifact."
+      "reason": "Arm64 remains disabled until the full image completes a clean build and runtime smoke test; the current local build failed unpacking the LibreOffice package."
     },
     "boxxkite-sandbox-minimal": {
       "dockerfile": "deploy/sandbox-minimal.Dockerfile",
-      "platforms": ["linux/amd64"],
-      "reason": "The pinned Wolfi base exposes arm64 glibc 2.43 while its current Python package requires GLIBC_2.44."
+      "platforms": ["linux/amd64", "linux/arm64"]
     },
     "boxxkite-sidecar": {
       "dockerfile": "deploy/sidecar.Dockerfile",
-      "platforms": ["linux/amd64"],
-      "reason": "The pinned Wolfi base exposes arm64 glibc 2.43 while its current Python package requires GLIBC_2.44."
+      "platforms": ["linux/amd64", "linux/arm64"]
     },
     "boxxkite-control-plane": {
       "dockerfile": "control-plane/Dockerfile",

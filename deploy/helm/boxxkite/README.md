@@ -108,15 +108,17 @@ The runtime image contract is maintained in [`../../image-platforms.json`](../..
 
 | Image | Supported platforms |
 |---|---|
-| `boxxkite-sandbox` | `linux/amd64` only |
-| `boxxkite-sandbox-minimal` | `linux/amd64` only |
-| `boxxkite-sidecar` | `linux/amd64` only |
+| `boxxkite-sandbox` | `linux/amd64` |
+| `boxxkite-sandbox-minimal` | `linux/amd64`, `linux/arm64` |
+| `boxxkite-sidecar` | `linux/amd64`, `linux/arm64` |
 | `boxxkite-control-plane` | `linux/amd64`, `linux/arm64` |
 
-Only the control-plane image is currently supported on arm64. The sandbox and
-sidecar images remain amd64-only until their pinned Wolfi glibc/Python
-dependency mismatch is resolved; the chart cannot make that per-session
-runtime choice because the control plane creates those Pods programmatically.
+Release builds from this revision target arm64 for the minimal sandbox,
+sidecar, and control-plane. The full sandbox remains amd64-only pending a
+clean arm64 build and runtime smoke test. Existing GHCR tags remain unchanged
+until rebuilt. The chart remains architecture-neutral because it installs
+cluster-level resources only; the control plane creates per-session runtime
+Pods programmatically.
 
 Before moving between chart releases, inspect the machine-readable
 compatibility matrix:

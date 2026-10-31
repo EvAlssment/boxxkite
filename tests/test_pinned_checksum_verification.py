@@ -60,13 +60,19 @@ def _extract_pandoc_pins(text: str) -> dict[str, str]:
 
 
 def _extract_chrome_pins(text: str) -> dict[str, str]:
-    chrome = re.search(r'chrome_sha256="([0-9a-f]{64})"', text)
-    headless = re.search(r'headless_sha256="([0-9a-f]{64})"', text)
-    assert chrome and headless, "Could not find Chrome for Testing sha256 pins in sandbox.Dockerfile"
-    return {
-        "chrome-linux64.zip": chrome.group(1),
-        "chrome-headless-shell-linux64.zip": headless.group(1),
-    }
+    pins: dict[str, str] = {}
+    for arch, source_arch in (("linux64", "x86_64"), ("linux-arm64", "aarch64|arm64")):
+        lines = text.splitlines()
+        line_index = next(
+            (i for i, line in enumerate(lines) if f"{source_arch}) chrome_platform=" in line),
+            None,
+        )
+        assert line_index is not None, f"Could not find Chrome for Testing {arch} pins in sandbox.Dockerfile"
+        hashes = SHA256_RE.findall("\n".join(lines[line_index : line_index + 3]))
+        assert len(hashes) == 2, f"Expected Chrome and headless-shell pins for {arch}"
+        pins[f"chrome-{arch}.zip"] = hashes[0]
+        pins[f"chrome-headless-shell-{arch}.zip"] = hashes[1]
+    return pins
 
 
 def _verification_record() -> dict:
@@ -121,6 +127,15 @@ def test_verification_record_version_matches_dockerfile_pin():
     )
 
 
+def test_all_wolfi_dockerfiles_use_the_verified_multiarch_index_digest():
+    record = _verification_record()["wolfi_base_image"]
+    digest = record["pinned_digest"]
+    assert digest.startswith("sha256:")
+    for relative_path in record["pinned_files"]:
+        text = (REPO_ROOT / relative_path).read_text()
+        assert f"cgr.dev/chainguard/wolfi-base:latest@{digest}" in text
+
+
 def test_verification_record_hashes_match_dockerfile_pins():
     text = _dockerfile_text()
     record = _verification_record()
@@ -151,6 +166,13 @@ def test_verification_record_hashes_match_dockerfile_pins():
 
 def test_verification_record_hashes_are_well_formed_sha256():
     record = _verification_record()
+    assert record["chrome_for_testing"]["known_good_versions_manifest_contains_pin"] is True
+    assert set(record["chrome_for_testing"]["artifacts"]) == {
+        "chrome-linux64.zip",
+        "chrome-headless-shell-linux64.zip",
+        "chrome-linux-arm64.zip",
+        "chrome-headless-shell-linux-arm64.zip",
+    }
     for artifact in record["pandoc"]["artifacts"].values():
         assert SHA256_RE.fullmatch(artifact["dockerfile_pinned_sha256"])
         assert SHA256_RE.fullmatch(artifact["github_api_digest_sha256"])

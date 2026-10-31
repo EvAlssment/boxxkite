@@ -2,10 +2,10 @@
   "_comment": "Record of the last independent cross-check of deploy/sandbox.Dockerfile's pinned pandoc / Chrome-for-Testing sha256 digests. Regenerate by bumping PANDOC_VERSION/CHROME_FOR_TESTING_VERSION in the Dockerfile, then re-running scripts/verify-pinned-checksums.sh and pasting its output into this file. tests/test_pinned_checksum_verification.py asserts this file's versions and hashes stay in lockstep with deploy/sandbox.Dockerfile, so a version bump without an updated record fails CI instead of silently going unverified. See SECURITY.md ('Known follow-ups') for the full writeup.",
   "wolfi_base_image": {
     "reference": "cgr.dev/chainguard/wolfi-base:latest",
-    "pinned_digest": "sha256:02dab76bd852a70556b5b2002195c8a5fdab77d323c433bf6642aab080489795",
-    "verified_at": "2026-07-20",
-    "method": "OCI image-index digest resolved from cgr.dev's registry v2 API (Docker-Content-Digest header, Accept: application/vnd.oci.image.index.v1+json), cross-checked by re-fetching the raw index manifest body and computing its sha256 locally -- both produced the same digest. This is a floating tag (:latest is mutable and non-reproducible), so every `FROM cgr.dev/chainguard/wolfi-base:latest` across deploy/*.Dockerfile is pinned to `:latest@<digest>` to make base-image builds reproducible.",
-    "source_query": "curl -sSI -H 'Accept: application/vnd.oci.image.index.v1+json' https://cgr.dev/v2/chainguard/wolfi-base/manifests/latest | grep -i docker-content-digest",
+    "pinned_digest": "sha256:88a20e2d017bd20cdc0cb3910de603e7bea9512a6c351a8dd3c9df212ab03d73",
+    "verified_at": "2026-10-31",
+    "method": "OCI image-index digest resolved from cgr.dev's registry v2 API (Docker-Content-Digest header, Accept: application/vnd.oci.image.index.v1+json), cross-checked by re-fetching the raw index manifest body and computing its sha256 locally -- both produced the same digest. The index resolves linux/amd64 to sha256:73f2cab0f11208427595d4bdd784046bc4116ef7cc52f0c1b48b6b7f820288d5 and linux/arm64 to sha256:742cb89fddcad855188f892183ded0b4dcb48d83fdb41ed4463bbab2fe3f7801. The arm64 image installed current python-3.11 and py3.11-pip, ran `import math`, and created and executed a venv.",
+    "source_query": "curl -sSI -H 'Accept: application/vnd.oci.image.index.v1+json' https://cgr.dev/v2/chainguard/wolfi-base/manifests/latest | grep -i docker-content-digest; docker buildx imagetools inspect --raw cgr.dev/chainguard/wolfi-base:latest | shasum -a 256",
     "note": "Chainguard rebuilds wolfi-base frequently; re-resolve and re-pin this digest (and update this record's verified_at) when intentionally moving to a newer base. Pinning all Dockerfiles to one shared digest keeps them building the same base until that deliberate bump.",
     "pinned_files": [
       "deploy/sandbox.Dockerfile",
@@ -41,29 +41,43 @@
     }
   },
   "chrome_for_testing": {
-    "version": "148.0.7778.179",
-    "verified_at": "2026-07-12",
-    "method": "Chrome for Testing does not publish a sha256 anywhere in its own manifests -- confirmed by fetching both googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json and last-known-good-versions-with-downloads.json and finding zero 'sha256'/hash fields in either, for any version, including the current Stable release. As a substitute independent cross-check, Google Cloud Storage's own backend computes and serves an `x-goog-hash: md5=...` header for every object in the chrome-for-testing-public bucket at upload time, independent of whoever later self-computed a sha256 for the Dockerfile pin. This record cross-checks: (1) the Dockerfile-pinned sha256 against a fresh independent re-download's sha256, and (2) that same fresh download's md5 against GCS's own server-reported md5 for the object. Note the pinned CHROME_FOR_TESTING_VERSION (148.0.7778.179) is also NOT present in the 'known-good-versions' list at all (only 148.0.7778.178 is) -- it was never part of the automated smoke-test-and-promote pipeline, though it is a real, directly downloadable build under the same public GCS path.",
+    "version": "156.0.8078.80",
+    "verified_at": "2026-10-31",
+    "method": "Chrome for Testing manifests list linux64 and linux-arm64 assets for both chrome and chrome-headless-shell at this version, and the pinned version is the current Stable release in last-known-good-versions-with-downloads.json. The manifests publish URLs but no checksum fields. For each architecture, the fresh asset sha256 is checked against the Dockerfile pin and its md5 against Google Cloud Storage's server-reported x-goog-hash header.",
     "source_queries": [
       "curl -sSI https://storage.googleapis.com/chrome-for-testing-public/148.0.7778.179/linux64/chrome-linux64.zip",
       "curl -sSI https://storage.googleapis.com/chrome-for-testing-public/148.0.7778.179/linux64/chrome-headless-shell-linux64.zip",
       "curl -sSL https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json",
       "curl -sSL https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json"
     ],
-    "known_good_versions_manifest_contains_pin": false,
+    "known_good_versions_manifest_contains_pin": true,
     "artifacts": {
       "chrome-linux64.zip": {
-        "dockerfile_pinned_sha256": "808f79e139425ebccd8077e599bfcfbae4c54698ddea577c47254acb1971241c",
-        "fresh_download_sha256": "808f79e139425ebccd8077e599bfcfbae4c54698ddea577c47254acb1971241c",
-        "gcs_reported_md5_base64": "E0lr8AbmX9q6+0kMZR098w==",
-        "fresh_download_md5": "13496bf006e65fdabafb490c651d3df3",
+        "dockerfile_pinned_sha256": "b711c720f774be355197f32edf37e0651418ba036d92446ee2da19ac017540a7",
+        "fresh_download_sha256": "b711c720f774be355197f32edf37e0651418ba036d92446ee2da19ac017540a7",
+        "gcs_reported_md5_base64": "ahWLp+AdoBbxmIuuBkPZ5Q==",
+        "fresh_download_md5": "6a158ba7e01da016f1988bae0643d9e5",
         "result": "match"
       },
       "chrome-headless-shell-linux64.zip": {
-        "dockerfile_pinned_sha256": "43b19e1e6dca93c87c74ed52e8fa046739e59c0e65b5397b100930415c556491",
-        "fresh_download_sha256": "43b19e1e6dca93c87c74ed52e8fa046739e59c0e65b5397b100930415c556491",
-        "gcs_reported_md5_base64": "HKpIElLV+4FmLG8lqRYnUQ==",
-        "fresh_download_md5": "1caa481252d5fb81662c6f25a9162751",
+        "dockerfile_pinned_sha256": "547dcd374e02961bf998f6046a267644f8502225c36bb78ca307dab32a0b3eb4",
+        "fresh_download_sha256": "547dcd374e02961bf998f6046a267644f8502225c36bb78ca307dab32a0b3eb4",
+        "gcs_reported_md5_base64": "35VRj0kejR/euFBBs5nLNw==",
+        "fresh_download_md5": "df95518f491e8d1fdeb85041b399cb37",
+        "result": "match"
+      },
+      "chrome-linux-arm64.zip": {
+        "dockerfile_pinned_sha256": "1f496a826c9ba4d6a5f5bf2de686145fe718528c2cc3dbeb96b5893b89653724",
+        "fresh_download_sha256": "1f496a826c9ba4d6a5f5bf2de686145fe718528c2cc3dbeb96b5893b89653724",
+        "gcs_reported_md5_base64": "LZCH5ngtCnKAmUUVgAtTUQ==",
+        "fresh_download_md5": "2d9087e6782d0a7280994515800b5351",
+        "result": "match"
+      },
+      "chrome-headless-shell-linux-arm64.zip": {
+        "dockerfile_pinned_sha256": "5bb6a00a4285c13303d3f72c5afdb70f144ea7a93eed462365a52b69631c9607",
+        "fresh_download_sha256": "5bb6a00a4285c13303d3f72c5afdb70f144ea7a93eed462365a52b69631c9607",
+        "gcs_reported_md5_base64": "rNUR03gxdWIKkAUV6X+cyw==",
+        "fresh_download_md5": "acd511d3783175620a900515e97f9ccb",
         "result": "match"
       }
     }

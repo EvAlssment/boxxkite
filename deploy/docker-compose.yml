@@ -38,11 +38,6 @@
 services:
   # Sandbox container - runs user code
   sandbox:
-    # Pinned Chrome-for-Testing version has no linux/arm64 build (the
-    # Dockerfile deliberately fails fast rather than silently shipping a
-    # broken browser) — force linux/amd64 so `docker compose up --build`
-    # works out of the box on Apple Silicon, at the cost of a slower
-    # emulated build. Real deployments target linux/amd64 anyway.
     platform: linux/amd64
     build:
       context: ..
@@ -77,9 +72,7 @@ services:
 
   # Sidecar container - HTTP API and S3 sync
   sidecar:
-    # Match the sandbox container's platform — they share the pod's network
-    # namespace via nsenter in real K8s mode, and running mixed
-    # architectures here would be an unnecessary difference from prod.
+    # Match the full sandbox's architecture in this local stack.
     platform: linux/amd64
     build:
       context: ..
