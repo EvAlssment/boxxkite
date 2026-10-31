@@ -1,0 +1,49 @@
+{
+  "format": "boxxkite-bench-v1",
+  "license": "Apache-2.0",
+  "tasks": [
+    {
+      "id": "py-stats-001",
+      "title": "Add a streaming summary helper",
+      "category": "multi-file-coding",
+      "prompt": "Implement summarize(values) in stats.py. It must accept any iterable of numbers, return a dictionary with count, total, and mean, and return mean as null for an empty iterable. Add tests in test_stats.py for a generator and an empty input.",
+      "setup_files": {
+        "stats.py": "def summarize(values):\n    raise NotImplementedError\n",
+        "test_stats.py": "# Add focused tests for summarize.\n"
+      },
+      "checks": [
+        {"type": "file_contains", "path": "stats.py", "text": "def summarize("},
+        {"type": "file_contains", "path": "test_stats.py", "text": "summarize"}
+      ]
+    },
+    {
+      "id": "js-config-001",
+      "title": "Normalize a small configuration object",
+      "category": "multi-file-coding",
+      "prompt": "Implement normalizeConfig in config.js. It accepts an object and returns {host, port, secure}; host defaults to localhost, port defaults to 8080, and secure defaults to false. Add tests in config.test.js for defaults and an explicit configuration. Do not mutate the input.",
+      "setup_files": {
+        "config.js": "function normalizeConfig(input) {\n  throw new Error('not implemented');\n}\n\nmodule.exports = { normalizeConfig };\n",
+        "config.test.js": "// Add focused tests for normalizeConfig.\n"
+      },
+      "checks": [
+        {"type": "file_contains", "path": "config.js", "text": "normalizeConfig"},
+        {"type": "file_contains", "path": "config.test.js", "text": "normalizeConfig"}
+      ]
+    },
+    {
+      "id": "py-log-001",
+      "title": "Parse a simple key-value log",
+      "category": "terminal-and-files",
+      "prompt": "Create parse_log.py with parse_line(line), returning a dictionary for lines shaped as LEVEL message. Split only at the first space, strip the message, and return None for malformed or blank input. Add tests in test_parse_log.py for a normal line, a message containing spaces, and malformed input.",
+      "setup_files": {
+        "sample.log": "INFO service started\nWARN disk almost full\n",
+        "parse_log.py": "def parse_line(line):\n    raise NotImplementedError\n",
+        "test_parse_log.py": "# Add focused tests for parse_line.\n"
+      },
+      "checks": [
+        {"type": "file_contains", "path": "parse_log.py", "text": "def parse_line("},
+        {"type": "file_contains", "path": "test_parse_log.py", "text": "parse_line"}
+      ]
+    }
+  ]
+}

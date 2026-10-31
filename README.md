@@ -86,6 +86,10 @@ If you are new to the repo, use this decision tree:
    Start with [`docs/`](docs/), which groups getting started, guides,
    reference, architecture, and community material.
 
+5. **I want to try the first-party agent task set**
+   See [`benchmarks/`](benchmarks/) for the versioned starter dataset, format,
+   validator, and command runner.
+
 For contributors, the important mental model is: the root package gives you
 the sandbox runtime, while `control-plane/`, the SDKs, and `mcp-server/` are
 separate packages with their own installs and tests.
