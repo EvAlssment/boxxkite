@@ -9,8 +9,9 @@ All notable changes to boxxkite are documented here. Format loosely follows
 - Filesystem snapshot create/list/get/restore/delete are now exposed through
   the Python SDK (`create_snapshot`/`list_snapshots`/`get_snapshot`/
   `restore_snapshot`/`delete_snapshot` on both the sync and async clients)
-  and the `boxxkite snapshots` CLI subcommand -- previously only reachable
-  via the raw HTTP API.
+  and the `boxxkite snapshots` CLI subcommand, and through the JavaScript
+  SDK (`createSnapshot`/`listSnapshots`/`getSnapshot`/`restoreSnapshot`/
+  `deleteSnapshot`) -- previously only reachable via the raw HTTP API.
 
 ### Changed
 - **Project renamed from "boxkite" to "boxxkite"** (new domain: boxxkite.com).
