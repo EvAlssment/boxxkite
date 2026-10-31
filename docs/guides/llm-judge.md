@@ -23,6 +23,12 @@ namespace; this prevents reuse when grading inputs differ. Cache contents are
 not persisted or shared across processes. The transcript hash covers the
 canonical JSON transcript only. Inputs must be JSON-compatible.
 
+Transcripts and final-state payloads may contain sensitive information or
+instruction-like content. The caller is responsible for obtaining any needed
+consent and redacting content before passing it to the injected provider
+client. The grader does not claim prompt-injection resistance, and its score
+or rationale must not be used as a security or authorization decision.
+
 This is a standalone API. It does not provide a `boxxkite-eval` harness,
 capture transcripts or sandbox state, or establish the correctness of model
 judgments.
