@@ -17,13 +17,13 @@
 
 ARG PYTHON_VERSION=3.11
 
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:02dab76bd852a70556b5b2002195c8a5fdab77d323c433bf6642aab080489795
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:88a20e2d017bd20cdc0cb3910de603e7bea9512a6c351a8dd3c9df212ab03d73
 ARG PYTHON_VERSION
 ARG TARGETARCH
 
-LABEL com.boxxkite.supported-platforms="linux/amd64"
+LABEL com.boxxkite.supported-platforms="linux/amd64,linux/arm64"
 
-RUN test "$TARGETARCH" = amd64 || (echo "boxxkite-sandbox-minimal supports linux/amd64 only until the Wolfi arm64 Python/glibc mismatch is resolved; target was $TARGETARCH" >&2 && exit 1)
+RUN case "$TARGETARCH" in amd64|arm64) ;; *) echo "boxxkite-sandbox-minimal does not support target architecture $TARGETARCH" >&2; exit 1 ;; esac
 
 RUN apk update && apk add --no-cache \
     python-${PYTHON_VERSION} \

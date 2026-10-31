@@ -98,8 +98,10 @@ CHROME_FOR_TESTING_VERSION="$(extract_dockerfile_arg CHROME_FOR_TESTING_VERSION)
 
 PANDOC_AMD64_PIN="$(grep -m1 'x86_64) architecture="amd64"' "$DOCKERFILE" | grep -oE '[0-9a-f]{64}')"
 PANDOC_ARM64_PIN="$(grep -m1 'aarch64|arm64) architecture="arm64"' "$DOCKERFILE" | grep -oE '[0-9a-f]{64}')"
-CHROME_PIN="$(grep -m1 'chrome_sha256=' "$DOCKERFILE" | grep -oE '[0-9a-f]{64}')"
-HEADLESS_PIN="$(grep -m1 'headless_sha256=' "$DOCKERFILE" | grep -oE '[0-9a-f]{64}')"
+CHROME_AMD64_PIN="$(grep -A2 -m1 'x86_64) chrome_platform=' "$DOCKERFILE" | grep -oE '[0-9a-f]{64}' | sed -n '1p')"
+HEADLESS_AMD64_PIN="$(grep -A2 -m1 'x86_64) chrome_platform=' "$DOCKERFILE" | grep -oE '[0-9a-f]{64}' | sed -n '2p')"
+CHROME_ARM64_PIN="$(grep -A2 -m1 'aarch64|arm64) chrome_platform=' "$DOCKERFILE" | grep -oE '[0-9a-f]{64}' | sed -n '1p')"
+HEADLESS_ARM64_PIN="$(grep -A2 -m1 'aarch64|arm64) chrome_platform=' "$DOCKERFILE" | grep -oE '[0-9a-f]{64}' | sed -n '2p')"
 
 echo "Pinned versions (from deploy/sandbox.Dockerfile):"
 echo "  PANDOC_VERSION=${PANDOC_VERSION}"
@@ -149,28 +151,34 @@ for manifest in known-good-versions-with-downloads last-known-good-versions-with
 done
 echo "  (confirmed: Chrome for Testing publishes no checksum field in its own manifests as of this run)"
 
-for pair in "chrome-linux64.zip:${CHROME_PIN}" "chrome-headless-shell-linux64.zip:${HEADLESS_PIN}"; do
-    name="${pair%%:*}"
-    pinned="${pair##*:}"
-    url="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_FOR_TESTING_VERSION}/linux64/${name}"
+for arch in linux64 linux-arm64; do
+    case "$arch" in
+        linux64) chrome_pin="$CHROME_AMD64_PIN"; headless_pin="$HEADLESS_AMD64_PIN" ;;
+        linux-arm64) chrome_pin="$CHROME_ARM64_PIN"; headless_pin="$HEADLESS_ARM64_PIN" ;;
+    esac
+    for pair in "chrome-${arch}.zip:${chrome_pin}" "chrome-headless-shell-${arch}.zip:${headless_pin}"; do
+        name="${pair%%:*}"
+        pinned="${pair##*:}"
+        url="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_FOR_TESTING_VERSION}/${arch}/${name}"
 
-    headers="${WORKDIR}/${name}.headers"
-    curl -fsSI "$url" -o "$headers"
-    gcs_md5_b64="$(grep -i '^x-goog-hash:' "$headers" | grep -oE 'md5=[A-Za-z0-9+/=]+' | cut -d= -f2- || true)"
+        headers="${WORKDIR}/${name}.headers"
+        curl -fsSI "$url" -o "$headers"
+        gcs_md5_b64="$(grep -i '^x-goog-hash:' "$headers" | grep -oE 'md5=[A-Za-z0-9+/=]+' | cut -d= -f2- || true)"
 
-    dest="${WORKDIR}/${name}"
-    curl -fsSL "$url" -o "$dest"
-    fresh_sha256="$(sha256_of "$dest")"
-    fresh_md5="$(md5_of "$dest")"
+        dest="${WORKDIR}/${name}"
+        curl -fsSL "$url" -o "$dest"
+        fresh_sha256="$(sha256_of "$dest")"
+        fresh_md5="$(md5_of "$dest")"
 
-    report "${name} fresh re-download sha256 vs Dockerfile pin" "$pinned" "$fresh_sha256"
+        report "${arch}/${name} fresh re-download sha256 vs Dockerfile pin" "$pinned" "$fresh_sha256"
 
-    if [ -n "$gcs_md5_b64" ]; then
-        gcs_md5_hex="$(python3 -c "import base64,sys; print(base64.b64decode(sys.argv[1]).hex())" "$gcs_md5_b64")"
-        report "${name} fresh re-download md5 vs GCS-reported md5 (independent source)" "$gcs_md5_hex" "$fresh_md5"
-    else
-        echo "  [WARN] no x-goog-hash md5 header returned for ${name}; skipping GCS cross-check" >&2
-    fi
+        if [ -n "$gcs_md5_b64" ]; then
+            gcs_md5_hex="$(python3 -c "import base64,sys; print(base64.b64decode(sys.argv[1]).hex())" "$gcs_md5_b64")"
+            report "${arch}/${name} fresh re-download md5 vs GCS-reported md5 (independent source)" "$gcs_md5_hex" "$fresh_md5"
+        else
+            echo "  [WARN] no x-goog-hash md5 header returned for ${arch}/${name}; skipping GCS cross-check" >&2
+        fi
+    done
 done
 echo
 

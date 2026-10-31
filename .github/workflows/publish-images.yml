@@ -76,10 +76,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # amd64 only: the pinned Chrome-for-Testing build has no linux/arm64
-      # artifact and deploy/sandbox.Dockerfile deliberately fails fast on
-      # arm64 rather than shipping a broken browser (same constraint
-      # enforced in deploy/docker-compose.yml and .github/workflows/ci.yml).
       - name: Build and push
         id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
@@ -131,6 +127,8 @@ jobs:
 
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
+      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+
       - name: Log in to GHCR
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
@@ -138,15 +136,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # amd64 only: the pinned Wolfi base's arm64 glibc is older than the
-      # current arm64 Python package requires; the Dockerfile fails fast.
       - name: Build and push
         id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: deploy/sandbox-minimal.Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxxkite-sandbox-minimal:${{ needs.version.outputs.version }}
@@ -188,6 +184,8 @@ jobs:
 
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
+      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+
       - name: Log in to GHCR
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
@@ -195,15 +193,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # amd64 only: the pinned Wolfi base's arm64 glibc is older than the
-      # current arm64 Python package requires; the Dockerfile fails fast.
       - name: Build and push
         id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: deploy/sidecar.Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/boxxkite-sidecar:${{ needs.version.outputs.version }}
@@ -308,9 +304,9 @@ jobs:
           - image: boxxkite-sandbox
             platforms: linux/amd64
           - image: boxxkite-sandbox-minimal
-            platforms: linux/amd64
+            platforms: linux/amd64,linux/arm64
           - image: boxxkite-sidecar
-            platforms: linux/amd64
+            platforms: linux/amd64,linux/arm64
           - image: boxxkite-control-plane
             platforms: linux/amd64,linux/arm64
     steps:
