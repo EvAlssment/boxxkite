@@ -13,29 +13,15 @@ if [ ! -f "$BUNDLE" ]; then
   exit 1
 fi
 
+MANIFEST="$(dirname "$BUNDLE")/bundle-manifest.json"
+python3 "$SCRIPT_DIR/bundle_integrity.py" verify-archive \
+  --archive "$BUNDLE" \
+  --manifest "$MANIFEST"
+
 echo "== Loading $BUNDLE (no network access required or used) =="
 time gunzip -c "$BUNDLE" | docker load
 
-echo "== Verifying loaded images against expected tags =="
-MISSING=0
-for tag in \
-  "boxxkite-sandbox-minimal:bundle" \
-  "boxxkite-sidecar:bundle" \
-  "minio/minio:latest" \
-  "minio/mc:latest" \
-  "hashicorp/vault:1.16"
-do
-  if docker image inspect "$tag" >/dev/null 2>&1; then
-    echo "  OK   $tag"
-  else
-    echo "  MISSING $tag"
-    MISSING=1
-  fi
-done
+echo "== Verifying loaded image IDs against the bundle manifest =="
+python3 "$SCRIPT_DIR/bundle_integrity.py" verify-images --manifest "$MANIFEST"
 
-if [ "$MISSING" -ne 0 ]; then
-  echo "One or more expected images are missing after load — bundle is incomplete." >&2
-  exit 1
-fi
-
-echo "Load verified — all bundled images present locally, no registry contacted."
+echo "Load verified — archive checksum and all bundled image IDs match; no registry contacted."
