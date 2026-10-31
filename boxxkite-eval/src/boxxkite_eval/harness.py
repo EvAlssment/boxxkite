@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import floor
 from time import monotonic
 from typing import Protocol
+
+from boxxkite_client import BoxxkiteConnectionError
 
 
 class SandboxClient(Protocol):
@@ -28,7 +31,7 @@ class Task:
             raise ValueError("agent and verifier commands must not be empty")
         if self.setup_command is not None and not self.setup_command.strip():
             raise ValueError("setup command must not be empty when provided")
-        if self.timeout_seconds < 1:
+        if isinstance(self.timeout_seconds, bool) or self.timeout_seconds < 1:
             raise ValueError("timeout_seconds must be positive")
 
 
@@ -62,6 +65,7 @@ class EvaluationError(RuntimeError):
 
 def run_task(client: SandboxClient, task: Task, *, trial_number: int = 1) -> TrialResult:
     started = monotonic()
+    deadline = started + task.timeout_seconds
     sandbox = client.create_sandbox(label=f"eval-{task.name}-{trial_number}")
     session_id = sandbox.get("id")
     if not isinstance(session_id, str) or not session_id:
@@ -76,7 +80,28 @@ def run_task(client: SandboxClient, task: Task, *, trial_number: int = 1) -> Tri
         for phase, command in phases:
             if command is None:
                 continue
-            result = client.exec(session_id, command, timeout=task.timeout_seconds)
+            remaining = deadline - monotonic()
+            timeout = floor(remaining)
+            if timeout < 1:
+                return TrialResult(
+                    task_name=task.name,
+                    passed=False,
+                    duration_seconds=monotonic() - started,
+                    exit_code=None,
+                    failed_phase=phase,
+                    stderr="trial deadline exceeded",
+                )
+            try:
+                result = client.exec(session_id, command, timeout=timeout)
+            except BoxxkiteConnectionError as exc:
+                return TrialResult(
+                    task_name=task.name,
+                    passed=False,
+                    duration_seconds=monotonic() - started,
+                    exit_code=None,
+                    failed_phase=phase,
+                    stderr=str(exc),
+                )
             exit_code = result.get("exit_code")
             if exit_code != 0:
                 return TrialResult(
@@ -94,7 +119,7 @@ def run_task(client: SandboxClient, task: Task, *, trial_number: int = 1) -> Tri
 
 
 def run_suite(client: SandboxClient, tasks: list[Task], *, trials_per_task: int = 1) -> SuiteResult:
-    if trials_per_task < 1:
+    if isinstance(trials_per_task, bool) or trials_per_task < 1:
         raise ValueError("trials_per_task must be positive")
     results = tuple(
         run_task(client, task, trial_number=trial)

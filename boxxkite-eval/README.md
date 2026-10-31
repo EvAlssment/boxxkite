@@ -2,8 +2,10 @@
 
 A small sequential evaluation harness built on `boxxkite-client`. Each trial
 creates one sandbox, runs its optional setup command, agent command, and
-verifier command in that sandbox, then destroys it. Commands are sent only to
-the sandbox client; this package does not run them on the machine invoking it.
+verifier command in that sandbox, then destroys it. `timeout_seconds` is one
+monotonic deadline for the entire trial, including sandbox creation. Commands
+are sent only to the sandbox client; this package does not run them on the
+machine invoking it.
 
 ```python
 from boxxkite_client import BoxxkiteClient
