@@ -11,10 +11,6 @@ All notable changes to boxxkite are documented here. Format loosely follows
   `restore_snapshot`/`delete_snapshot` on both the sync and async clients)
   and the `boxxkite snapshots` CLI subcommand -- previously only reachable
   via the raw HTTP API.
-- Filesystem snapshot create/list/get/restore/delete are now exposed through
-  the TypeScript/JavaScript SDK (`createSnapshot`/`listSnapshots`/
-  `getSnapshot`/`restoreSnapshot`/`deleteSnapshot`). Synchronous create and
-  restore requests use a ten-minute timeout for storage copies.
 
 ### Changed
 - **Project renamed from "boxkite" to "boxxkite"** (new domain: boxxkite.com).
