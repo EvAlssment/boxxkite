@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "boxxkite-gym"
+version = "0.1.0"
+description = "A Gymnasium environment backed by boxxkite sandbox sessions"
+requires-python = ">=3.10"
+dependencies = ["boxxkite-client>=0.8.0"]
+
+[project.optional-dependencies]
+gymnasium = ["gymnasium>=1.0"]
+test = ["pytest>=8", "gymnasium>=1.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
