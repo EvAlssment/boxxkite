@@ -117,12 +117,12 @@ cosign verify-attestation \
 ```
 
 Swap `boxxkite-sandbox` for `boxxkite-sandbox-minimal`, `boxxkite-sidecar`, or
-`boxxkite-control-plane` for the other three images. `boxxkite-sandbox`,
-`boxxkite-sandbox-minimal`, and `boxxkite-sidecar` are published for
-**linux/amd64 only**. The full sandbox is limited by its pinned Chrome-for-
-Testing release; the minimal sandbox and sidecar are blocked by the pinned
-Wolfi arm64 glibc/Python mismatch. Only `boxxkite-control-plane` is currently
-published for both amd64 and arm64.
+`boxxkite-control-plane` for the other three images. Release builds from this
+revision configure the minimal sandbox, sidecar, and control-plane for
+linux/amd64 and linux/arm64. The full sandbox remains amd64-only until a clean
+arm64 build and runtime smoke test pass; a local attempt failed while
+unpacking the LibreOffice package. Existing GHCR tags remain unchanged until
+rebuilt.
 The source of truth for these platform claims is
 [`deploy/image-platforms.json`](deploy/image-platforms.json), which the image
 workflow and static tests validate.

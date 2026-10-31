@@ -309,17 +309,16 @@ the release workflow and tests validate their platform lists against it.
 
 | Image | Architectures |
 |---|---|
-| `boxxkite-sandbox` | **linux/amd64 only** |
-| `boxxkite-sandbox-minimal` | **linux/amd64 only** |
-| `boxxkite-sidecar` | **linux/amd64 only** |
+| `boxxkite-sandbox` | linux/amd64 only |
+| `boxxkite-sandbox-minimal` | linux/amd64, linux/arm64 |
+| `boxxkite-sidecar` | linux/amd64, linux/arm64 |
 | `boxxkite-control-plane` | linux/amd64, linux/arm64 |
 
-> The three Wolfi-based runtime images are currently amd64-only. The full
-> `boxxkite-sandbox` image is limited by its pinned Chrome-for-Testing release;
-> `boxxkite-sandbox-minimal` and `boxxkite-sidecar` are additionally blocked on
-> arm64 by the pinned Wolfi base's glibc/Python mismatch. The control-plane is
-> the only published image currently built for both amd64 and arm64. Do not use
-> the runtime images on arm64 until their platform contract is updated.
+Release builds from this revision are configured for linux/amd64 and
+linux/arm64 for the minimal sandbox, sidecar, and control-plane. The full
+sandbox remains amd64-only until it completes a clean arm64 build and runtime
+smoke test; its current local build failed while unpacking LibreOffice.
+Existing GHCR tags retain the platforms present when they were built.
 
 ## Community
 

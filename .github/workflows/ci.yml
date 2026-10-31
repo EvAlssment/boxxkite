@@ -297,6 +297,7 @@ jobs:
             dockerfile: deploy/sandbox.Dockerfile
           - image: sandbox-minimal
             dockerfile: deploy/sandbox-minimal.Dockerfile
+            platforms: linux/amd64,linux/arm64
           - image: sandbox-node
             dockerfile: deploy/sandbox-node.Dockerfile
           - image: sandbox-go
@@ -307,10 +308,16 @@ jobs:
             dockerfile: deploy/sandbox-claude-code.Dockerfile
           - image: sidecar
             dockerfile: deploy/sidecar.Dockerfile
+            platforms: linux/amd64,linux/arm64
+          - image: control-plane
+            dockerfile: control-plane/Dockerfile
+            platforms: linux/amd64,linux/arm64
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
 
       # Neither Dockerfile is pushed anywhere — no registry credentials exist
       # in this repo. This only proves the image still builds; `push: false`
@@ -320,11 +327,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          # sandbox.Dockerfile deliberately fails fast on non-amd64 (the pinned
-          # Chrome-for-Testing build has no linux/arm64 artifact) — pin the
-          # platform explicitly so that constraint is enforced the same way
-          # in CI as it is for `deploy/docker-compose.yml`.
-          platforms: linux/amd64
+          platforms: ${{ matrix.platforms || 'linux/amd64' }}
           push: false
           load: false
           cache-from: type=gha,scope=${{ matrix.image }}
