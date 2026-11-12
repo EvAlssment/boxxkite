@@ -39,6 +39,8 @@ available.
 
 ## Operations and security
 
+- [Backup and restore](backup-restore.md) — create, inspect, and restore a
+  versioned self-hosted control-plane archive (`boxxkite backup`).
 - [Architecture and isolation](../architecture/) explains the default pod
   boundary, network controls, state reset, and experimental runtime options.
 - [Security policy](../../SECURITY.md) is the source of truth for reporting
