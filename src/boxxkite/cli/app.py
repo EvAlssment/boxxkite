@@ -10,6 +10,7 @@ import typer
 from . import (
     cmd_allowlist,
     cmd_audit,
+    cmd_backup,
     cmd_config,
     cmd_diagnostics,
     cmd_doctor,
@@ -215,6 +216,21 @@ audit_app = typer.Typer(
 )
 audit_app.command("verify")(cli_error_boundary(cmd_audit.verify))
 app.add_typer(audit_app, name="audit")
+
+backup_app = typer.Typer(
+    help=(
+        "Create, inspect, and restore versioned self-hosted control-plane backups "
+        "(Postgres dumps + named volume directories). Local/operator tooling -- not "
+        "the hosted API. Secrets encryption key bytes are never stored in the "
+        "archive; only key references go into key-material.json. See "
+        "docs/guides/backup-restore.md and GitHub issue #118."
+    ),
+    no_args_is_help=True,
+)
+backup_app.command("create")(cli_error_boundary(cmd_backup.create))
+backup_app.command("inspect")(cli_error_boundary(cmd_backup.inspect))
+backup_app.command("restore")(cli_error_boundary(cmd_backup.restore))
+app.add_typer(backup_app, name="backup")
 
 app.command("doctor")(cli_error_boundary(cmd_doctor.doctor))
 app.command("up")(cli_error_boundary(cmd_up.up))
