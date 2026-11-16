@@ -3,7 +3,7 @@
 `boxxkite handoff <tool>` (part of the main `boxxkite` CLI — `pip install
 boxxkite-sandbox` is the only install step, no separate package) lets someone
 running Claude Code, Codex CLI, opencode, Cursor, Gemini CLI, Kimi Code CLI,
-or Qwen Code locally move their
+Qwen Code, or GitHub Copilot CLI locally move their
 **in-progress, full-history conversation** into a fresh boxxkite sandbox and
 keep interacting with it from there — the CLI keeps running under the user's
 own (portable, scoped) credential, not a copy of their laptop's raw login
@@ -158,6 +158,7 @@ Concretely:
 | Cursor | `CURSOR_API_KEY` |
 | Gemini CLI | `GEMINI_API_KEY` — adapter not yet merged, see PR #122 |
 | Qwen Code | `DASHSCOPE_API_KEY`, or `OPENAI_API_KEY` for an OpenAI-compatible provider |
+| GitHub Copilot CLI | `COPILOT_GITHUB_TOKEN`, a fine-grained PAT with the "Copilot Requests" permission (classic `ghp_` PATs are not supported; broad `GH_TOKEN`/`GITHUB_TOKEN` are not read). A `gh auth token` value also works but carries every `gh` scope, so prefer the fine-grained PAT. |
 
 Why this is safe to authenticate with in the sandbox at all: this
 credential authenticates the CLI process itself — the same process that
@@ -251,4 +252,5 @@ backlog. To add one:
 | Gemini CLI | reference adapter | JSONL chat files under `~/.gemini/tmp/<project>/chats/`; merged in [PR #122](https://github.com/EvAlssment/boxxkite/pull/122) |
 | Kimi Code CLI | reference adapter | session directory plus session index and scoped provider config; merged in [PR #123](https://github.com/EvAlssment/boxxkite/pull/123) |
 | Qwen Code | reference adapter | project-scoped JSONL chat file with its cwd rewritten for `/workspace`; merged in [PR #124](https://github.com/EvAlssment/boxxkite/pull/124) |
+| GitHub Copilot CLI | reference adapter | `events.jsonl` from `~/.copilot/session-state/<session-id>/`; no cwd rewrite needed |
 | Aider | not supported — transcript-only restore does not meet this contract | Aider documents `--chat-history-file` and `--restore-chat-history`, but the latter restores prior chat messages, not a portable full-session snapshot. Its current source rebuilds `done_messages` from the markdown transcript; model/provider settings, loaded-file context, and in-flight coder state are not restored from that artifact. See the [options reference](https://aider.chat/docs/config/options#history-files) and [`base_coder.py`](https://github.com/Aider-AI/aider/blob/main/aider/coders/base_coder.py). The Aider item in issue #97 should remain unchecked until Aider exposes and verifies a portable full-session resume contract. |
