@@ -10,6 +10,7 @@ from __future__ import annotations
 from ..core import HandoffAdapter
 from .claude_code import ClaudeCodeAdapter
 from .codex import CodexAdapter
+from .copilot import CopilotAdapter
 from .cursor import CursorAdapter
 from .gemini import GeminiAdapter
 from .opencode import OpencodeAdapter
@@ -31,3 +32,4 @@ register(CursorAdapter)
 register(GeminiAdapter)
 register(KimiAdapter)
 register(QwenAdapter)
+register(CopilotAdapter)
