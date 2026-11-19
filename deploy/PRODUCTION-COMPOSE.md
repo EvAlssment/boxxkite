@@ -32,6 +32,24 @@ those values only after checking the workload and host capacity.
 
 ## Run a backup
 
+### Preferred: `boxxkite backup` CLI
+
+For a portable, checksummed archive with restore support and explicit secrets
+key *references* (never raw key bytes), use the first-party CLI — see
+[`docs/guides/backup-restore.md`](../docs/guides/backup-restore.md):
+
+```bash
+export DATABASE_URL='postgresql://user:password@127.0.0.1:5432/boxxkite'
+boxxkite backup create \
+  --output ./backups/boxxkite.tar.gz \
+  --database-url "$DATABASE_URL" \
+  --secrets-kms-backend "$SECRETS_KMS_BACKEND" \
+  --secrets-key-id "$SECRETS_KMS_KEY_ID"
+boxxkite backup inspect --archive ./backups/boxxkite.tar.gz
+```
+
+### Compose profile job
+
 The backup service archives the named Compose volumes and, when `DATABASE_URL`
 is set, runs `pg_dump` against the control-plane database. The current base
 compose stack does not run Postgres itself, so an external Postgres connection
