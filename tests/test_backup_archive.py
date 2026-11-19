@@ -176,3 +176,88 @@ def test_rejects_path_traversal_in_volume_tarball(tmp_path: Path):
     dest.mkdir()
     with pytest.raises(BackupError, match="unsafe archive member"):
         restore_backup(archive, volume_paths={"uploads": dest})
+
+
+def test_rejects_symlink_member_in_volume_tarball(tmp_path: Path):
+    """Regression for the 3.11 extract fallback: reject symlink members."""
+    staging = tmp_path / "staging"
+    (staging / "volumes").mkdir(parents=True)
+    bad_vol = staging / "volumes" / "uploads.tar.gz"
+    with tarfile.open(bad_vol, "w:gz") as handle:
+        info = tarfile.TarInfo(name="evil-link")
+        info.type = tarfile.SYMTYPE
+        info.linkname = "../outside-secret"
+        handle.addfile(info)
+
+    key = {
+        "secrets_kms_backend": None,
+        "encryption_key_id": None,
+        "local_dev_key_env": "SECRETS_LOCAL_DEV_KMS_KEY",
+        "note": "test",
+    }
+    (staging / "key-material.json").write_text(json.dumps(key), encoding="utf-8")
+    from boxxkite.backup.archive import _sha256_file
+
+    members = {
+        "key-material.json": _sha256_file(staging / "key-material.json"),
+        "volumes/uploads.tar.gz": _sha256_file(bad_vol),
+    }
+    manifest = {
+        "schema_version": 1,
+        "created_at_utc": "2026-01-01T00-00-00Z",
+        "members": members,
+        "volumes": ["uploads"],
+        "has_postgres": False,
+        "key_material": key,
+    }
+    (staging / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    archive = tmp_path / "bad-symlink.tar.gz"
+    with tarfile.open(archive, "w:gz") as handle:
+        for path in sorted(staging.rglob("*")):
+            if path.is_file():
+                handle.add(path, arcname=str(path.relative_to(staging)))
+
+    dest = tmp_path / "out"
+    dest.mkdir()
+    with pytest.raises(BackupError, match="Refusing link archive member"):
+        restore_backup(archive, volume_paths={"uploads": dest})
+
+
+def test_run_pg_dump_hides_password_and_streams(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from boxxkite.backup import archive as archive_mod
+
+    captured: dict = {}
+
+    class FakeStdout:
+        def __init__(self, chunks: list[bytes]):
+            self._chunks = list(chunks)
+
+        def read(self, _size: int = -1) -> bytes:
+            if not self._chunks:
+                return b""
+            return self._chunks.pop(0)
+
+    class FakeProc:
+        def __init__(self, cmd, env, **_kwargs):
+            captured["cmd"] = list(cmd)
+            captured["env_password"] = env.get("PGPASSWORD")
+            self.stdout = FakeStdout([b"SELECT ", b"1;\n"])
+            self.stderr = FakeStdout([])
+
+        def wait(self) -> int:
+            return 0
+
+    monkeypatch.setattr(archive_mod.shutil, "which", lambda _bin: "/usr/bin/pg_dump")
+    monkeypatch.setattr(archive_mod.subprocess, "Popen", FakeProc)
+
+    dest = tmp_path / "out.sql.gz"
+    archive_mod._run_pg_dump(
+        "postgresql://alice:super-secret@localhost:5432/boxxkite",
+        dest,
+        pg_dump_bin="pg_dump",
+    )
+
+    assert captured["env_password"] == "super-secret"
+    assert "super-secret" not in " ".join(captured["cmd"])
+    with gzip.open(dest, "rb") as gz:
+        assert gz.read() == b"SELECT 1;\n"

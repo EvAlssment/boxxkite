@@ -10,6 +10,7 @@ Archive layout (packed as a single ``.tar.gz``):
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import os
@@ -21,6 +22,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import unquote, urlparse, urlunparse
 
 ARCHIVE_FORMAT_VERSION = 1
 MANIFEST_NAME = "manifest.json"
@@ -108,6 +110,9 @@ def _parse_volume_specs(
     return parsed
 
 
+_STREAM_CHUNK = 1024 * 1024
+
+
 def _write_volume_tarball(source: Path, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(dest, "w:gz") as archive:
@@ -121,7 +126,17 @@ def _safe_extractall(archive: tarfile.TarFile, dest: Path) -> None:
         member_path = Path(member.name)
         if member_path.is_absolute() or ".." in member_path.parts:
             raise BackupError(f"Refusing unsafe archive member path: {member.name!r}")
-    # filter= is Python 3.12+; omit on 3.11 after the manual path check above.
+        # Python 3.11 fallback (no filter="data") does not block symlink/hardlink
+        # targets that point outside dest — reject those members explicitly.
+        if member.issym() or member.islnk():
+            raise BackupError(
+                f"Refusing link archive member {member.name!r} "
+                f"(linkname={member.linkname!r})"
+            )
+        if not (member.isfile() or member.isdir()):
+            raise BackupError(
+                f"Refusing special archive member type {member.type!r}: {member.name!r}"
+            )
     try:
         archive.extractall(dest, filter="data")
     except TypeError:
@@ -134,6 +149,22 @@ def _extract_volume_tarball(tarball: Path, dest: Path) -> None:
         _safe_extractall(archive, dest)
 
 
+def _postgres_child_env_and_url(database_url: str) -> tuple[dict[str, str], str]:
+    """Move the URL password into ``PGPASSWORD`` so it is not in process argv."""
+    parsed = urlparse(database_url)
+    env: dict[str, str] = {}
+    if parsed.password is not None:
+        env["PGPASSWORD"] = unquote(parsed.password)
+    host = parsed.hostname or ""
+    user = unquote(parsed.username) if parsed.username else ""
+    auth = f"{user}@" if user else ""
+    port = f":{parsed.port}" if parsed.port is not None else ""
+    safe_url = urlunparse(
+        (parsed.scheme, f"{auth}{host}{port}", parsed.path, parsed.params, parsed.query, parsed.fragment)
+    )
+    return env, safe_url
+
+
 def _run_pg_dump(database_url: str, dest: Path, *, pg_dump_bin: str) -> None:
     if shutil.which(pg_dump_bin) is None:
         raise BackupError(
@@ -141,22 +172,28 @@ def _run_pg_dump(database_url: str, dest: Path, *, pg_dump_bin: str) -> None:
             "or pass --postgres-dump with a pre-made dump file."
         )
     dest.parent.mkdir(parents=True, exist_ok=True)
+    env_extra, safe_url = _postgres_child_env_and_url(database_url)
+    child_env = {**os.environ, **env_extra}
     try:
-        with dest.open("wb") as handle:
-            proc = subprocess.run(
-                [pg_dump_bin, "--no-password", database_url],
+        with dest.open("wb") as handle, gzip.GzipFile(fileobj=handle, mode="wb") as gz:
+            proc = subprocess.Popen(
+                [pg_dump_bin, "--no-password", safe_url],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                check=False,
+                env=child_env,
             )
-            if proc.returncode != 0:
-                err = proc.stderr.decode("utf-8", errors="replace").strip() or f"exit {proc.returncode}"
+            assert proc.stdout is not None
+            assert proc.stderr is not None
+            while True:
+                chunk = proc.stdout.read(_STREAM_CHUNK)
+                if not chunk:
+                    break
+                gz.write(chunk)
+            stderr = proc.stderr.read()
+            code = proc.wait()
+            if code != 0:
+                err = stderr.decode("utf-8", errors="replace").strip() or f"exit {code}"
                 raise BackupError(f"pg_dump failed: {err}")
-            # gzip via Python so we don't depend on the gzip binary.
-            import gzip
-
-            with gzip.GzipFile(fileobj=handle, mode="wb") as gz:
-                gz.write(proc.stdout)
     except OSError as exc:
         raise BackupError(f"Could not write postgres dump to {dest}: {exc}") from exc
 
@@ -167,21 +204,27 @@ def _run_psql_restore(database_url: str, dump_gz: Path, *, psql_bin: str) -> Non
             f"{psql_bin!r} not found on PATH. Install PostgreSQL client tools "
             "before restoring a postgres.sql.gz member."
         )
-    import gzip
-
+    env_extra, safe_url = _postgres_child_env_and_url(database_url)
+    child_env = {**os.environ, **env_extra}
     try:
-        sql = gzip.decompress(dump_gz.read_bytes())
+        proc = subprocess.Popen(
+            [psql_bin, "--no-password", "-v", "ON_ERROR_STOP=1", safe_url],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=child_env,
+        )
+        assert proc.stdin is not None
+        assert proc.stderr is not None
+        with gzip.open(dump_gz, "rb") as gz:
+            shutil.copyfileobj(gz, proc.stdin, length=_STREAM_CHUNK)
+        proc.stdin.close()
+        stderr = proc.stderr.read()
+        code = proc.wait()
     except OSError as exc:
         raise BackupError(f"Could not read {dump_gz}: {exc}") from exc
-    proc = subprocess.run(
-        [psql_bin, "--no-password", "-v", "ON_ERROR_STOP=1", database_url],
-        input=sql,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    if proc.returncode != 0:
-        err = proc.stderr.decode("utf-8", errors="replace").strip() or f"exit {proc.returncode}"
+    if code != 0:
+        err = stderr.decode("utf-8", errors="replace").strip() or f"exit {code}"
         raise BackupError(f"psql restore failed: {err}")
 
 
@@ -285,8 +328,6 @@ def create_backup(
             if postgres_dump.name.endswith(".gz"):
                 dest.write_bytes(raw)
             else:
-                import gzip
-
                 with gzip.open(dest, "wb") as gz:
                     gz.write(raw)
             members[POSTGRES_MEMBER] = _sha256_file(dest)
