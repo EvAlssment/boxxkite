@@ -70,12 +70,10 @@ def handoff(
         resolved_api_key = api_key or ctx.api_key
 
     try:
-        session = adapter_cls().locate_session(session_ref=session_ref)
-    except HandoffError as exc:
-        raise CliError(str(exc)) from exc
-
-    try:
         with BoxxkiteClient(base_url=resolved_base_url, api_key=resolved_api_key) as client:
+            # Located last, so no step can fail between an adapter staging local
+            # files and create_handoff_sandbox's cleanup `finally`.
+            session = adapter_cls().locate_session(session_ref=session_ref)
             result = create_handoff_sandbox(
                 client, session, label=f"handoff-{tool}", lifetime_minutes=lifetime_minutes
             )
@@ -85,5 +83,5 @@ def handoff(
                 err=True,
             )
             run_terminal_passthrough(result.takeover_ws)
-    except BoxxkiteError as exc:
+    except (HandoffError, BoxxkiteError) as exc:
         raise CliError(str(exc)) from exc
