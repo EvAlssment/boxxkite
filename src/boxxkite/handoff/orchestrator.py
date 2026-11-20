@@ -98,17 +98,16 @@ def create_handoff_sandbox(
     resume command already typed and running. Returns the still-open
     websocket -- the caller (cli.py, or a test) owns its lifecycle from
     here."""
-    sandbox = client.create_sandbox(
-        label=label or f"handoff-{session.tool}-{session.session_id}",
-        lifetime_minutes=lifetime_minutes,
-    )
-    sandbox_id = sandbox["session_id"]
-    logger.info("Provisioned sandbox %s for %s session %s", sandbox_id, session.tool, session.session_id)
-
     credential_path = None
     if session.credential is not None:
         credential_path = CREDENTIAL_FILE_TEMPLATE.format(suffix=secrets.token_hex(16))
     try:
+        sandbox = client.create_sandbox(
+            label=label or f"handoff-{session.tool}-{session.session_id}",
+            lifetime_minutes=lifetime_minutes,
+        )
+        sandbox_id = sandbox["session_id"]
+        logger.info("Provisioned sandbox %s for %s session %s", sandbox_id, session.tool, session.session_id)
         _push_session_files(client, sandbox_id, session)
         if session.credential is not None and credential_path is not None:
             client.file_create(sandbox_id, credential_path, session.credential.value)

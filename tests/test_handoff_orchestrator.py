@@ -254,6 +254,30 @@ def test_create_handoff_sandbox_calls_cleanup_even_if_file_push_fails(
     assert cleanup_calls == ["cleaned"]
 
 
+def test_create_handoff_sandbox_calls_cleanup_even_if_sandbox_creation_fails(
+    session_file: Path,
+) -> None:
+    class FailingClient(FakeBoxxkiteClient):
+        def create_sandbox(self, **_kwargs) -> dict:
+            raise RuntimeError("quota exceeded")
+
+    cleanup_calls: list[str] = []
+    session = LocatedSession(
+        tool="continue",
+        session_id="ses1",
+        files=(SessionFile(local_path=session_file, sandbox_path="/workspace/x.json"),),
+        credential=None,
+        resume_command="cn --resume",
+        workdir="/workspace",
+        cleanup=lambda: cleanup_calls.append("cleaned"),
+    )
+
+    with pytest.raises(RuntimeError, match="quota exceeded"):
+        create_handoff_sandbox(FailingClient(), session)
+
+    assert cleanup_calls == ["cleaned"]
+
+
 def test_create_handoff_sandbox_tolerates_no_cleanup_set(located_session: LocatedSession) -> None:
     client = FakeBoxxkiteClient()
 
