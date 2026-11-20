@@ -3,7 +3,7 @@
 `boxxkite handoff <tool>` (part of the main `boxxkite` CLI — `pip install
 boxxkite-sandbox` is the only install step, no separate package) lets someone
 running Claude Code, Codex CLI, opencode, Cursor, Gemini CLI, Kimi Code CLI,
-Qwen Code, or GitHub Copilot CLI locally move their
+Qwen Code, GitHub Copilot CLI, or Cline CLI locally move their
 **in-progress, full-history conversation** into a fresh boxxkite sandbox and
 keep interacting with it from there — the CLI keeps running under the user's
 own (portable, scoped) credential, not a copy of their laptop's raw login
@@ -159,6 +159,7 @@ Concretely:
 | Gemini CLI | `GEMINI_API_KEY` — adapter not yet merged, see PR #122 |
 | Qwen Code | `DASHSCOPE_API_KEY`, or `OPENAI_API_KEY` for an OpenAI-compatible provider |
 | GitHub Copilot CLI | `COPILOT_GITHUB_TOKEN`, a fine-grained PAT with the "Copilot Requests" permission (classic `ghp_` PATs are not supported; broad `GH_TOKEN`/`GITHUB_TOKEN` are not read). A `gh auth token` value also works but carries every `gh` scope, so prefer the fine-grained PAT. |
+| Cline CLI | no environment variable: the session provider's API-key entry from `~/.cline/data/settings/providers.json` is pushed under `/tmp` and deleted when `cline` exits (a takeover left detached keeps it until the sandbox ends). Account (OAuth) logins are refused. |
 
 Why this is safe to authenticate with in the sandbox at all: this
 credential authenticates the CLI process itself — the same process that
@@ -253,4 +254,5 @@ backlog. To add one:
 | Kimi Code CLI | reference adapter | session directory plus session index and scoped provider config; merged in [PR #123](https://github.com/EvAlssment/boxxkite/pull/123) |
 | Qwen Code | reference adapter | project-scoped JSONL chat file with its cwd rewritten for `/workspace`; merged in [PR #124](https://github.com/EvAlssment/boxxkite/pull/124) |
 | GitHub Copilot CLI | reference adapter | `events.jsonl` from `~/.copilot/session-state/<session-id>/`; no cwd rewrite needed |
+| Cline CLI | reference adapter | session directory under `~/.cline/data/sessions/<id>/` with its `messages_path` rewritten, resumed with `cline --data-dir /tmp/... --id <id>`; the resumed session lives in `/tmp`, not `/workspace` |
 | Aider | not supported — transcript-only restore does not meet this contract | Aider documents `--chat-history-file` and `--restore-chat-history`, but the latter restores prior chat messages, not a portable full-session snapshot. Its current source rebuilds `done_messages` from the markdown transcript; model/provider settings, loaded-file context, and in-flight coder state are not restored from that artifact. See the [options reference](https://aider.chat/docs/config/options#history-files) and [`base_coder.py`](https://github.com/Aider-AI/aider/blob/main/aider/coders/base_coder.py). The Aider item in issue #97 should remain unchecked until Aider exposes and verifies a portable full-session resume contract. |
