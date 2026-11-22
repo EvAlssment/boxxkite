@@ -97,14 +97,14 @@ def test_mount_bucket_requires_auth_like_every_other_route(monkeypatch):
     assert response.status_code == 401
 
 
-def test_mount_bucket_501s_without_dev_fuse_even_when_enabled(monkeypatch):
+def test_mount_bucket_501s_without_dev_fuse_even_when_enabled(monkeypatch, tmp_path):
     monkeypatch.setattr(sidecar_main, "SIDECAR_AUTH_TOKEN", "the-real-secret")
     monkeypatch.setattr(sidecar_main, "BOXXKITE_FUSE_MOUNT_ENABLED", True)
+    # Every reference manifest leaves /dev/fuse out, but CI runners have one,
+    # so point the check at a device path that is guaranteed absent.
+    missing_device = str(tmp_path / "no-fuse-device")
+    monkeypatch.setattr(sidecar_main, "FUSE_DEVICE_PATH", missing_device)
     client = _client()
-
-    # Real assertion, not mocked: this test environment (like every current
-    # reference manifest) genuinely has no /dev/fuse device.
-    assert not __import__("os").path.exists(sidecar_main.FUSE_DEVICE_PATH)
 
     response = client.post(
         "/mount-bucket",
@@ -113,7 +113,7 @@ def test_mount_bucket_501s_without_dev_fuse_even_when_enabled(monkeypatch):
     )
 
     assert response.status_code == 501
-    assert "/dev/fuse" in response.json()["detail"]
+    assert missing_device in response.json()["detail"]
 
 
 def test_mount_bucket_501s_even_with_dev_fuse_present(monkeypatch):

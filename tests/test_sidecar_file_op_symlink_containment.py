@@ -44,6 +44,12 @@ def _plant_symlink_to_outside_secret(tmp_path, monkeypatch) -> tuple[str, str]:
     workspace_dir = tmp_path / "workspace"
     workspace_dir.mkdir()
     monkeypatch.setattr(sidecar_main, "WORKSPACE_DIR", str(workspace_dir))
+    # /tmp is itself an allowed root, and on Linux tmp_path lives under /tmp,
+    # so the "outside" secret would be inside the roots. Give the scratch
+    # root its own directory so the secret is outside every root everywhere.
+    scratch_dir = tmp_path / "scratch"
+    scratch_dir.mkdir()
+    monkeypatch.setattr(sidecar_main, "TMP_DIR", str(scratch_dir))
 
     secret_dir = tmp_path / "outside-the-sandbox-roots"
     secret_dir.mkdir()
