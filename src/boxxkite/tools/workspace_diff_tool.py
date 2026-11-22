@@ -6,7 +6,7 @@ after doing some work, including changes it did not make itself.
 """
 
 import logging
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..manager import SandboxManager

@@ -20,7 +20,14 @@ export class BoxxkiteApiError extends BoxxkiteError {
   remediation?: string;
   details?: unknown;
 
-  constructor(statusCode: number, code: string, message: string, retryable = false, remediation?: string, details?: unknown) {
+  constructor(
+    statusCode: number,
+    code: string,
+    message: string,
+    retryable = false,
+    remediation?: string,
+    details?: unknown,
+  ) {
     super(`${message} [${code}] (HTTP ${statusCode})`);
     this.name = "BoxxkiteApiError";
     this.statusCode = statusCode;
