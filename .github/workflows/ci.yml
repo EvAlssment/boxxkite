@@ -162,6 +162,10 @@ jobs:
       - name: ruff check
         run: uvx ruff@0.17.4 check src/ tests/ control-plane/src/ control-plane/tests/
 
+      - name: actionlint (workflow files)
+        if: ${{ !cancelled() }}
+        run: uvx --from actionlint-py==1.7.12.25 actionlint
+
   audit:
     name: Dependency audit (py${{ matrix.python-version }})
     needs: changes
