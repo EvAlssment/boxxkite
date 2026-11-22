@@ -55,10 +55,9 @@ class _FakeAsyncClient:
 
 
 def _patch_client(monkeypatch, response: _FakeResponse | None = None):
-    if response is not None:
-        _FakeAsyncClient.response = response
-    _FakeAsyncClient.last_url = None
-    _FakeAsyncClient.last_headers = None
+    monkeypatch.setattr(_FakeAsyncClient, "response", response or _FakeResponse(200, USAGE_BODY))
+    monkeypatch.setattr(_FakeAsyncClient, "last_url", None)
+    monkeypatch.setattr(_FakeAsyncClient, "last_headers", None)
     monkeypatch.setattr("boxxkite.tools.budget_status_tool.httpx.AsyncClient", _FakeAsyncClient)
 
 

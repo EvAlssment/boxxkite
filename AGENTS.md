@@ -22,6 +22,9 @@ pip install -e ".[dev]"
 # aren't declared in this package's own pyproject.toml, since they're the
 # sidecar's dependencies, not boxxkite's):
 pip install -r sidecar/requirements.txt
+# Run CI's fast checks (ruff; sdk-js oxfmt/oxlint/bun check; cargo fmt;
+# gofmt) on every push that touches them:
+git config core.hooksPath .githooks
 ```
 
 Cold install takes a few minutes, not seconds — the `dev` extra pulls in
@@ -32,6 +35,26 @@ Cold install takes a few minutes, not seconds — the `dev` extra pulls in
 ```bash
 pytest tests/
 ```
+
+CI runs every suite in parallel (`pytest-xdist`) and in random order
+(`pytest-randomly`), so a test that only passes after, or alone, fails
+there. Rules that keep tests independent:
+
+- Change module or class state only through `monkeypatch`, so it is undone
+  after the test. Never assign to a module global or a fake's class
+  attribute directly.
+- Exit every app lifespan you enter. Use `with TestClient(app)`, or
+  `open_sidecar_client()` from `tests/conftest.py` when a test needs one
+  event loop across requests. Never call `TestClient(app).__enter__()`
+  directly: `tests/conftest.py` fails the test that leaves one open.
+- Never compare two reads of a value that moves with wall time. Pin the
+  clock (`monkeypatch.setattr(module, "_utcnow", lambda: fixed)`) first.
+- Use `tmp_path` for files and a fresh database per test (the
+  control-plane `client` fixture already does this). No fixed paths or
+  ports.
+
+To reproduce a CI order failure, rerun with the seed CI printed:
+`pytest tests/ --randomly-seed=<seed>`.
 
 Two markers matter: `pr` (a faster pre-merge subset) and `integration`
 (slower, broader coverage) — check `pyproject.toml`'s `[tool.pytest.ini_options]`
@@ -45,9 +68,11 @@ ruff check src/ tests/ control-plane/src/ control-plane/tests/
 pip-audit --progress-spinner=off
 ```
 
-`ruff`'s `select = ["F"]` here is deliberately correctness-only (unused
-imports, undefined names, etc.), not a style linter — don't add style-only
-fixes expecting them to be caught by this command.
+`ruff` here is deliberately correctness-only (pyflakes plus the bug-risk
+and security families listed in `pyproject.toml`), not a style linter —
+don't add style-only fixes expecting them to be caught by this command.
+The `ignore` list there names the rules the code still breaks; fixing one
+means deleting it from that list.
 
 ## Handoff adapters specifically
 
