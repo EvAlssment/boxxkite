@@ -280,7 +280,10 @@ def test_helm_template_rejects_extreme_fleet_capacity_values(tmp_path: Path):
         """,
     )
     assert result.returncode != 0
-    assert "maximum:" in result.stderr
+    # The schema's `maximum` bound, worded differently across Helm versions:
+    # "maximum: got ..." (newer) or "Must be less than or equal to" (3.17,
+    # which helm-chart.yml pins).
+    assert "maximum:" in result.stderr or "must be less than or equal to" in result.stderr.lower()
 
 
 def test_helm_template_rejects_cross_namespace_secret_reference(tmp_path: Path):

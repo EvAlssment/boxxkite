@@ -23,15 +23,21 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "test": "npm run build && node --test dist/tests/*.test.js"
+    "check": "bun check",
+    "lint": "oxlint src tests examples",
+    "fmt": "oxfmt src tests examples",
+    "fmt:check": "oxfmt --check src tests examples",
+    "prepublishOnly": "bun run build",
+    "test": "bun run build && node --test dist/tests/*.test.js"
   },
   "devDependencies": {
     "@langchain/core": "^1.2.1",
     "@types/node": "^26.1.1",
     "@types/ws": "^8.18.1",
     "ai": "^5.0.0",
-    "typescript": "^6.0.3",
+    "oxfmt": "0.79.0",
+    "oxlint": "1.94.0",
+    "typescript": "7.0.2",
     "ws": "^8.21.0",
     "zod": "^4.4.3"
   },

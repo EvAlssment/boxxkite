@@ -61,9 +61,14 @@ export type {
   AllowedCommandsResponse,
 } from "./types.js";
 export {
-  BoxxkiteError, BoxxkiteApiError, BoxxkiteConnectionError,
-  BoxxkiteCapabilityDeniedError, BoxxkiteEgressDeniedError,
-  BoxxkiteQuotaExceededError, BoxxkiteReadonlyFilesystemError,
-  BoxxkiteSandboxCrashedError, BoxxkiteSandboxNotReadyError,
+  BoxxkiteError,
+  BoxxkiteApiError,
+  BoxxkiteConnectionError,
+  BoxxkiteCapabilityDeniedError,
+  BoxxkiteEgressDeniedError,
+  BoxxkiteQuotaExceededError,
+  BoxxkiteReadonlyFilesystemError,
+  BoxxkiteSandboxCrashedError,
+  BoxxkiteSandboxNotReadyError,
   BoxxkiteServiceUnavailableError,
 } from "./errors.js";

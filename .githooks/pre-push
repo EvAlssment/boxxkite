@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Runs the fast CI checks (format, lint, typecheck) for every area this push
+# touches, the same commands CI runs. Enable once per clone:
+#   git config core.hooksPath .githooks
+# Skip once with `git push --no-verify`.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+upstream=$(git rev-parse --verify --quiet origin/main || git rev-parse --verify --quiet main || true)
+changed=""
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = 0000000000000000000000000000000000000000 ] && continue
+  base=$(git merge-base "$upstream" "$local_sha" 2>/dev/null || echo "$upstream")
+  changed+=$(git diff --name-only "$base" "$local_sha")$'\n'
+done
+[ -z "${changed//$'\n'/}" ] && exit 0
+
+touches() { grep -qE "$1" <<<"$changed"; }
+failed=0
+# run DIR NAME CMD...: run CMD in DIR, print ok/FAILED, remember failures.
+run() {
+  local dir=$1 name=$2; shift 2
+  printf '%-24s' "$name"
+  local start=$SECONDS out
+  if out=$(cd "$dir" && "$@" 2>&1); then
+    echo "ok ($((SECONDS - start))s)"
+  else
+    echo "FAILED"
+    sed 's/^/  /' <<<"$out"
+    failed=1
+  fi
+}
+
+ruff_bin=(uvx ruff@0.17.4)  # same pin as pyproject.toml and ci.yml
+command -v ruff >/dev/null && ruff_bin=(ruff)
+
+if touches '^(src|tests|control-plane)/.*\.py$|^(control-plane/)?pyproject\.toml$'; then
+  run . "ruff check" "${ruff_bin[@]}" check src/ tests/ control-plane/src/ control-plane/tests/
+fi
+if touches '^sdk-js/'; then
+  if [ -d sdk-js/node_modules ]; then
+    run sdk-js "sdk-js: oxfmt" bun run fmt:check
+    run sdk-js "sdk-js: oxlint" bun run lint
+    run sdk-js "sdk-js: bun check" bun run check
+  else
+    echo "sdk-js: skipped, run \`bun install\` in sdk-js/ first"
+  fi
+fi
+if touches '^sdk-rust/'; then
+  run sdk-rust "sdk-rust: cargo fmt" cargo fmt -- --check
+fi
+if touches '^sdk-go/'; then
+  run sdk-go "sdk-go: gofmt" bash -c 'test -z "$(gofmt -l .)"'
+fi
+
+if [ "$failed" -ne 0 ]; then
+  echo "pre-push: fix the above, or push with --no-verify to skip once." >&2
+  exit 1
+fi

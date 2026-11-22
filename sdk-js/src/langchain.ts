@@ -38,7 +38,8 @@ export function createSandboxTools(
     },
     {
       name: "bash_tool",
-      description: "Run a shell command in the sandbox. Returns stdout, or stderr and the exit code if the command failed.",
+      description:
+        "Run a shell command in the sandbox. Returns stdout, or stderr and the exit code if the command failed.",
       schema: z.object({ command: z.string() }),
     },
   );
@@ -133,7 +134,17 @@ export function createSandboxTools(
   );
 
   const grepTool = tool(
-    async ({ pattern, path, glob, maxMatches }: { pattern: string; path?: string; glob?: string; maxMatches?: number }) => {
+    async ({
+      pattern,
+      path,
+      glob,
+      maxMatches,
+    }: {
+      pattern: string;
+      path?: string;
+      glob?: string;
+      maxMatches?: number;
+    }) => {
       try {
         const result = await client.grep(sessionId, pattern, { path, glob, maxMatches });
         if (result.error) return `Error searching for ${pattern}: ${result.error}`;
