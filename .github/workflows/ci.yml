@@ -26,6 +26,12 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Runners: Blacksmith (blacksmith.sh). Jobs start in seconds instead of
+# queueing behind GitHub's 20-concurrent-job limit, and the parallel test
+# jobs get 8 vCPUs: cores before shards. Everything else is I/O-bound and
+# runs on 2 vCPUs. actions/cache calls are served by Blacksmith's own
+# co-located cache with no change here.
+#
 # Nothing in this repo's test suite needs a live Kubernetes cluster or
 # Docker: SandboxManager/WarmPoolManager are exercised against fakes
 # (see tests/conftest.py), and the control-plane suite runs against
@@ -35,7 +41,7 @@ concurrency:
 jobs:
   changes:
     name: Select jobs for this diff
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     outputs:
       root: ${{ steps.select.outputs.root }}
       lint: ${{ steps.select.outputs.lint }}
@@ -72,7 +78,7 @@ jobs:
     name: Root package tests (py${{ matrix.python-version }})
     needs: changes
     if: needs.changes.outputs.root == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     strategy:
       fail-fast: false
       matrix:
@@ -148,7 +154,7 @@ jobs:
     name: Lint (ruff)
     needs: changes
     if: needs.changes.outputs.lint == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -170,7 +176,7 @@ jobs:
     name: Dependency audit (py${{ matrix.python-version }})
     needs: changes
     if: needs.changes.outputs.audit == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     strategy:
       fail-fast: false
       matrix:
@@ -218,7 +224,7 @@ jobs:
     name: control-plane tests (py${{ matrix.python-version }}, shard ${{ matrix.shard }})
     needs: changes
     if: needs.changes.outputs.control-plane == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     env:
       SHARDS: 3
     strategy:
@@ -298,7 +304,7 @@ jobs:
     name: control-plane tests (py${{ matrix.python-version }})
     needs: [changes, test-control-plane-shard]
     if: ${{ !cancelled() && needs.changes.outputs.control-plane == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     strategy:
       fail-fast: false
       matrix:
@@ -365,7 +371,7 @@ jobs:
     name: sdk-python tests
     needs: changes
     if: needs.changes.outputs.sdk-python == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -402,7 +408,7 @@ jobs:
     name: ${{ matrix.package }} tests
     needs: changes
     if: needs.changes.outputs.python-packages != '[]'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     strategy:
       fail-fast: false
       matrix:
@@ -448,7 +454,7 @@ jobs:
     name: sdk-java tests
     needs: changes
     if: needs.changes.outputs.sdk-java == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -475,7 +481,7 @@ jobs:
     name: sdk-csharp tests
     needs: changes
     if: needs.changes.outputs.sdk-csharp == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     env:
       DOTNET_NOLOGO: "true"
       DOTNET_CLI_TELEMETRY_OPTOUT: "true"
@@ -505,7 +511,7 @@ jobs:
     name: sdk-js tests
     needs: changes
     if: needs.changes.outputs.sdk-js == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     defaults:
       run:
         working-directory: sdk-js
@@ -562,7 +568,7 @@ jobs:
     name: sdk-go tests
     needs: changes
     if: needs.changes.outputs.sdk-go == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -586,7 +592,7 @@ jobs:
     name: sdk-rust tests
     needs: changes
     if: needs.changes.outputs.sdk-rust == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -623,7 +629,7 @@ jobs:
     name: mcp-server tests
     needs: changes
     if: needs.changes.outputs.mcp-server == 'true'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -668,7 +674,7 @@ jobs:
     name: Docker build (${{ matrix.image }})
     needs: changes
     if: needs.changes.outputs.docker-images != '[]'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -707,7 +713,7 @@ jobs:
     name: Release artifact build (main only)
     needs: [test-root, lint, audit, test-control-plane]
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
