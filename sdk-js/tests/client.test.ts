@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { WebSocketServer } from "ws";
+import { WebSocket as NodeWebSocket, WebSocketServer } from "ws";
 
 import { BoxxkiteApiError, BoxxkiteClient, BoxxkiteConnectionError, SandboxSession } from "../src/index.js";
 
@@ -38,10 +38,7 @@ test("rejects a plain http baseUrl to a remote host", () => {
   // apiKey is a full-privilege, long-lived credential sent as
   // `Authorization: Bearer` on every request -- an http:// URL to anything
   // other than localhost would put it on the wire in cleartext.
-  assert.throws(
-    () => new BoxxkiteClient({ baseUrl: "http://cp.example.com", apiKey: "bxk_live_test" }),
-    /cleartext/,
-  );
+  assert.throws(() => new BoxxkiteClient({ baseUrl: "http://cp.example.com", apiKey: "bxk_live_test" }), /cleartext/);
 });
 
 test("allows http localhost for local dev", () => {
@@ -77,10 +74,9 @@ test("confirmPasswordReset posts token and newPassword", async () => {
   const client = clientWith(({ url, body }) => {
     assert.equal(new URL(url).pathname, "/v1/auth/password-reset/confirm");
     assert.deepEqual(body, { token: "reset-tok", new_password: "new-hunter2" });
-    return new Response(
-      JSON.stringify({ message: "Password has been reset. Please log in with your new password." }),
-      { status: 200 },
-    );
+    return new Response(JSON.stringify({ message: "Password has been reset. Please log in with your new password." }), {
+      status: 200,
+    });
   });
 
   const result = await client.confirmPasswordReset("reset-tok", "new-hunter2");
@@ -88,13 +84,14 @@ test("confirmPasswordReset posts token and newPassword", async () => {
 });
 
 test("confirmPasswordReset throws BoxxkiteApiError on invalid token", async () => {
-  const client = clientWith(() =>
-    new Response(
-      JSON.stringify({
-        error: { code: "invalid_or_expired_token", message: "This password reset link is invalid or has expired." },
-      }),
-      { status: 400 },
-    ),
+  const client = clientWith(
+    () =>
+      new Response(
+        JSON.stringify({
+          error: { code: "invalid_or_expired_token", message: "This password reset link is invalid or has expired." },
+        }),
+        { status: 400 },
+      ),
   );
 
   await assert.rejects(
@@ -150,13 +147,14 @@ test("refreshToken posts refreshToken and returns a new pair", async () => {
 });
 
 test("refreshToken throws BoxxkiteApiError on a reused token", async () => {
-  const client = clientWith(() =>
-    new Response(
-      JSON.stringify({
-        error: { code: "refresh_token_reused", message: "This refresh token has already been used." },
-      }),
-      { status: 401 },
-    ),
+  const client = clientWith(
+    () =>
+      new Response(
+        JSON.stringify({
+          error: { code: "refresh_token_reused", message: "This refresh token has already been used." },
+        }),
+        { status: 401 },
+      ),
   );
 
   await assert.rejects(
@@ -386,10 +384,9 @@ test("getImage gets the image route", async () => {
   const client = clientWith(({ method, url }) => {
     assert.equal(method, "GET");
     assert.equal(new URL(url).pathname, "/v1/images/img-1");
-    return new Response(
-      JSON.stringify({ id: "img-1", label: "my-image", base: "boxxkite-default", status: "ready" }),
-      { status: 200 },
-    );
+    return new Response(JSON.stringify({ id: "img-1", label: "my-image", base: "boxxkite-default", status: "ready" }), {
+      status: 200,
+    });
   });
 
   const result = await client.getImage("img-1");
@@ -429,10 +426,9 @@ test("createVolume sends label and sizeGb", async () => {
     assert.equal(method, "POST");
     assert.equal(new URL(url).pathname, "/v1/volumes");
     assert.deepEqual(body, { size_gb: 10, label: "my-volume" });
-    return new Response(
-      JSON.stringify({ id: "vol-1", label: "my-volume", size_gb: 10, status: "queued" }),
-      { status: 202 },
-    );
+    return new Response(JSON.stringify({ id: "vol-1", label: "my-volume", size_gb: 10, status: "queued" }), {
+      status: 202,
+    });
   });
 
   const result = await client.createVolume({ label: "my-volume", sizeGb: 10 });
@@ -982,23 +978,21 @@ test("destroySandbox resolves on 204", async () => {
 });
 
 test("api error parses envelope", async () => {
-  const client = clientWith(() =>
-    new Response(JSON.stringify({ error: { code: "not_found", message: "Sandbox session not found" } }), {
-      status: 404,
-    }),
+  const client = clientWith(
+    () =>
+      new Response(JSON.stringify({ error: { code: "not_found", message: "Sandbox session not found" } }), {
+        status: 404,
+      }),
   );
 
-  await assert.rejects(
-    client.getSandbox("missing"),
-    (err: unknown) => {
-      assert.ok(err instanceof BoxxkiteApiError);
-      if (err instanceof BoxxkiteApiError) {
-        assert.equal(err.statusCode, 404);
-        assert.equal(err.code, "not_found");
-      }
-      return true;
-    },
-  );
+  await assert.rejects(client.getSandbox("missing"), (err: unknown) => {
+    assert.ok(err instanceof BoxxkiteApiError);
+    if (err instanceof BoxxkiteApiError) {
+      assert.equal(err.statusCode, 404);
+      assert.equal(err.code, "not_found");
+    }
+    return true;
+  });
 });
 
 test("connection error wrapped", async () => {
@@ -1028,10 +1022,13 @@ test("withSandbox creates and destroys", async () => {
     throw new Error(`unexpected call: ${method} ${path}`);
   });
 
-  const result = await client.withSandbox(async (sb) => {
-    assert.equal(sb.id, "sess-1");
-    return sb.exec("echo hi");
-  }, { label: "ctx-demo" });
+  const result = await client.withSandbox(
+    async (sb) => {
+      assert.equal(sb.id, "sess-1");
+      return sb.exec("echo hi");
+    },
+    { label: "ctx-demo" },
+  );
 
   assert.equal(result.exit_code, 0);
   assert.ok(calls.includes("POST /v1/sandboxes"));
@@ -1506,10 +1503,9 @@ test("takeover rejects with BoxxkiteApiError when the takeover-token mint call i
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
     fetchImpl: fakeFetch(
       () =>
-        new Response(
-          JSON.stringify({ error: { code: "takeover_not_permitted", message: "not permitted" } }),
-          { status: 403 },
-        ),
+        new Response(JSON.stringify({ error: { code: "takeover_not_permitted", message: "not permitted" } }), {
+          status: 403,
+        }),
     ),
   });
 
@@ -1553,9 +1549,7 @@ test("SandboxSession.takeover delegates to the client", async () => {
 /** Fakes `POST /v1/sandboxes/{id}/desktop-token`, returning a fixed token
  * string -- `desktopTakeover()` mints this before ever opening a WebSocket. */
 function fakeDesktopTokenFetch(token = "desktop-tok-abc"): typeof fetch {
-  return fakeFetch(
-    () => new Response(JSON.stringify({ token, expires_at: "2026-01-01T00:00:30Z" }), { status: 200 }),
-  );
+  return fakeFetch(() => new Response(JSON.stringify({ token, expires_at: "2026-01-01T00:00:30Z" }), { status: 200 }));
 }
 
 test("desktopTakeover mints a desktop-token via POST, then connects to a wss:// url with ?token=", async () => {
@@ -1599,10 +1593,9 @@ test("desktopTakeover rejects with BoxxkiteApiError when the desktop-token mint 
     wsImpl: FakeWebSocket as unknown as typeof WebSocket,
     fetchImpl: fakeFetch(
       () =>
-        new Response(
-          JSON.stringify({ error: { code: "desktop_not_permitted", message: "not permitted" } }),
-          { status: 403 },
-        ),
+        new Response(JSON.stringify({ error: { code: "desktop_not_permitted", message: "not permitted" } }), {
+          status: 403,
+        }),
     ),
   });
 
@@ -1643,6 +1636,10 @@ test("SandboxSession.desktopTakeover delegates to the client", async () => {
   assert.equal((resolved as unknown as FakeWebSocket).url.includes("/v1/sandboxes/sess-1/desktop"), true);
 });
 
+// Node 22+ has a global WebSocket; on older Node the client needs one
+// passed in, so these wire-level tests use the `ws` package there.
+const realWebSocket = globalThis.WebSocket ?? (NodeWebSocket as unknown as typeof WebSocket);
+
 test("desktopTakeover sends and receives raw bytes against a real local WebSocket server", async () => {
   const wss = new WebSocketServer({ host: "localhost", port: 0 });
   const received: Buffer[] = [];
@@ -1664,6 +1661,7 @@ test("desktopTakeover sends and receives raw bytes against a real local WebSocke
       baseUrl: `http://localhost:${port}`,
       apiKey: "bxk_live_test",
       fetchImpl: fakeDesktopTokenFetch("real-ws-token"),
+      wsImpl: realWebSocket,
     });
     const socket = await client.desktopTakeover("sess-1");
 
@@ -1707,6 +1705,7 @@ test("takeover sends and receives raw bytes against a real local WebSocket serve
       baseUrl: `http://localhost:${port}`,
       apiKey: "bxk_live_test",
       fetchImpl: fakeTakeoverTokenFetch("real-ws-token"),
+      wsImpl: realWebSocket,
     });
     const socket = await client.takeover("sess-1");
 

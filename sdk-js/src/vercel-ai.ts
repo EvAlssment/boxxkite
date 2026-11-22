@@ -79,8 +79,7 @@ export function createSandboxTools(
   });
 
   const str_replace = tool({
-    description:
-      "Replace a unique string in a sandbox file. old_str must appear exactly once in the file.",
+    description: "Replace a unique string in a sandbox file. old_str must appear exactly once in the file.",
     inputSchema: z.object({ path: z.string(), old_str: z.string(), new_str: z.string() }),
     execute: async ({ path, old_str, new_str }) => {
       try {
@@ -110,8 +109,7 @@ export function createSandboxTools(
   });
 
   const glob = tool({
-    description:
-      "Find files by name pattern (e.g. '**/*.py') under a directory in the sandbox workspace.",
+    description: "Find files by name pattern (e.g. '**/*.py') under a directory in the sandbox workspace.",
     inputSchema: z.object({ pattern: z.string(), path: z.string().optional() }),
     execute: async ({ pattern, path }) => {
       try {
@@ -184,10 +182,8 @@ export function createSandboxTools(
       try {
         const result = await client.getProcessOutput(sessionId, processId, { sinceOffset });
         const lines = [`status: ${result.status}`];
-        if (result.exit_code !== null && result.exit_code !== undefined)
-          lines.push(`exit_code: ${result.exit_code}`);
-        if (result.truncated)
-          lines.push("(earlier output was truncated -- the buffer only keeps recent output)");
+        if (result.exit_code !== null && result.exit_code !== undefined) lines.push(`exit_code: ${result.exit_code}`);
+        if (result.truncated) lines.push("(earlier output was truncated -- the buffer only keeps recent output)");
         lines.push(`next_offset: ${result.next_offset}`);
         lines.push("--- output ---");
         lines.push(result.stdout_chunk || "(no new output)");
@@ -238,8 +234,7 @@ export function createSandboxTools(
         return processes
           .map((p) => {
             const desc = p.description ? ` (${p.description})` : "";
-            const exit =
-              p.exit_code !== null && p.exit_code !== undefined ? `, exit_code=${p.exit_code}` : "";
+            const exit = p.exit_code !== null && p.exit_code !== undefined ? `, exit_code=${p.exit_code}` : "";
             return `${p.process_id}${desc}: ${p.status}${exit} -- ${p.command}`;
           })
           .join("\n");

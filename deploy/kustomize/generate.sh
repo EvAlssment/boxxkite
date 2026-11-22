@@ -26,7 +26,9 @@ case "${1:-write}" in
     rendered=$(mktemp)
     trap 'rm -f "${rendered}"' EXIT
     render_chart >"${rendered}"
-    diff -u "${output_file}" "${rendered}"
+    # -B: Helm versions differ in blank lines between documents, which YAML
+    # ignores. Any content change still fails.
+    diff -u -B "${output_file}" "${rendered}"
     ;;
   *)
     printf 'Usage: %s [write|check]\n' "$0" >&2

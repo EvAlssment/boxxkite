@@ -127,7 +127,7 @@ async def test_admin_account_detail_access_is_logged(client: httpx.AsyncClient):
 
 async def test_dashboard_jwt_mirror_returns_same_shape(client: httpx.AsyncClient):
     admin_email = "admin-detail-jwt@example.com"
-    admin_key = await signup_and_get_api_key(client, admin_email)
+    await signup_and_get_api_key(client, admin_email)
     await _make_admin(admin_email)
     account_id = await _account_id(admin_email)
 
