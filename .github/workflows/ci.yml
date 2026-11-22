@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The merge queue runs the full suite before anything reaches main; PRs
+  # run only the jobs their diff can reach (scripts/ci/affected.py).
+  merge_group:
 
 # Explicit minimal grant, matching publish-images.yml/publish-pypi.yml's
 # per-job scoping -- none of this workflow's steps write anything (tests,
@@ -30,8 +33,44 @@ concurrency:
 # `dev` extras). Keep it that way — don't add a real cluster/DB dependency
 # here without also making it optional for contributors without one.
 jobs:
+  changes:
+    name: Select jobs for this diff
+    runs-on: ubuntu-latest
+    outputs:
+      root: ${{ steps.select.outputs.root }}
+      lint: ${{ steps.select.outputs.lint }}
+      control-plane: ${{ steps.select.outputs.control-plane }}
+      sdk-python: ${{ steps.select.outputs.sdk-python }}
+      mcp-server: ${{ steps.select.outputs.mcp-server }}
+      sdk-js: ${{ steps.select.outputs.sdk-js }}
+      sdk-go: ${{ steps.select.outputs.sdk-go }}
+      sdk-rust: ${{ steps.select.outputs.sdk-rust }}
+      sdk-java: ${{ steps.select.outputs.sdk-java }}
+      sdk-csharp: ${{ steps.select.outputs.sdk-csharp }}
+      docker-images: ${{ steps.select.outputs.docker-images }}
+      python-packages: ${{ steps.select.outputs.python-packages }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            python3 scripts/ci/affected.py --base "$BASE" --head "$HEAD"
+          else
+            python3 scripts/ci/affected.py --all
+          fi
+
   test-root:
     name: Root package tests (py${{ matrix.python-version }})
+    needs: changes
+    if: needs.changes.outputs.root == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -102,6 +141,8 @@ jobs:
 
   lint-and-audit:
     name: Lint & dependency audit (py${{ matrix.python-version }})
+    needs: changes
+    if: needs.changes.outputs.lint == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -151,6 +192,8 @@ jobs:
   # scripts/ci/shard.py balances files by the durations main last recorded.
   test-control-plane-shard:
     name: control-plane tests (py${{ matrix.python-version }}, shard ${{ matrix.shard }})
+    needs: changes
+    if: needs.changes.outputs.control-plane == 'true'
     runs-on: ubuntu-latest
     env:
       SHARDS: 3
@@ -228,8 +271,8 @@ jobs:
   # fails if any shard failed.
   test-control-plane:
     name: control-plane tests (py${{ matrix.python-version }})
-    needs: test-control-plane-shard
-    if: ${{ !cancelled() }}
+    needs: [changes, test-control-plane-shard]
+    if: ${{ !cancelled() && needs.changes.outputs.control-plane == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -295,6 +338,8 @@ jobs:
 
   test-sdk-python:
     name: sdk-python tests
+    needs: changes
+    if: needs.changes.outputs.sdk-python == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -330,25 +375,13 @@ jobs:
   # Five Python packages with tests that no CI job ran before.
   test-package:
     name: ${{ matrix.package }} tests
+    needs: changes
+    if: needs.changes.outputs.python-packages != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - package: bastion
-            extra: dev
-          - package: boxxkite-eval
-            extra: dev
-            # Depends on boxxkite-client: test against this repo's sdk-python,
-            # not the copy on PyPI.
-            local-deps: ./sdk-python
-          - package: boxxkite-gym
-            extra: test,gymnasium
-            local-deps: ./sdk-python
-          - package: reward-functions
-            extra: test
-          - package: memory-model-server
-            extra: dev
+        include: ${{ fromJSON(needs.changes.outputs.python-packages) }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -388,6 +421,8 @@ jobs:
   # toolchains (Java 17+, .NET 8 SDK) come preinstalled on ubuntu runners.
   test-sdk-java:
     name: sdk-java tests
+    needs: changes
+    if: needs.changes.outputs.sdk-java == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -413,6 +448,8 @@ jobs:
 
   test-sdk-csharp:
     name: sdk-csharp tests
+    needs: changes
+    if: needs.changes.outputs.sdk-csharp == 'true'
     runs-on: ubuntu-latest
     env:
       DOTNET_NOLOGO: "true"
@@ -441,6 +478,8 @@ jobs:
 
   test-sdk-js:
     name: sdk-js tests
+    needs: changes
+    if: needs.changes.outputs.sdk-js == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -496,6 +535,8 @@ jobs:
 
   test-sdk-go:
     name: sdk-go tests
+    needs: changes
+    if: needs.changes.outputs.sdk-go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -518,6 +559,8 @@ jobs:
 
   test-sdk-rust:
     name: sdk-rust tests
+    needs: changes
+    if: needs.changes.outputs.sdk-rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -553,6 +596,8 @@ jobs:
 
   test-mcp-server:
     name: mcp-server tests
+    needs: changes
+    if: needs.changes.outputs.mcp-server == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -596,31 +641,14 @@ jobs:
 
   docker-build:
     name: Docker build (${{ matrix.image }})
+    needs: changes
+    if: needs.changes.outputs.docker-images != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - image: sandbox
-            dockerfile: deploy/sandbox.Dockerfile
-          - image: sandbox-minimal
-            dockerfile: deploy/sandbox-minimal.Dockerfile
-            platforms: linux/amd64,linux/arm64
-          - image: sandbox-node
-            dockerfile: deploy/sandbox-node.Dockerfile
-          - image: sandbox-go
-            dockerfile: deploy/sandbox-go.Dockerfile
-          - image: sandbox-rust
-            dockerfile: deploy/sandbox-rust.Dockerfile
-          - image: sandbox-claude-code
-            dockerfile: deploy/sandbox-claude-code.Dockerfile
-          - image: sidecar
-            dockerfile: deploy/sidecar.Dockerfile
-            platforms: linux/amd64,linux/arm64
-          - image: control-plane
-            dockerfile: control-plane/Dockerfile
-            platforms: linux/amd64,linux/arm64
+        include: ${{ fromJSON(needs.changes.outputs.docker-images) }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
