@@ -16,6 +16,13 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR branch makes its older run worthless: cancel it instead
+# of letting it hold runners. Pushes to main each get their own run, because
+# main's runs seed caches and must all finish.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # Nothing in this repo's test suite needs a live Kubernetes cluster or
 # Docker: SandboxManager/WarmPoolManager are exercised against fakes
 # (see tests/conftest.py), and the control-plane suite runs against
@@ -32,17 +39,30 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             pyproject.toml
             sidecar/requirements.txt
 
       - name: Install boxxkite (with dev extras)
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       # Several tests (test_sidecar_auth*.py, test_sidecar_exec_no_env_injection.py,
       # test_sidecar_tool_call_session_id.py) import sidecar/main.py directly,
@@ -51,7 +71,7 @@ jobs:
       # separately in sidecar/requirements.txt). Install them explicitly, or
       # collection fails with ModuleNotFoundError before any test runs.
       - name: Install sidecar dependencies (needed to import sidecar/main.py in tests)
-        run: pip install -r sidecar/requirements.txt
+        run: uv pip install -r sidecar/requirements.txt
 
       # tests/test_cli.py (the CLI's own tests) lives under tests/, so it's
       # already exercised by this run — no separate invocation needed.
@@ -89,21 +109,34 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             pyproject.toml
             control-plane/pyproject.toml
 
       - name: Install boxxkite (with dev extras)
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       - name: Install control-plane (with dev extras)
         working-directory: control-plane
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       - name: ruff check
         run: ruff check src/ tests/ control-plane/src/ control-plane/tests/
@@ -122,12 +155,25 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             pyproject.toml
             control-plane/pyproject.toml
 
@@ -135,11 +181,11 @@ jobs:
       # local sibling (see control-plane/pyproject.toml's dependency comment)
       # — install it first, from the repo root, before control-plane itself.
       - name: Install boxxkite (root package)
-        run: pip install -e .
+        run: uv pip install -e .
 
       - name: Install control-plane (with dev extras)
         working-directory: control-plane
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       - name: Run control-plane test suite
         working-directory: control-plane
@@ -173,16 +219,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: sdk-python/pyproject.toml
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
+            sdk-python/pyproject.toml
 
       - name: Install sdk-python (with dev extras)
         working-directory: sdk-python
-        run: pip install -e ".[dev,langchain]"
+        run: uv pip install -e ".[dev,langchain]"
 
       - name: Run sdk-python test suite
         working-directory: sdk-python
@@ -193,6 +253,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -215,6 +278,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
@@ -234,6 +300,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable, pinned 2026-06-30
         with:
@@ -260,23 +329,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             sdk-python/pyproject.toml
             mcp-server/pyproject.toml
 
       # mcp-server depends on sdk-python as an unpublished local sibling,
       # same relationship control-plane has to the root boxxkite package.
       - name: Install sdk-python (local sibling dependency)
-        run: pip install -e ./sdk-python
+        run: uv pip install -e ./sdk-python
 
       - name: Install mcp-server (with dev extras)
         working-directory: mcp-server
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       # tests/live_smoke.py doesn't match pytest's default test_*.py
       # collection pattern, so this never picks it up -- it's a manual,
@@ -314,6 +396,9 @@ jobs:
             platforms: linux/amd64,linux/arm64
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
@@ -340,17 +425,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             pyproject.toml
             control-plane/pyproject.toml
 
       - name: Install build tooling
-        run: pip install build
+        run: uv pip install build
 
       # This does not publish anything (no PyPI credentials exist in this
       # repo) — it only confirms pyproject.toml's version/metadata is well

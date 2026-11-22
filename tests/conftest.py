@@ -40,3 +40,41 @@ requires_tmux = pytest.mark.skipif(
 # to import it. Individual sidecar tests that need a specific value
 # monkeypatch the module attribute directly (e.g. `monkeypatch.setattr(
 # sidecar_main, "SIDECAR_AUTH_TOKEN", ...)`) rather than re-importing.
+
+
+_open_sidecar_clients: list = []
+
+
+def open_sidecar_client():
+    """A sidecar TestClient that keeps one event loop across requests.
+
+    Some tests need background tasks started by one request (process reader
+    loops, watchdogs) to outlive it, so they enter the app's lifespan and
+    hold it open for the whole test. `_close_sidecar_clients` exits every
+    client opened here once the test ends, so the next test starts from a
+    clean lifespan.
+    """
+    from fastapi.testclient import TestClient
+
+    import main
+
+    client = TestClient(main.app)
+    _open_sidecar_clients.append(client)
+    return client.__enter__()
+
+
+@pytest.fixture(autouse=True)
+def _close_sidecar_clients():
+    yield
+    while _open_sidecar_clients:
+        _open_sidecar_clients.pop().__exit__(None, None, None)
+    main = sys.modules.get("main")
+    if main is not None and main._periodic_sync_task is not None:
+        # A lifespan left open binds this task to a loop no later test owns,
+        # and the next `with TestClient(...)` then fails on shutdown. Reset it
+        # so only the test that leaked fails, not whichever test runs next.
+        main._periodic_sync_task = None
+        pytest.fail(
+            "test left the sidecar app lifespan open; use `with TestClient(...)` "
+            "or open_sidecar_client() so shutdown runs"
+        )

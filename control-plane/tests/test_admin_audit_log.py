@@ -211,7 +211,7 @@ async def test_non_admin_access_attempt_is_not_logged(client: httpx.AsyncClient)
 
 async def test_dashboard_jwt_mirror_returns_same_shape(client: httpx.AsyncClient):
     admin_email = "admin-audit-jwt@example.com"
-    admin_key = await signup_and_get_api_key(client, admin_email)
+    await signup_and_get_api_key(client, admin_email)
     await _make_admin(admin_email)
 
     login_resp = await client.post(
