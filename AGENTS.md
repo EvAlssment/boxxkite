@@ -68,9 +68,11 @@ ruff check src/ tests/ control-plane/src/ control-plane/tests/
 pip-audit --progress-spinner=off
 ```
 
-`ruff`'s `select = ["F"]` here is deliberately correctness-only (unused
-imports, undefined names, etc.), not a style linter — don't add style-only
-fixes expecting them to be caught by this command.
+`ruff` here is deliberately correctness-only (pyflakes plus the bug-risk
+and security families listed in `pyproject.toml`), not a style linter —
+don't add style-only fixes expecting them to be caught by this command.
+The `ignore` list there names the rules the code still breaks; fixing one
+means deleting it from that list.
 
 ## Handoff adapters specifically
 
