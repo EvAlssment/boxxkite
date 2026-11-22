@@ -58,10 +58,11 @@ test("bash_tool invokes exec and returns stdout", async () => {
 });
 
 test("view tool surfaces api errors as a string, not a throw", async () => {
-  const client = clientWith(() =>
-    new Response(JSON.stringify({ error: { code: "not_found", message: "Sandbox session not found" } }), {
-      status: 404,
-    }),
+  const client = clientWith(
+    () =>
+      new Response(JSON.stringify({ error: { code: "not_found", message: "Sandbox session not found" } }), {
+        status: 404,
+      }),
   );
   const tools = createSandboxTools(client, "sess-1");
 

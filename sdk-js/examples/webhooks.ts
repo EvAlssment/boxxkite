@@ -12,12 +12,7 @@ import * as crypto from "node:crypto";
 import { BoxxkiteApiError, BoxxkiteClient } from "../src/index.js";
 
 /** Verify an `X-Boxxkite-Webhook-Signature` header, per docs/WEBHOOKS-DESIGN.md §6. */
-function verifySignature(
-  secret: string,
-  signatureHeader: string,
-  rawBody: Buffer,
-  toleranceSeconds = 300,
-): boolean {
+function verifySignature(secret: string, signatureHeader: string, rawBody: Buffer, toleranceSeconds = 300): boolean {
   const parts = Object.fromEntries(
     signatureHeader.split(",").map((p) => {
       const [key, value] = p.split("=", 2);
@@ -64,9 +59,7 @@ async function main() {
     // secret, then verify it the same way a receiver would.
     // createWebhook is the one route that returns the signing secret.
     const secret: string = webhook.secret ?? "";
-    const rawBody = Buffer.from(
-      JSON.stringify({ event_type: "sandbox.created", event_id: "evt_demo" }),
-    );
+    const rawBody = Buffer.from(JSON.stringify({ event_type: "sandbox.created", event_id: "evt_demo" }));
     const timestamp = Math.floor(Date.now() / 1000);
     const signedData = Buffer.concat([Buffer.from(`${timestamp}.`), rawBody]);
     const signature = crypto.createHmac("sha256", secret).update(signedData).digest("hex");
