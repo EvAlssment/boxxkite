@@ -327,6 +327,118 @@ jobs:
         working-directory: sdk-python
         run: pytest tests/ -q
 
+  # Five Python packages with tests that no CI job ran before.
+  test-package:
+    name: ${{ matrix.package }} tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: bastion
+            extra: dev
+          - package: boxxkite-eval
+            extra: dev
+            # Depends on boxxkite-client: test against this repo's sdk-python,
+            # not the copy on PyPI.
+            local-deps: ./sdk-python
+          - package: boxxkite-gym
+            extra: test,gymnasium
+            local-deps: ./sdk-python
+          - package: reward-functions
+            extra: test
+          - package: memory-model-server
+            extra: dev
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          prune-cache: false
+          cache-suffix: ${{ matrix.package }}
+          cache-dependency-glob: |
+            ${{ matrix.package }}/pyproject.toml
+            sdk-python/pyproject.toml
+
+      - name: Install local dependencies
+        if: matrix.local-deps
+        run: uv pip install -e ${{ matrix.local-deps }}
+
+      # CPU torch for memory-model-server: the default Linux wheel bundles
+      # CUDA, gigabytes these tests never use.
+      - name: Install ${{ matrix.package }}
+        working-directory: ${{ matrix.package }}
+        run: uv pip install --torch-backend cpu -e ".[${{ matrix.extra }}]"
+
+      - name: Run ${{ matrix.package }} tests
+        working-directory: ${{ matrix.package }}
+        run: pytest -q
+
+  # The Java and C# SDKs have tests that no CI job ran before. Both
+  # toolchains (Java 17+, .NET 8 SDK) come preinstalled on ubuntu runners.
+  test-sdk-java:
+    name: sdk-java tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - id: m2
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-${{ hashFiles('sdk-java/pom.xml') }}
+
+      - name: Run sdk-java test suite
+        working-directory: sdk-java
+        run: ./mvnw -B --no-transfer-progress test
+
+      - if: github.ref == 'refs/heads/main' && steps.m2.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-${{ hashFiles('sdk-java/pom.xml') }}
+
+  test-sdk-csharp:
+    name: sdk-csharp tests
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - id: nuget
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('sdk-csharp/**/*.csproj') }}
+
+      - name: Run sdk-csharp test suite
+        working-directory: sdk-csharp
+        run: dotnet test
+
+      - if: github.ref == 'refs/heads/main' && steps.nuget.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('sdk-csharp/**/*.csproj') }}
+
   test-sdk-js:
     name: sdk-js tests
     runs-on: ubuntu-latest
