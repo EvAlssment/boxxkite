@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { WebSocketServer } from "ws";
+import { WebSocket as NodeWebSocket, WebSocketServer } from "ws";
 
 import { BoxxkiteApiError, BoxxkiteClient, BoxxkiteConnectionError, SandboxSession } from "../src/index.js";
 
@@ -1643,6 +1643,10 @@ test("SandboxSession.desktopTakeover delegates to the client", async () => {
   assert.equal((resolved as unknown as FakeWebSocket).url.includes("/v1/sandboxes/sess-1/desktop"), true);
 });
 
+// Node 22+ has a global WebSocket; on older Node the client needs one
+// passed in, so these wire-level tests use the `ws` package there.
+const realWebSocket = globalThis.WebSocket ?? (NodeWebSocket as unknown as typeof WebSocket);
+
 test("desktopTakeover sends and receives raw bytes against a real local WebSocket server", async () => {
   const wss = new WebSocketServer({ host: "localhost", port: 0 });
   const received: Buffer[] = [];
@@ -1664,6 +1668,7 @@ test("desktopTakeover sends and receives raw bytes against a real local WebSocke
       baseUrl: `http://localhost:${port}`,
       apiKey: "bxk_live_test",
       fetchImpl: fakeDesktopTokenFetch("real-ws-token"),
+      wsImpl: realWebSocket,
     });
     const socket = await client.desktopTakeover("sess-1");
 
@@ -1707,6 +1712,7 @@ test("takeover sends and receives raw bytes against a real local WebSocket serve
       baseUrl: `http://localhost:${port}`,
       apiKey: "bxk_live_test",
       fetchImpl: fakeTakeoverTokenFetch("real-ws-token"),
+      wsImpl: realWebSocket,
     });
     const socket = await client.takeover("sess-1");
 
