@@ -22,6 +22,7 @@ from sqlalchemy import select
 
 from conftest import FakeSandboxManager, create_api_key, signup
 from control_plane import db as db_module
+from control_plane import usage_policy
 from control_plane.models_orm import Account
 
 
@@ -278,7 +279,7 @@ async def test_account_admin_metrics_rejects_api_key(client: httpx.AsyncClient):
 
 
 async def test_account_admin_metrics_matches_api_key_route_for_an_admin(
-    client: httpx.AsyncClient, fake_manager: FakeSandboxManager
+    client: httpx.AsyncClient, fake_manager: FakeSandboxManager, monkeypatch
 ):
     """The dashboard-JWT mirror and the API-key route share one aggregation
     helper (_compute_admin_cluster_metrics) -- this pins that they actually
@@ -292,6 +293,11 @@ async def test_account_admin_metrics_matches_api_key_route_for_an_admin(
         client, (await signup(client, "dash-admin-metrics-other@example.com"))["access_token"]
     )
     await client.post("/v1/sandboxes", json={}, headers={"Authorization": f"Bearer {other_key['key']}"})
+
+    # Sandbox-hours of a running sandbox grow with wall time; read both
+    # routes at the same instant or a slow runner sees 0.0 vs 0.0001.
+    frozen_now = usage_policy._utcnow()
+    monkeypatch.setattr(usage_policy, "_utcnow", lambda: frozen_now)
 
     jwt_resp = await client.get(
         "/v1/account/admin/metrics", headers={"Authorization": f"Bearer {signup_resp['access_token']}"}

@@ -22,11 +22,13 @@ import threading
 import main as sidecar_main
 from fastapi.testclient import TestClient
 
+from conftest import open_sidecar_client
+
 AUTH_TOKEN = "the-real-secret"
 
 
 def _client() -> TestClient:
-    return TestClient(sidecar_main.app).__enter__()
+    return open_sidecar_client()
 
 
 def _headers() -> dict:

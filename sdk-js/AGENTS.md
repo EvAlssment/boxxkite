@@ -7,27 +7,27 @@ the fork/PR flow, see the repo root's [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ```bash
 cd sdk-js
-npm install
+bun install
 ```
 
 ## Test
 
 ```bash
-npm test
+bun run fmt:check   # oxfmt
+bun run lint        # oxlint
+bun run check       # bun check: type errors, same as tsc
+bun run test        # builds with tsc (TypeScript 7), then node --test on dist/
 ```
 
-Builds via `tsc`, then runs the compiled output through Node's built-in
-test runner (`node --test`) — there's no separate build step to run
-first, `npm test` does both. Tests mock the control-plane; no real
-deployment needed.
+Tests run under Node, not bun: the SDK ships for Node, so they run on the
+runtime users have. They mock the control-plane; no real deployment
+needed. `bun run fmt` rewrites files to the house format.
 
 ## Conventions
 
-- No lint step is configured for this package (no `eslintrc`/
-  `eslint.config.*`) — `tsc`'s own type-checking during the build is the
-  only static check `npm test` runs. Don't assume an ESLint pass is part
-  of this package's own checks; the root's combined `ruff check` command
-  doesn't cover JS/TS either.
+- oxlint runs every rule category except nursery. `.oxlintrc.json`
+  switches off, by name, only the rules this code broke when it was
+  turned on; remove a rule from that list once the code passes it.
 - Hand-written against the control-plane's REST API, same posture as
   `sdk-python`/`sdk-go`/`sdk-rust` (see `sdk-python/AGENTS.md`'s note on
   cross-SDK drift) — no codegen, so a control-plane API change needs a

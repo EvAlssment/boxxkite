@@ -54,10 +54,11 @@ test("bash_tool invokes exec and returns stdout", async () => {
 });
 
 test("view tool surfaces api errors as a string, not a throw", async () => {
-  const client = clientWith(() =>
-    new Response(JSON.stringify({ error: { code: "not_found", message: "Sandbox session not found" } }), {
-      status: 404,
-    }),
+  const client = clientWith(
+    () =>
+      new Response(JSON.stringify({ error: { code: "not_found", message: "Sandbox session not found" } }), {
+        status: 404,
+      }),
   );
   const tools = createSandboxTools(client, "sess-1");
   const view = tools.find((t) => t.name === "view")!;
@@ -105,7 +106,9 @@ test("grep tool invokes grep and lists matches", async () => {
 });
 
 test("grep tool surfaces reported error as a string", async () => {
-  const client = clientWith(() => new Response(JSON.stringify({ matches: [], error: "invalid regex" }), { status: 200 }));
+  const client = clientWith(
+    () => new Response(JSON.stringify({ matches: [], error: "invalid regex" }), { status: 200 }),
+  );
   const tools = createSandboxTools(client, "sess-1");
   const grepTool = tools.find((t) => t.name === "grep")!;
 
