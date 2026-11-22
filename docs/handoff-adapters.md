@@ -254,3 +254,24 @@ backlog. To add one:
 | Qwen Code | reference adapter | project-scoped JSONL chat file with its cwd rewritten for `/workspace`; merged in [PR #124](https://github.com/EvAlssment/boxxkite/pull/124) |
 | GitHub Copilot CLI | reference adapter | `events.jsonl` from `~/.copilot/session-state/<session-id>/`; no cwd rewrite needed |
 | Aider | not supported — transcript-only restore does not meet this contract | Aider documents `--chat-history-file` and `--restore-chat-history`, but the latter restores prior chat messages, not a portable full-session snapshot. Its current source rebuilds `done_messages` from the markdown transcript; model/provider settings, loaded-file context, and in-flight coder state are not restored from that artifact. See the [options reference](https://aider.chat/docs/config/options#history-files) and [`base_coder.py`](https://github.com/Aider-AI/aider/blob/main/aider/coders/base_coder.py). The Aider item in issue #97 should remain unchecked until Aider exposes and verifies a portable full-session resume contract. |
+
+## Portable context export
+
+`boxxkite context export <tool>` reads one local session and prints a
+portable context artifact on stdout: JSON by default, or with `--prompt` a
+ready prompt for a fresh session of another agent. The prompt is capped at
+60,000 characters by default (`--max-chars`); over the cap, the oldest
+messages are dropped. It is not a native resume. The target agent starts
+a new session that carries the source session's user and assistant text
+as a quoted transcript, and the source session's files stay unchanged. Tool calls, thinking, and harness output
+are left out and listed in the artifact's `omitted` field. Known secret
+shapes are redacted on a best-effort basis, so treat the output as
+sensitive. The command is local-only and needs no hosted or local
+boxxkite target. For `claude-code`, run it from the session's project
+directory, the same as `boxxkite handoff`. Only the `claude-code` and
+`codex` readers exist today.
+
+```bash
+boxxkite context export claude-code --last 40 > context.json
+boxxkite context export codex --session <session-id> --prompt --max-chars 20000 > prompt.txt
+```
