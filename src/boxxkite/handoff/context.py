@@ -26,6 +26,26 @@ Verification record (2026-11):
   decides. Rollouts without the tag fall back to dropping user items that
   start with `<` or carry `<INSTRUCTIONS>`; that fallback serves older
   rollouts and was not observed on a real file.
+- GitHub Copilot CLI 1.0.114: `copilot -p` and `--resume` were run with an
+  isolated `COPILOT_HOME` against a local mock OpenAI-compatible server
+  (BYOK `COPILOT_PROVIDER_*`, fake key), producing typed prompts, assistant
+  text, reasoning, a shell tool call, an `@file` attachment, a subagent,
+  `/compact` and a model error. Typed text is `user.message` `data.content`;
+  `data.transformedContent` adds an injected `<current_datetime>`, and
+  attachments sit in `data.attachments`. Assistant text is `assistant.message`
+  `data.content`, with `toolRequests` and `reasoningText` beside it. Subagent
+  events share the file and carry a top-level `agentId`; their prompt is a
+  `user.message` with `source: "agent-<id>"`. Copilot's activity check
+  treats a `user.message` as typed when `source` is absent or `"user"` and
+  `isAutopilotContinuation` is unset; its timeline also shows `command-`,
+  `schedule-` and `autopilot-` sources, which this reader omits as
+  slash-command prompts. Tool runs, system prompts, injected instructions,
+  compaction summaries and errors are separate event types. With
+  `COPILOT_SESSION_EVENT_LOG_ROTATION_BYTES` lowered, Copilot rotated older
+  events into `events.<n>.jsonl` and started the new `events.jsonl` with a
+  `session.journal_link` record followed by every earlier turn replayed as
+  `checkpoint: true` records, so those records are the only copy of that
+  history in the file.
 """
 
 from __future__ import annotations
@@ -41,6 +61,8 @@ from typing import Any, Literal, get_args
 from ..tools.bash_tool import sanitize_output
 from .adapters.claude_code import _default_config_dir, _find_session, encode_project_dir
 from .adapters.codex import _default_codex_home, _find_rollout_file
+from .adapters.copilot import _default_home as _default_copilot_home
+from .adapters.copilot import _find_events_file
 from .core import HandoffError, validate_identifier
 
 CONTEXT_SCHEMA_VERSION = 1
@@ -55,7 +77,13 @@ _CLAUDE_OMITTED = (
     "API errors and interruption markers", "meta and system records",
 )
 _CODEX_OMITTED = ("tool calls and results", "reasoning", "developer and injected environment messages")
-_KNOWN_OMITTED = frozenset(_CLAUDE_OMITTED + _CODEX_OMITTED)
+_COPILOT_OMITTED = (
+    "tool calls and results", "reasoning", "subagent and background task results",
+    "system prompt and injected instructions", "file attachments",
+    "skill and slash-command prompts", "compaction summaries",
+    "API errors and interruption markers",
+)
+_KNOWN_OMITTED = frozenset(_CLAUDE_OMITTED + _CODEX_OMITTED + _COPILOT_OMITTED)
 _DROPPED_MESSAGES_RE = re.compile(r"[1-9][0-9]{0,8} earlier messages")
 
 # Secret shapes sanitize_output misses. Applied before it, so these labels win. sanitize_output
@@ -336,6 +364,41 @@ def _typed_user_items(items: list[dict], payload: dict) -> list[dict]:
     return [item for item, text in zip(items, texts) if not text.lstrip().startswith("<") and "<INSTRUCTIONS>" not in text]
 
 
+def _read_copilot(*, session_ref: str | None = None, copilot_home: Path | None = None) -> ContextArtifact:
+    events_path = _find_events_file(copilot_home or _default_copilot_home(), session_ref)
+    return _build_artifact(
+        "copilot",
+        events_path.parent.name,
+        _copilot_turns(events_path),
+        omitted=_COPILOT_OMITTED,
+    )
+
+
+def _is_typed_user_message(data: dict) -> bool:
+    return data.get("source") in (None, "user") and not data.get("isAutopilotContinuation")
+
+
+def _copilot_turns(path: Path) -> Iterator[tuple[Role, str]]:
+    for record in _iter_records(path):
+        data = record.get("data")
+        if not isinstance(data, dict) or not isinstance(data.get("content"), str):
+            continue
+        if _is_copilot_subagent_event(record, data):
+            continue
+        if record.get("type") == "assistant.message":
+            yield "assistant", data["content"]
+        elif record.get("type") == "user.message" and _is_typed_user_message(data):
+            yield "user", data["content"]
+
+
+def _is_copilot_subagent_event(record: dict, data: dict) -> bool:
+    # Copilot's own primary-agent check reads these three keys; only the
+    # top-level agentId was seen on 1.0.114.
+    return any(isinstance(value, str) and value for value in (
+        record.get("agentId"), data.get("agentId"), data.get("parentToolCallId"),
+    ))
+
+
 def _text_items(items: list[dict], item_type: str) -> list[str]:
     return [
         item["text"] for item in items if item.get("type") == item_type and isinstance(item.get("text"), str)
@@ -379,4 +442,5 @@ def _build_artifact(
 CONTEXT_READERS: dict[str, Callable[..., ContextArtifact]] = {
     "claude-code": _read_claude_code,
     "codex": _read_codex,
+    "copilot": _read_copilot,
 }

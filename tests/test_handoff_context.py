@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,8 @@ from boxxkite.handoff.core import HandoffError
 
 CLAUDE_SESSION_ID = "11111111-2222-3333-4444-555555555555"
 CODEX_SESSION_ID = "01a1e33c-5707-77d3-911e-64f89e108453"
+COPILOT_SESSION_ID = "0a9c5c54-72ad-4a44-b946-0faa90962e72"
+COPILOT_SUBAGENT_ID = "df3905bd-ef9c-4278-b05a-a4991c092cf5"
 GITHUB_TOKEN = "ghp_" + "A1b2C3d4" * 4 + "E5f6"
 
 
@@ -114,6 +117,70 @@ def codex_rollout(tmp_path: Path) -> tuple[Path, Path]:
     return codex_home, _write_jsonl(path, CODEX_RECORDS)
 
 
+def _copilot_event(event_type: str, data: dict | None = None, **top: object) -> dict:
+    return {"type": event_type, "data": data or {}, **top}
+
+
+def _copilot_user(content: str, **data: object) -> dict:
+    stamped = f"<current_datetime>2026-11-22T12:08:55.061+05:30</current_datetime>\n\n{content}"
+    return _copilot_event("user.message", {"content": content, "transformedContent": stamped, **data})
+
+
+def _copilot_assistant(content: str, *tool_requests: dict, **data: object) -> dict:
+    return _copilot_event("assistant.message", {"content": content, "toolRequests": list(tool_requests), **data})
+
+
+COPILOT_SHELL_CALL = {"toolCallId": "call_2", "name": "bash", "arguments": {"command": "cat notes.txt"}}
+COPILOT_TASK_CALL = {"toolCallId": "call_3", "name": "task", "arguments": {"prompt": "SUBAGENT-PROMPT say hi"}}
+
+COPILOT_EVENTS = [
+    _copilot_event("session.start", {"sessionId": COPILOT_SESSION_ID, "copilotVersion": "1.0.114"}),
+    _copilot_event("instruction.update", {"content": "<system_reminder>sandbox guidance</system_reminder>"}),
+    _copilot_user("Remember the codeword please."),
+    _copilot_event("system.message", {"role": "system", "content": "You are the GitHub Copilot CLI."}),
+    _copilot_event("assistant.turn_start", {"turnId": "0"}),
+    _copilot_assistant("The codeword is PELICAN-42.", reasoningText="private reasoning"),
+    _copilot_event("assistant.turn_end", {"turnId": "0"}),
+    _copilot_event("session.resume", {"eventCount": 9}),
+    _copilot_user(
+        "Read @notes.txt and tell me what it says.",
+        attachments=[{"type": "file", "path": "/repo/notes.txt", "displayName": "@notes.txt"}],
+    ),
+    _copilot_assistant("Let me look at the file first.", COPILOT_SHELL_CALL),
+    _copilot_event("tool.execution_start", {"toolCallId": "call_2", "toolName": "bash", "arguments": {}}),
+    _copilot_event(
+        "tool.execution_complete",
+        {"toolCallId": "call_2", "success": True, "result": {"content": "hello\n<shellId: 0 completed>"}},
+    ),
+    _copilot_assistant("The file says hello."),
+    _copilot_user("Ask a helper agent to say hi."),
+    _copilot_assistant("Delegating to a helper agent.", COPILOT_TASK_CALL),
+    _copilot_event("subagent.started", {"toolCallId": "call_3"}, agentId=COPILOT_SUBAGENT_ID),
+    _copilot_user("SUBAGENT-PROMPT say hi", source=f"agent-{COPILOT_SESSION_ID}") | {"agentId": COPILOT_SUBAGENT_ID},
+    _copilot_assistant("SUBAGENT-REPLY") | {"agentId": COPILOT_SUBAGENT_ID},
+    _copilot_event("subagent.completed", {"toolCallId": "call_3"}, agentId=COPILOT_SUBAGENT_ID),
+    _copilot_event("tool.execution_complete", {"toolCallId": "call_3", "result": {"content": "SUBAGENT-REPLY"}}),
+    _copilot_assistant("The helper agent finished its work."),
+    _copilot_event("session.compaction_complete", {"success": True, "summaryContent": "compaction summary"}),
+    _copilot_user("Expanded skill instructions", source="skill-pdf"),
+    _copilot_user("Keep going", isAutopilotContinuation=True),
+    _copilot_event("session.error", {"errorType": "query", "message": "400 mock bad request"}),
+    _copilot_user(f"Use token {GITHUB_TOKEN} to push.", source="user"),
+    _copilot_assistant("Pushed."),
+]
+
+
+def _write_copilot_session(copilot_home: Path, session_id: str, events: list[dict]) -> Path:
+    return _write_jsonl(copilot_home / "session-state" / session_id / "events.jsonl", events)
+
+
+@pytest.fixture
+def copilot_home(tmp_path: Path) -> Path:
+    home = tmp_path / "copilot"
+    _write_copilot_session(home, COPILOT_SESSION_ID, COPILOT_EVENTS)
+    return home
+
+
 def _pairs(artifact: ContextArtifact) -> list[tuple[str, str]]:
     return [(m.role, m.text) for m in artifact.messages]
 
@@ -165,6 +232,80 @@ def test_codex_fallback_without_matching_kinds_drops_injected_items(tmp_path: Pa
     )
 
     assert _pairs(export_context("codex", codex_home=codex_home)) == [("user", "Typed request")]
+
+
+def test_copilot_export_keeps_only_typed_user_and_primary_assistant_text(copilot_home: Path) -> None:
+    artifact = export_context("copilot", copilot_home=copilot_home)
+
+    assert artifact.source_tool == "copilot"
+    assert artifact.source_session_id == COPILOT_SESSION_ID
+    assert _pairs(artifact) == [
+        ("user", "Remember the codeword please."),
+        ("assistant", "The codeword is PELICAN-42."),
+        ("user", "Read @notes.txt and tell me what it says."),
+        ("assistant", "Let me look at the file first.\n\nThe file says hello."),
+        ("user", "Ask a helper agent to say hi."),
+        ("assistant", "Delegating to a helper agent.\n\nThe helper agent finished its work."),
+        ("user", "Use token [REDACTED_GITHUB_TOKEN] to push."),
+        ("assistant", "Pushed."),
+    ]
+    assert "subagent and background task results" in artifact.omitted
+
+
+def test_copilot_session_ref_selects_a_session_and_default_is_most_recent(copilot_home: Path) -> None:
+    newer_id = "11111111-2222-4333-8444-555555555555"
+    newer = _write_copilot_session(
+        copilot_home, newer_id, [_copilot_user("Newer session."), _copilot_assistant("Newer reply.")]
+    )
+    older = copilot_home / "session-state" / COPILOT_SESSION_ID / "events.jsonl"
+    os.utime(older, (1_000_000, 1_000_000))
+    os.utime(newer, (2_000_000, 2_000_000))
+
+    latest = export_context("copilot", copilot_home=copilot_home)
+    chosen = export_context("copilot", copilot_home=copilot_home, session_ref=COPILOT_SESSION_ID)
+
+    assert (latest.source_session_id, _pairs(latest)[0]) == (newer_id, ("user", "Newer session."))
+    assert (chosen.source_session_id, _pairs(chosen)[0]) == (
+        COPILOT_SESSION_ID, ("user", "Remember the codeword please."),
+    )
+
+
+@pytest.mark.parametrize("session_ref", ["99999999-2222-4333-8444-555555555555", "not-a-uuid"])
+def test_copilot_unknown_session_ref_is_a_handoff_error(copilot_home: Path, session_ref: str) -> None:
+    with pytest.raises(HandoffError):
+        export_context("copilot", copilot_home=copilot_home, session_ref=session_ref)
+
+
+def test_copilot_home_without_sessions_is_a_handoff_error(tmp_path: Path) -> None:
+    with pytest.raises(HandoffError):
+        export_context("copilot", copilot_home=tmp_path / "empty")
+
+
+def test_copilot_rotated_journal_keeps_the_replayed_checkpoint_turns(tmp_path: Path) -> None:
+    home = tmp_path / "copilot"
+    _write_copilot_session(home, COPILOT_SESSION_ID, [
+        _copilot_event("session.journal_link", {"previousFile": "events.1.jsonl"}),
+        _copilot_user("First prompt.") | {"checkpoint": True},
+        _copilot_assistant("First reply.") | {"checkpoint": True},
+        _copilot_user("Second prompt.") | {"checkpoint": True},
+        _copilot_assistant("Second reply.") | {"checkpoint": True},
+        _copilot_user("Third prompt."),
+        _copilot_assistant("Third reply."),
+    ])
+
+    assert _pairs(export_context("copilot", copilot_home=home)) == [
+        ("user", "First prompt."),
+        ("assistant", "First reply."),
+        ("user", "Second prompt."),
+        ("assistant", "Second reply."),
+        ("user", "Third prompt."),
+        ("assistant", "Third reply."),
+    ]
+
+
+def test_copilot_artifact_json_round_trip(copilot_home: Path) -> None:
+    artifact = export_context("copilot", copilot_home=copilot_home)
+    assert artifact_from_json(artifact_to_json(artifact)) == artifact
 
 
 def test_last_messages_keeps_only_the_newest_messages_and_records_the_cut(claude_session) -> None:
@@ -336,7 +477,7 @@ def test_render_prompt_keeps_the_tail_of_an_oversized_newest_message() -> None:
 
 
 def test_unknown_tool_error_lists_supported_tools() -> None:
-    with pytest.raises(HandoffError, match="claude-code, codex"):
+    with pytest.raises(HandoffError, match="claude-code, codex, copilot"):
         export_context("cursor")
 
 
