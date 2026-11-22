@@ -391,7 +391,7 @@ export class BoxxkiteClient {
     this.apiKey = options.apiKey;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.wsImpl = options.wsImpl ?? WebSocket;
+    this.wsImpl = options.wsImpl ?? globalThis.WebSocket;
     this.retry = resolveRetryOptions(options.retry);
   }
 
