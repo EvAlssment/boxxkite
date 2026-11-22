@@ -147,6 +147,8 @@ __all__ = [
     "create_stop_process_tool_spec",
     "create_list_processes_tool",
     "create_list_processes_tool_spec",
+    "create_process_tree_tool",
+    "create_process_tree_tool_spec",
     "create_python_interpreter_tool",
     "create_python_interpreter_tool_spec",
     "create_run_tests_tool",
