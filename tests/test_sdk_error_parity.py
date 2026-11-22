@@ -69,8 +69,6 @@ def _python_classifier():
     spec.loader.exec_module(module)
     return module.api_error_type
 
-    return api_error_type
-
 
 @pytest.mark.parametrize("code,expected_class", sorted(CODES.items()))
 def test_sdk_python_classifies_every_spec_code(code, expected_class):

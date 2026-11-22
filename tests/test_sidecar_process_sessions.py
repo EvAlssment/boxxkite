@@ -11,7 +11,7 @@ than mocks.
 import asyncio
 
 import main as sidecar_main
-from conftest import requires_tmux
+from conftest import open_sidecar_client, requires_tmux
 from fastapi.testclient import TestClient
 
 AUTH_TOKEN = "the-real-secret"
@@ -24,7 +24,7 @@ def _client() -> TestClient:
     request from this client to the same underlying event loop instead of
     spinning up a fresh one per call, which is required for asyncio tasks
     to survive across requests."""
-    return TestClient(sidecar_main.app).__enter__()
+    return open_sidecar_client()
 
 
 def _headers() -> dict:
