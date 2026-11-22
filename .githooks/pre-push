@@ -31,7 +31,7 @@ run() {
   fi
 }
 
-ruff_bin=(uvx ruff)
+ruff_bin=(uvx ruff@0.17.4)  # same pin as pyproject.toml and ci.yml
 command -v ruff >/dev/null && ruff_bin=(ruff)
 
 if touches '^(src|tests|control-plane)/.*\.py$|^(control-plane/)?pyproject\.toml$'; then

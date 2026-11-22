@@ -29,6 +29,9 @@ EVERYTHING = [".github/*", "scripts/ci/*"]
 # Paths each job reads. A job runs when any changed file matches.
 JOBS: dict[str, list[str]] = {
     "lint": ["src/*", "tests/*", "control-plane/*", "pyproject.toml"],
+    # The audit scans installed dependencies, which only these change. The
+    # merge queue and main still run it every time, so a new CVE shows up.
+    "audit": ["pyproject.toml", "control-plane/pyproject.toml"],
     "control-plane": ["control-plane/*", "src/*", "pyproject.toml"],
     "sdk-python": ["sdk-python/*"],
     "mcp-server": ["mcp-server/*", "sdk-python/*"],

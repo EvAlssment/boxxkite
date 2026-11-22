@@ -39,6 +39,7 @@ jobs:
     outputs:
       root: ${{ steps.select.outputs.root }}
       lint: ${{ steps.select.outputs.lint }}
+      audit: ${{ steps.select.outputs.audit }}
       control-plane: ${{ steps.select.outputs.control-plane }}
       sdk-python: ${{ steps.select.outputs.sdk-python }}
       mcp-server: ${{ steps.select.outputs.mcp-server }}
@@ -114,10 +115,13 @@ jobs:
 
       # tests/test_cli.py (the CLI's own tests) lives under tests/, so it's
       # already exercised by this run — no separate invocation needed.
+      # Random order with a seed fixed per run (a re-run repeats the order).
+      # Reproduce a failure locally with the --randomly-seed printed here.
       - name: Run root test suite
-        run: >
-          pytest tests/ -q -n auto
-          --cov=src/boxxkite --cov-report=term-missing --cov-report=xml --cov-report=html
+        run: |
+          echo "random order: --randomly-seed=$GITHUB_RUN_ID"
+          pytest tests/ -q -n auto -p randomly --randomly-seed="$GITHUB_RUN_ID" \
+            --cov=src/boxxkite --cov-report=term-missing --cov-report=xml --cov-report=html
 
       - name: Coverage summary
         if: always()
@@ -139,10 +143,29 @@ jobs:
             htmlcov/
           retention-days: 14
 
-  lint-and-audit:
-    name: Lint & dependency audit (py${{ matrix.python-version }})
+  # Needs no installed environment, so it runs on its own and fast.
+  lint:
+    name: Lint (ruff)
     needs: changes
     if: needs.changes.outputs.lint == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      # Same version as the dev extra, so CI, the pre-push hook and a local
+      # `ruff check` agree.
+      - name: ruff check
+        run: uvx ruff@0.17.4 check src/ tests/ control-plane/src/ control-plane/tests/
+
+  audit:
+    name: Dependency audit (py${{ matrix.python-version }})
+    needs: changes
+    if: needs.changes.outputs.audit == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -178,9 +201,6 @@ jobs:
       - name: Install control-plane (with dev extras)
         working-directory: control-plane
         run: uv pip install -e ".[dev]"
-
-      - name: ruff check
-        run: ruff check src/ tests/ control-plane/src/ control-plane/tests/
 
       # pip-audit scans the environment's installed dependencies (root +
       # control-plane, both already installed above) for known CVEs.
@@ -251,7 +271,8 @@ jobs:
           files=$(python ../scripts/ci/shard.py plan --tests tests \
             --durations .test-durations.json --shard ${{ matrix.shard }} --of "$SHARDS")
           # shellcheck disable=SC2086 # one argument per test file
-          pytest $files -q -n auto -o junit_family=xunit1 \
+          echo "random order: --randomly-seed=$GITHUB_RUN_ID"
+          pytest $files -q -n auto -p randomly --randomly-seed="$GITHUB_RUN_ID" -o junit_family=xunit1 \
             --junitxml=junit-shard-${{ matrix.shard }}.xml \
             --cov=src/control_plane --cov-report=
 
@@ -680,7 +701,7 @@ jobs:
 
   release-readiness:
     name: Release artifact build (main only)
-    needs: [test-root, lint-and-audit, test-control-plane]
+    needs: [test-root, lint, audit, test-control-plane]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
