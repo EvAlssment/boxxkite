@@ -77,7 +77,7 @@ jobs:
       # already exercised by this run — no separate invocation needed.
       - name: Run root test suite
         run: >
-          pytest tests/ -q
+          pytest tests/ -q -n auto
           --cov=src/boxxkite --cov-report=term-missing --cov-report=xml --cov-report=html
 
       - name: Coverage summary
@@ -146,13 +146,19 @@ jobs:
       - name: pip-audit (dependency vulnerability scan)
         run: pip-audit --progress-spinner=off
 
-  test-control-plane:
-    name: control-plane tests (py${{ matrix.python-version }})
+  # control-plane is the slowest suite (395s serial on a 4-vCPU runner), so
+  # it runs as SHARDS shards per Python version, each across every core.
+  # scripts/ci/shard.py balances files by the durations main last recorded.
+  test-control-plane-shard:
+    name: control-plane tests (py${{ matrix.python-version }}, shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
+    env:
+      SHARDS: 3
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -187,16 +193,84 @@ jobs:
         working-directory: control-plane
         run: uv pip install -e ".[dev]"
 
-      - name: Run control-plane test suite
+      - name: Restore test durations recorded by main
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: control-plane/.test-durations.json
+          key: cp-durations-${{ github.sha }}
+          restore-keys: cp-durations-
+
+      - name: Run control-plane tests (shard ${{ matrix.shard }})
+        working-directory: control-plane
+        env:
+          COVERAGE_FILE: .coverage.shard-${{ matrix.shard }}
+        run: |
+          files=$(python ../scripts/ci/shard.py plan --tests tests \
+            --durations .test-durations.json --shard ${{ matrix.shard }} --of "$SHARDS")
+          # shellcheck disable=SC2086 # one argument per test file
+          pytest $files -q -n auto -o junit_family=xunit1 \
+            --junitxml=junit-shard-${{ matrix.shard }}.xml \
+            --cov=src/control_plane --cov-report=
+
+      - name: Upload shard report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: control-plane-py${{ matrix.python-version }}-shard-${{ matrix.shard }}
+          path: |
+            control-plane/junit-shard-*.xml
+            control-plane/.coverage.shard-*
+          include-hidden-files: true
+          retention-days: 1
+
+  # One result per Python version, under the old job name: proves the shards
+  # together ran every test file exactly once, merges their coverage, and
+  # fails if any shard failed.
+  test-control-plane:
+    name: control-plane tests (py${{ matrix.python-version }})
+    needs: test-control-plane-shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: control-plane-py${{ matrix.python-version }}-shard-*
+          path: control-plane/shard-reports
+          merge-multiple: true
+
+      - name: Check every test file ran exactly once
         working-directory: control-plane
         run: >
-          pytest tests/ -q
-          --cov=src/control_plane --cov-report=term-missing --cov-report=xml --cov-report=html
+          python ../scripts/ci/shard.py check --tests tests
+          --junit-dir shard-reports --write-durations .test-durations.json
+
+      - name: Save test durations for the next run to balance on
+        if: github.ref == 'refs/heads/main' && matrix.python-version == '3.12'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: control-plane/.test-durations.json
+          key: cp-durations-${{ github.run_id }}
 
       - name: Coverage summary
-        if: always()
         working-directory: control-plane
         run: |
+          pip install --quiet coverage
+          coverage combine shard-reports/.coverage.shard-*
+          coverage xml
+          coverage html
           {
             echo "### control-plane coverage (py${{ matrix.python-version }})";
             echo '```';
@@ -205,7 +279,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload control-plane coverage report
-        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-control-plane-py${{ matrix.python-version }}
@@ -213,6 +286,12 @@ jobs:
             control-plane/coverage.xml
             control-plane/htmlcov/
           retention-days: 14
+
+      - name: Fail if any shard failed
+        if: needs.test-control-plane-shard.result != 'success'
+        run: |
+          echo "::error::a control-plane shard ${{ needs.test-control-plane-shard.result }}; see its job log"
+          exit 1
 
   test-sdk-python:
     name: sdk-python tests
