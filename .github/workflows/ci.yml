@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The merge queue runs the full suite before anything reaches main; PRs
+  # run only the jobs their diff can reach (scripts/ci/affected.py).
+  merge_group:
 
 # Explicit minimal grant, matching publish-images.yml/publish-pypi.yml's
 # per-job scoping -- none of this workflow's steps write anything (tests,
@@ -16,6 +19,13 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR branch makes its older run worthless: cancel it instead
+# of letting it hold runners. Pushes to main each get their own run, because
+# main's runs seed caches and must all finish.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # Nothing in this repo's test suite needs a live Kubernetes cluster or
 # Docker: SandboxManager/WarmPoolManager are exercised against fakes
 # (see tests/conftest.py), and the control-plane suite runs against
@@ -23,8 +33,45 @@ permissions:
 # `dev` extras). Keep it that way — don't add a real cluster/DB dependency
 # here without also making it optional for contributors without one.
 jobs:
+  changes:
+    name: Select jobs for this diff
+    runs-on: ubuntu-latest
+    outputs:
+      root: ${{ steps.select.outputs.root }}
+      lint: ${{ steps.select.outputs.lint }}
+      audit: ${{ steps.select.outputs.audit }}
+      control-plane: ${{ steps.select.outputs.control-plane }}
+      sdk-python: ${{ steps.select.outputs.sdk-python }}
+      mcp-server: ${{ steps.select.outputs.mcp-server }}
+      sdk-js: ${{ steps.select.outputs.sdk-js }}
+      sdk-go: ${{ steps.select.outputs.sdk-go }}
+      sdk-rust: ${{ steps.select.outputs.sdk-rust }}
+      sdk-java: ${{ steps.select.outputs.sdk-java }}
+      sdk-csharp: ${{ steps.select.outputs.sdk-csharp }}
+      docker-images: ${{ steps.select.outputs.docker-images }}
+      python-packages: ${{ steps.select.outputs.python-packages }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            python3 scripts/ci/affected.py --base "$BASE" --head "$HEAD"
+          else
+            python3 scripts/ci/affected.py --all
+          fi
+
   test-root:
     name: Root package tests (py${{ matrix.python-version }})
+    needs: changes
+    if: needs.changes.outputs.root == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -32,17 +79,30 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             pyproject.toml
             sidecar/requirements.txt
 
       - name: Install boxxkite (with dev extras)
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       # Several tests (test_sidecar_auth*.py, test_sidecar_exec_no_env_injection.py,
       # test_sidecar_tool_call_session_id.py) import sidecar/main.py directly,
@@ -51,14 +111,17 @@ jobs:
       # separately in sidecar/requirements.txt). Install them explicitly, or
       # collection fails with ModuleNotFoundError before any test runs.
       - name: Install sidecar dependencies (needed to import sidecar/main.py in tests)
-        run: pip install -r sidecar/requirements.txt
+        run: uv pip install -r sidecar/requirements.txt
 
       # tests/test_cli.py (the CLI's own tests) lives under tests/, so it's
       # already exercised by this run — no separate invocation needed.
+      # Random order with a seed fixed per run (a re-run repeats the order).
+      # Reproduce a failure locally with the --randomly-seed printed here.
       - name: Run root test suite
-        run: >
-          pytest tests/ -q
-          --cov=src/boxxkite --cov-report=term-missing --cov-report=xml --cov-report=html
+        run: |
+          echo "random order: --randomly-seed=$GITHUB_RUN_ID"
+          pytest tests/ -q -n auto -p randomly --randomly-seed="$GITHUB_RUN_ID" \
+            --cov=src/boxxkite --cov-report=term-missing --cov-report=xml --cov-report=html
 
       - name: Coverage summary
         if: always()
@@ -80,8 +143,33 @@ jobs:
             htmlcov/
           retention-days: 14
 
-  lint-and-audit:
-    name: Lint & dependency audit (py${{ matrix.python-version }})
+  # Needs no installed environment, so it runs on its own and fast.
+  lint:
+    name: Lint (ruff)
+    needs: changes
+    if: needs.changes.outputs.lint == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      # Same version as the dev extra, so CI, the pre-push hook and a local
+      # `ruff check` agree.
+      - name: ruff check
+        run: uvx ruff@0.17.4 check src/ tests/ control-plane/src/ control-plane/tests/
+
+      - name: actionlint (workflow files)
+        if: ${{ !cancelled() }}
+        run: uvx --from actionlint-py==1.7.12.25 actionlint
+
+  audit:
+    name: Dependency audit (py${{ matrix.python-version }})
+    needs: changes
+    if: needs.changes.outputs.audit == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -89,45 +177,76 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             pyproject.toml
             control-plane/pyproject.toml
 
       - name: Install boxxkite (with dev extras)
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       - name: Install control-plane (with dev extras)
         working-directory: control-plane
-        run: pip install -e ".[dev]"
-
-      - name: ruff check
-        run: ruff check src/ tests/ control-plane/src/ control-plane/tests/
+        run: uv pip install -e ".[dev]"
 
       # pip-audit scans the environment's installed dependencies (root +
       # control-plane, both already installed above) for known CVEs.
       - name: pip-audit (dependency vulnerability scan)
         run: pip-audit --progress-spinner=off
 
-  test-control-plane:
-    name: control-plane tests (py${{ matrix.python-version }})
+  # control-plane is the slowest suite (395s serial on a 4-vCPU runner), so
+  # it runs as SHARDS shards per Python version, each across every core.
+  # scripts/ci/shard.py balances files by the durations main last recorded.
+  test-control-plane-shard:
+    name: control-plane tests (py${{ matrix.python-version }}, shard ${{ matrix.shard }})
+    needs: changes
+    if: needs.changes.outputs.control-plane == 'true'
     runs-on: ubuntu-latest
+    env:
+      SHARDS: 3
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             pyproject.toml
             control-plane/pyproject.toml
 
@@ -135,22 +254,91 @@ jobs:
       # local sibling (see control-plane/pyproject.toml's dependency comment)
       # — install it first, from the repo root, before control-plane itself.
       - name: Install boxxkite (root package)
-        run: pip install -e .
+        run: uv pip install -e .
 
       - name: Install control-plane (with dev extras)
         working-directory: control-plane
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
-      - name: Run control-plane test suite
+      - name: Restore test durations recorded by main
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: control-plane/.test-durations.json
+          key: cp-durations-${{ github.sha }}
+          restore-keys: cp-durations-
+
+      - name: Run control-plane tests (shard ${{ matrix.shard }})
+        working-directory: control-plane
+        env:
+          COVERAGE_FILE: .coverage.shard-${{ matrix.shard }}
+        run: |
+          files=$(python ../scripts/ci/shard.py plan --tests tests \
+            --durations .test-durations.json --shard ${{ matrix.shard }} --of "$SHARDS")
+          # shellcheck disable=SC2086 # one argument per test file
+          echo "random order: --randomly-seed=$GITHUB_RUN_ID"
+          pytest $files -q -n auto -p randomly --randomly-seed="$GITHUB_RUN_ID" -o junit_family=xunit1 \
+            --junitxml=junit-shard-${{ matrix.shard }}.xml \
+            --cov=src/control_plane --cov-report=
+
+      - name: Upload shard report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: control-plane-py${{ matrix.python-version }}-shard-${{ matrix.shard }}
+          path: |
+            control-plane/junit-shard-*.xml
+            control-plane/.coverage.shard-*
+          include-hidden-files: true
+          retention-days: 1
+
+  # One result per Python version, under the old job name: proves the shards
+  # together ran every test file exactly once, merges their coverage, and
+  # fails if any shard failed.
+  test-control-plane:
+    name: control-plane tests (py${{ matrix.python-version }})
+    needs: [changes, test-control-plane-shard]
+    if: ${{ !cancelled() && needs.changes.outputs.control-plane == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: control-plane-py${{ matrix.python-version }}-shard-*
+          path: control-plane/shard-reports
+          merge-multiple: true
+
+      - name: Check every test file ran exactly once
         working-directory: control-plane
         run: >
-          pytest tests/ -q
-          --cov=src/control_plane --cov-report=term-missing --cov-report=xml --cov-report=html
+          python ../scripts/ci/shard.py check --tests tests
+          --junit-dir shard-reports --write-durations .test-durations.json
+
+      - name: Save test durations for the next run to balance on
+        if: github.ref == 'refs/heads/main' && matrix.python-version == '3.12'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: control-plane/.test-durations.json
+          key: cp-durations-${{ github.run_id }}
 
       - name: Coverage summary
-        if: always()
         working-directory: control-plane
         run: |
+          pip install --quiet coverage
+          coverage combine shard-reports/.coverage.shard-*
+          coverage xml
+          coverage html
           {
             echo "### control-plane coverage (py${{ matrix.python-version }})";
             echo '```';
@@ -159,7 +347,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload control-plane coverage report
-        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-control-plane-py${{ matrix.python-version }}
@@ -168,53 +355,219 @@ jobs:
             control-plane/htmlcov/
           retention-days: 14
 
+      - name: Fail if any shard failed
+        if: needs.test-control-plane-shard.result != 'success'
+        run: |
+          echo "::error::a control-plane shard ${{ needs.test-control-plane-shard.result }}; see its job log"
+          exit 1
+
   test-sdk-python:
     name: sdk-python tests
+    needs: changes
+    if: needs.changes.outputs.sdk-python == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: sdk-python/pyproject.toml
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
+            sdk-python/pyproject.toml
 
       - name: Install sdk-python (with dev extras)
         working-directory: sdk-python
-        run: pip install -e ".[dev,langchain]"
+        run: uv pip install -e ".[dev,langchain]"
 
       - name: Run sdk-python test suite
         working-directory: sdk-python
         run: pytest tests/ -q
 
-  test-sdk-js:
-    name: sdk-js tests
+  # Five Python packages with tests that no CI job ran before.
+  test-package:
+    name: ${{ matrix.package }} tests
+    needs: changes
+    if: needs.changes.outputs.python-packages != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.changes.outputs.python-packages) }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          prune-cache: false
+          cache-suffix: ${{ matrix.package }}
+          cache-dependency-glob: |
+            ${{ matrix.package }}/pyproject.toml
+            sdk-python/pyproject.toml
+
+      - name: Install local dependencies
+        if: matrix.local-deps
+        run: uv pip install -e ${{ matrix.local-deps }}
+
+      # CPU torch for memory-model-server: the default Linux wheel bundles
+      # CUDA, gigabytes these tests never use.
+      - name: Install ${{ matrix.package }}
+        working-directory: ${{ matrix.package }}
+        run: uv pip install --torch-backend cpu -e ".[${{ matrix.extra }}]"
+
+      - name: Run ${{ matrix.package }} tests
+        working-directory: ${{ matrix.package }}
+        run: pytest -q
+
+  # The Java and C# SDKs have tests that no CI job ran before. Both
+  # toolchains (Java 17+, .NET 8 SDK) come preinstalled on ubuntu runners.
+  test-sdk-java:
+    name: sdk-java tests
+    needs: changes
+    if: needs.changes.outputs.sdk-java == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
+      - id: m2
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-${{ hashFiles('sdk-java/pom.xml') }}
+
+      - name: Run sdk-java test suite
+        working-directory: sdk-java
+        run: ./mvnw -B --no-transfer-progress test
+
+      - if: github.ref == 'refs/heads/main' && steps.m2.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-${{ hashFiles('sdk-java/pom.xml') }}
+
+  test-sdk-csharp:
+    name: sdk-csharp tests
+    needs: changes
+    if: needs.changes.outputs.sdk-csharp == 'true'
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - id: nuget
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('sdk-csharp/**/*.csproj') }}
+
+      - name: Run sdk-csharp test suite
+        working-directory: sdk-csharp
+        run: dotnet test
+
+      - if: github.ref == 'refs/heads/main' && steps.nuget.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('sdk-csharp/**/*.csproj') }}
+
+  test-sdk-js:
+    name: sdk-js tests
+    needs: changes
+    if: needs.changes.outputs.sdk-js == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk-js
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+
+      # Tests run on the oldest Node CI covers, since the SDK ships for Node.
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: sdk-js/package-lock.json
+
+      # node_modules itself, written only by main and restored by PRs.
+      - id: node-modules
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: sdk-js/node_modules
+          key: sdk-js-node-modules-${{ runner.os }}-${{ hashFiles('sdk-js/bun.lock') }}
 
       - name: Install dependencies
-        working-directory: sdk-js
-        run: npm ci
+        run: bun install --frozen-lockfile
 
-      # `npm test` builds via tsc first, then runs node's built-in test runner
-      # against the compiled output -- see sdk-js/package.json.
-      - name: Run sdk-js test suite
-        working-directory: sdk-js
-        run: npm test
+      - if: github.ref == 'refs/heads/main' && steps.node-modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: sdk-js/node_modules
+          key: sdk-js-node-modules-${{ runner.os }}-${{ hashFiles('sdk-js/bun.lock') }}
+
+      # Each check runs even if an earlier one failed, so one run lists every
+      # problem.
+      - name: Format (oxfmt)
+        run: bun run fmt:check
+
+      - name: Lint (oxlint)
+        if: ${{ !cancelled() }}
+        run: bun run lint
+
+      - name: Typecheck (bun check)
+        if: ${{ !cancelled() }}
+        run: bun run check
+
+      # Builds with TypeScript 7's tsc, then runs node --test on dist/.
+      - name: Build and test
+        if: ${{ !cancelled() }}
+        run: bun run test
 
   test-sdk-go:
     name: sdk-go tests
+    needs: changes
+    if: needs.changes.outputs.sdk-go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
@@ -231,14 +584,25 @@ jobs:
 
   test-sdk-rust:
     name: sdk-rust tests
+    needs: changes
+    if: needs.changes.outputs.sdk-rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable, pinned 2026-06-30
         with:
           toolchain: stable
           components: clippy, rustfmt
+
+      # Compiled dependencies, written only by main and restored by PRs.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: sdk-rust
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Check formatting
         working-directory: sdk-rust
@@ -257,26 +621,41 @@ jobs:
 
   test-mcp-server:
     name: mcp-server tests
+    needs: changes
+    if: needs.changes.outputs.mcp-server == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             sdk-python/pyproject.toml
             mcp-server/pyproject.toml
 
       # mcp-server depends on sdk-python as an unpublished local sibling,
       # same relationship control-plane has to the root boxxkite package.
       - name: Install sdk-python (local sibling dependency)
-        run: pip install -e ./sdk-python
+        run: uv pip install -e ./sdk-python
 
       - name: Install mcp-server (with dev extras)
         working-directory: mcp-server
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       # tests/live_smoke.py doesn't match pytest's default test_*.py
       # collection pattern, so this never picks it up -- it's a manual,
@@ -287,37 +666,25 @@ jobs:
 
   docker-build:
     name: Docker build (${{ matrix.image }})
+    needs: changes
+    if: needs.changes.outputs.docker-images != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - image: sandbox
-            dockerfile: deploy/sandbox.Dockerfile
-          - image: sandbox-minimal
-            dockerfile: deploy/sandbox-minimal.Dockerfile
-            platforms: linux/amd64,linux/arm64
-          - image: sandbox-node
-            dockerfile: deploy/sandbox-node.Dockerfile
-          - image: sandbox-go
-            dockerfile: deploy/sandbox-go.Dockerfile
-          - image: sandbox-rust
-            dockerfile: deploy/sandbox-rust.Dockerfile
-          - image: sandbox-claude-code
-            dockerfile: deploy/sandbox-claude-code.Dockerfile
-          - image: sidecar
-            dockerfile: deploy/sidecar.Dockerfile
-            platforms: linux/amd64,linux/arm64
-          - image: control-plane
-            dockerfile: control-plane/Dockerfile
-            platforms: linux/amd64,linux/arm64
+        include: ${{ fromJSON(needs.changes.outputs.docker-images) }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
-      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+      # Emulation is only needed for the arm64 half of a multi-platform build.
+      - if: github.event_name != 'pull_request' && matrix.platforms
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
 
       # Neither Dockerfile is pushed anywhere — no registry credentials exist
       # in this repo. This only proves the image still builds; `push: false`
@@ -327,30 +694,46 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          platforms: ${{ matrix.platforms || 'linux/amd64' }}
+          # PRs build amd64 only; main (and the merge queue) builds every
+          # platform the image ships for.
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || matrix.platforms || 'linux/amd64' }}
           push: false
           load: false
           cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          # Written only by main, so PRs read what main seeded.
+          cache-to: ${{ github.ref == 'refs/heads/main' && format('type=gha,mode=max,scope={0}', matrix.image) || '' }}
 
   release-readiness:
     name: Release artifact build (main only)
-    needs: [test-root, lint-and-audit, test-control-plane]
+    needs: [test-root, lint, audit, test-control-plane]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          filter: blob:none
+          fetch-depth: 0
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
+
+      # uv's download cache is written only by main, so every PR restores the
+      # copy main seeded instead of racing to write its own.
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          activate-environment: true
+          enable-cache: true
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          # Keep downloaded wheels too, not just locally built ones: the
+          # point is to not re-download ~500 MB of wheels on every PR.
+          prune-cache: false
+          cache-dependency-glob: |
             pyproject.toml
             control-plane/pyproject.toml
 
       - name: Install build tooling
-        run: pip install build
+        run: uv pip install build
 
       # This does not publish anything (no PyPI credentials exist in this
       # repo) — it only confirms pyproject.toml's version/metadata is well
