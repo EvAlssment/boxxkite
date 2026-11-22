@@ -11,6 +11,7 @@ from . import (
     cmd_allowlist,
     cmd_audit,
     cmd_config,
+    cmd_context,
     cmd_diagnostics,
     cmd_doctor,
     cmd_exec,
@@ -215,6 +216,17 @@ audit_app = typer.Typer(
 )
 audit_app.command("verify")(cli_error_boundary(cmd_audit.verify))
 app.add_typer(audit_app, name="audit")
+
+context_app = typer.Typer(
+    help=(
+        "Read a local coding-agent session and print a portable context artifact for "
+        "starting a fresh session of another agent. Local-only: reads session files on "
+        "this machine and never contacts a hosted control-plane."
+    ),
+    no_args_is_help=True,
+)
+context_app.command("export")(cli_error_boundary(cmd_context.export))
+app.add_typer(context_app, name="context")
 
 app.command("doctor")(cli_error_boundary(cmd_doctor.doctor))
 app.command("up")(cli_error_boundary(cmd_up.up))
