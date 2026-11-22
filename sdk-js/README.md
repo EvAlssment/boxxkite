@@ -119,8 +119,8 @@ new BoxxkiteClient({
 ## Development
 
 ```bash
-npm install
-npm test   # builds with tsc, then runs node's built-in test runner against dist/
+bun install
+bun run test   # builds with tsc, then runs node's built-in test runner against dist/
 ```
 
 ## Related tools
