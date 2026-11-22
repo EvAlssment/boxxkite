@@ -22,6 +22,9 @@ pip install -e ".[dev]"
 # aren't declared in this package's own pyproject.toml, since they're the
 # sidecar's dependencies, not boxxkite's):
 pip install -r sidecar/requirements.txt
+# Run CI's fast checks (ruff; sdk-js oxfmt/oxlint/bun check; cargo fmt;
+# gofmt) on every push that touches them:
+git config core.hooksPath .githooks
 ```
 
 Cold install takes a few minutes, not seconds — the `dev` extra pulls in

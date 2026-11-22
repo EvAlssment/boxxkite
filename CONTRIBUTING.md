@@ -87,6 +87,8 @@ pip install -e ".[dev]"
 # which aren't declared in pyproject.toml since they're the sidecar's own
 # dependencies, not the boxxkite package's — install them too:
 pip install -r sidecar/requirements.txt
+# Run CI's fast checks on every push that touches them (about a second):
+git config core.hooksPath .githooks
 pytest tests/
 ```
 
