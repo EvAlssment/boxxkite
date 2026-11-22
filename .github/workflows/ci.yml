@@ -418,6 +418,12 @@ jobs:
           toolchain: stable
           components: clippy, rustfmt
 
+      # Compiled dependencies, written only by main and restored by PRs.
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: sdk-rust
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Check formatting
         working-directory: sdk-rust
         run: cargo fmt -- --check
@@ -511,7 +517,9 @@ jobs:
 
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
-      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+      # Emulation is only needed for the arm64 half of a multi-platform build.
+      - if: github.event_name != 'pull_request' && matrix.platforms
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
 
       # Neither Dockerfile is pushed anywhere — no registry credentials exist
       # in this repo. This only proves the image still builds; `push: false`
@@ -521,11 +529,14 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          platforms: ${{ matrix.platforms || 'linux/amd64' }}
+          # PRs build amd64 only; main (and the merge queue) builds every
+          # platform the image ships for.
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || matrix.platforms || 'linux/amd64' }}
           push: false
           load: false
           cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          # Written only by main, so PRs read what main seeded.
+          cache-to: ${{ github.ref == 'refs/heads/main' && format('type=gha,mode=max,scope={0}', matrix.image) || '' }}
 
   release-readiness:
     name: Release artifact build (main only)
