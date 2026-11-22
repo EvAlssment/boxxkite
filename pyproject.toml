@@ -124,6 +124,10 @@ boxxkite = ["skill_assets/troubleshoot_sandbox/*.md", "skill_assets/troubleshoot
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# tests/test_task_spec.py imports the top-level evals/ package, which is not
+# installed; bare `pytest` (unlike `python -m pytest`) does not put the repo
+# root on sys.path.
+pythonpath = ["."]
 testpaths = ["tests"]
 markers = [
     "pr: fast tests suitable for pre-merge gating",
